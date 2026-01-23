@@ -4,7 +4,7 @@ An Android application for tracking gym workouts, routines, and exercises built 
 
 ## 📱 About
 
-Gimnasio is a modern Android app designed to help users organize and track their gym workout routines. The app allows users to create custom routines, add exercises, and manage workout sets efficiently.
+Gimnasio is a modern Android app designed to help users organize and track their gym workout routines. The app allows users to create custom routines, add exercises, and track workout sets efficiently.
 
 ## ✨ Features
 
@@ -89,29 +89,6 @@ cd AppGimnasio
 1. Select your target device or emulator
 2. Click the "Run" button (green play icon) or press `Shift + F10`
 
-#### Using Command Line
-
-```bash
-# Debug build
-./gradlew assembleDebug
-
-# Release build
-./gradlew assembleRelease
-
-# Install on connected device
-./gradlew installDebug
-```
-
-### Running Tests
-
-```bash
-# Run unit tests
-./gradlew test
-
-# Run instrumented tests
-./gradlew connectedAndroidTest
-```
-
 ## 📄 License
 
 This project is open source and available for educational purposes.
@@ -122,4 +99,6 @@ Contributions, issues, and feature requests are welcome!
 
 ## 📧 Contact
 
-For questions or feedback about this project, please open an issue on GitHub.
+For questions or feedback about this project, please open an issue on GitHub or send an email to:
+carlosegurenesteban@gmail.com
+
