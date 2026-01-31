@@ -1,5 +1,9 @@
 package com.example.gimnasio.data.entity
 
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.PrimaryKey
+
 @Entity(
     tableName = "rutinas",
     indices = [Index(value = ["nombre"], unique = true)]

@@ -1,28 +1,37 @@
 package com.example.gimnasio.ui
 
+import android.app.Application
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.ui.rutinas.NuevaRutinaDialog
+import com.example.gimnasio.ui.rutinas.RutinaViewModel
+import com.example.gimnasio.ui.rutinas.RutinaViewModelFactory
 import com.example.gimnasio.ui.rutinas.RutinasScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GymApp() {
 
-    val rutinas = remember { mutableStateListOf<String>() }
+    val application = LocalContext.current.applicationContext as Application
+    val viewModel: RutinaViewModel = viewModel(
+        factory = RutinaViewModelFactory(application)
+    )
+    val rutinas by viewModel.rutinas.collectAsState(initial = emptyList())
     var mostrarDialogo = remember { mutableStateOf(false) }
 
     Scaffold(
@@ -51,7 +60,7 @@ fun GymApp() {
         if (mostrarDialogo.value) {
             NuevaRutinaDialog(
                 onGuardar = { nombre ->
-                    rutinas.add(nombre)
+                    viewModel.insertar(nombre)
                     mostrarDialogo.value = false
                 },
                 onCancelar = {
@@ -61,4 +70,3 @@ fun GymApp() {
         }
     }
 }
-
