@@ -1,22 +1,21 @@
-package com.example.gimnasio.ui.rutinas
+package com.example.gimnasio.ui.ejercicios
 
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.*
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.ExperimentalMaterial3Api
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RutinaDetailScreen(
-    rutinaId: Long,
+fun EjerciciosScreen(
     onBack: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Detalle de rutina") },
+                title = { Text("Ejercicios") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Text("←")
@@ -25,12 +24,17 @@ fun RutinaDetailScreen(
             )
         }
     ) { padding ->
+
         Box(
             modifier = Modifier
                 .padding(padding)
-                .fillMaxSize()
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            Text("Aquí irá el detalle de la rutina")
+            Text(
+                text = "Pantalla de Ejercicios",
+                style = MaterialTheme.typography.titleLarge
+            )
         }
     }
 }

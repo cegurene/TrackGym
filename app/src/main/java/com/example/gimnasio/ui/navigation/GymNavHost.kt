@@ -1,41 +1,52 @@
 package com.example.gimnasio.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import androidx.navigation.NavType
-import com.example.gimnasio.ui.main.MainScreen
-import com.example.gimnasio.ui.rutina.RutinaDetailScreen
+import com.example.gimnasio.ui.ejercicios.EjerciciosScreen
+import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
+import com.example.gimnasio.ui.rutinas.RutinasScreen
 
 @Composable
 fun GymNavHost(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController,
+    modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,
-        startDestination = Routes.Main.route
+        startDestination = "rutinas",
+        modifier = modifier
     ) {
 
-        composable(Routes.Main.route) {
-            MainScreen(
+        composable("rutinas") {
+            RutinasScreen(
+                onCrearRutinaClick = {
+                    // de momento no navega, solo abre diálogo interno
+                },
                 onRutinaClick = { rutinaId ->
-                    navController.navigate(
-                        Routes.RutinaDetail.createRoute(rutinaId)
-                    )
+                    navController.navigate("rutinaDetail/$rutinaId")
+                },
+                onVerEjerciciosClick = {
+                    navController.navigate("ejercicios")
                 }
             )
         }
 
-        composable(
-            route = Routes.RutinaDetail.route,
-            arguments = listOf(
-                navArgument("rutinaId") { type = NavType.LongType }
+        composable("ejercicios") {
+            EjerciciosScreen(
+                onBack = { navController.popBackStack() }
             )
-        ) {
+        }
+
+        composable("rutinaDetail/{rutinaId}") { backStackEntry ->
+            val rutinaId = backStackEntry.arguments
+                ?.getString("rutinaId")
+                ?.toLong() ?: return@composable
+
             RutinaDetailScreen(
+                rutinaId = rutinaId,
                 onBack = { navController.popBackStack() }
             )
         }

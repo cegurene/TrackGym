@@ -10,12 +10,12 @@ import kotlinx.coroutines.flow.Flow
 interface EntrenamientoDao {
 
     @Insert
-    suspend fun insert(entrenamiento: EntrenamientoEntity)
+    suspend fun insert(entrenamiento: EntrenamientoEntity): Long
 
     @Query("""
-        SELECT * FROM entrenamientos 
-        WHERE rutinaId = :rutinaId 
+        SELECT * FROM entrenamientos
+        WHERE rutinaId = :rutinaId
         ORDER BY fecha DESC
     """)
-    fun getEntrenamientosDeRutina(rutinaId: Long): Flow<List<EntrenamientoEntity>>
+    fun getByRutina(rutinaId: Long): Flow<List<EntrenamientoEntity>>
 }

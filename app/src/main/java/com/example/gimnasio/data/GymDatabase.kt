@@ -4,46 +4,46 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.gimnasio.data.dao.EjercicioDao
-import com.example.gimnasio.data.dao.EntrenamientoDao
-import com.example.gimnasio.data.dao.RutinaDao
-import com.example.gimnasio.data.dao.SerieDao
-import com.example.gimnasio.data.entity.EjercicioEntity
-import com.example.gimnasio.data.entity.EntrenamientoEntity
-import com.example.gimnasio.data.entity.RutinaEntity
-import com.example.gimnasio.data.entity.SerieEntity
-
+import com.example.gimnasio.data.dao.*
+import com.example.gimnasio.data.entity.*
 
 @Database(
     entities = [
         RutinaEntity::class,
         EjercicioEntity::class,
+        RutinaEjercicioEntity::class,
         EntrenamientoEntity::class,
         SerieEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
-
 abstract class GymDatabase : RoomDatabase() {
 
     abstract fun rutinaDao(): RutinaDao
     abstract fun ejercicioDao(): EjercicioDao
+    abstract fun rutinaEjercicioDao(): RutinaEjercicioDao
     abstract fun entrenamientoDao(): EntrenamientoDao
     abstract fun serieDao(): SerieDao
 
-
     companion object {
+
         @Volatile
         private var INSTANCE: GymDatabase? = null
 
-        fun getDatabase(context: Context): GymDatabase =
-            INSTANCE ?: synchronized(this) {
-                INSTANCE ?: Room.databaseBuilder(
+        fun getDatabase(context: Context): GymDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
                     context.applicationContext,
                     GymDatabase::class.java,
                     "gym_database"
-                ).fallbackToDestructiveMigration().build().also { INSTANCE = it }
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+
+                INSTANCE = instance
+                instance
             }
+        }
     }
 }

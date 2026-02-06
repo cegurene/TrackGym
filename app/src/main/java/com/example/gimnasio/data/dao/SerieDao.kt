@@ -13,8 +13,9 @@ interface SerieDao {
     suspend fun insert(serie: SerieEntity)
 
     @Query("""
-        SELECT * FROM series 
-        WHERE entrenamientoId = :entrenamientoId
+        SELECT * FROM series
+        WHERE ejercicioId = :ejercicioId
+        ORDER BY entrenamientoId DESC
     """)
-    fun getSeriesDeEntrenamiento(entrenamientoId: Long): Flow<List<SerieEntity>>
+    fun getSeriesPorEjercicio(ejercicioId: Long): Flow<List<SerieEntity>>
 }

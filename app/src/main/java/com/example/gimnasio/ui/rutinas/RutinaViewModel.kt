@@ -13,7 +13,7 @@ class RutinaViewModel(application: Application) : ViewModel() {
 
     private val rutinaDao = GymDatabase.getDatabase(application).rutinaDao()
 
-    val rutinas: Flow<List<RutinaEntity>> = rutinaDao.getAll()
+    val rutinas: Flow<List<RutinaEntity>> = rutinaDao.getAllRutinas()
 
     fun insertar(nombre: String) {
         viewModelScope.launch {
