@@ -10,7 +10,8 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EjerciciosScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onCrearEjercicioClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -22,9 +23,13 @@ fun EjerciciosScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onCrearEjercicioClick) {
+                Text("+")
+            }
         }
     ) { padding ->
-
         Box(
             modifier = Modifier
                 .padding(padding)

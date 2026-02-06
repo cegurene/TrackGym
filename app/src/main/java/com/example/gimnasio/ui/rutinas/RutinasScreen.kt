@@ -4,10 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -19,13 +16,15 @@ import com.example.gimnasio.ui.main.MainViewModelFactory
 @Composable
 fun RutinasScreen(
     onRutinaClick: (Long) -> Unit,
-    onCrearRutinaClick: () -> Unit,
     onVerEjerciciosClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val viewModel: MainViewModel = viewModel(factory = MainViewModelFactory(context))
     val rutinas by viewModel.rutinas.collectAsState()
+
+    var showDialog by remember { mutableStateOf(false) }
+    var nombreRutina by remember { mutableStateOf("") }
 
     Scaffold(
         modifier = modifier,
@@ -40,7 +39,7 @@ fun RutinasScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onCrearRutinaClick) {
+            FloatingActionButton(onClick = { showDialog = true }) {
                 Text("+")
             }
         }
@@ -59,5 +58,39 @@ fun RutinasScreen(
                 )
             }
         }
+    }
+
+    // 🔹 Diálogo crear rutina
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Nueva rutina") },
+            text = {
+                OutlinedTextField(
+                    value = nombreRutina,
+                    onValueChange = { nombreRutina = it },
+                    label = { Text("Nombre de la rutina") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (nombreRutina.isNotBlank()) {
+                            viewModel.crearRutina(nombreRutina)
+                        }
+                        nombreRutina = ""
+                        showDialog = false
+                    }
+                ) {
+                    Text("Crear")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }

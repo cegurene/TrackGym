@@ -22,9 +22,6 @@ fun GymNavHost(
 
         composable("rutinas") {
             RutinasScreen(
-                onCrearRutinaClick = {
-                    // de momento no navega, solo abre diálogo interno
-                },
                 onRutinaClick = { rutinaId ->
                     navController.navigate("rutinaDetail/$rutinaId")
                 },
@@ -36,7 +33,10 @@ fun GymNavHost(
 
         composable("ejercicios") {
             EjerciciosScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onCrearEjercicioClick = {
+                    // siguiente paso: diálogo o nueva pantalla
+                }
             )
         }
 
