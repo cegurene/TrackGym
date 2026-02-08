@@ -38,4 +38,9 @@ class EjercicioViewModel(
             ejercicioDao.delete(id)
         }
     }
+
+    suspend fun getEjercicio(id: Long): EjercicioEntity? {
+        return ejercicioDao.getById(id)
+    }
+
 }

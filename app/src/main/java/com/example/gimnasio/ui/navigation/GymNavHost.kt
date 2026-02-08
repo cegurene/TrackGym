@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.gimnasio.ui.ejercicios.EjercicioDetailScreen
 import com.example.gimnasio.ui.ejercicios.EjerciciosScreen
 import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
 import com.example.gimnasio.ui.rutinas.RutinasScreen
@@ -34,8 +35,8 @@ fun GymNavHost(
         composable("ejercicios") {
             EjerciciosScreen(
                 onBack = { navController.popBackStack() },
-                onCrearEjercicioClick = {
-                    // siguiente paso: diálogo o nueva pantalla
+                onEjercicioClick = { ejercicioId ->
+                    navController.navigate("ejercicioDetail/$ejercicioId")
                 }
             )
         }
@@ -50,5 +51,35 @@ fun GymNavHost(
                 onBack = { navController.popBackStack() }
             )
         }
+
+        composable("ejercicioDetail/{ejercicioId}") { backStackEntry ->
+            val ejercicioId = backStackEntry.arguments
+                ?.getString("ejercicioId")
+                ?.toLong() ?: return@composable
+
+            EjercicioDetailScreen(
+                ejercicioId = ejercicioId,
+                onBack = { navController.popBackStack() },
+                onOpenSettings = {
+                    // aquí abriremos el BottomSheet en el siguiente paso
+                }
+            )
+
+        }
+
+        composable("ejercicioDetail/{ejercicioId}") { backStackEntry ->
+            val ejercicioId = backStackEntry.arguments
+                ?.getString("ejercicioId")
+                ?.toLong() ?: return@composable
+
+            EjercicioDetailScreen(
+                ejercicioId = ejercicioId,
+                onBack = { navController.popBackStack() },
+                onOpenSettings = {
+                    // aquí irá el bottom sheet (paso siguiente)
+                }
+            )
+        }
+
     }
 }
