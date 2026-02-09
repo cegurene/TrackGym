@@ -67,19 +67,5 @@ fun GymNavHost(
 
         }
 
-        composable("ejercicioDetail/{ejercicioId}") { backStackEntry ->
-            val ejercicioId = backStackEntry.arguments
-                ?.getString("ejercicioId")
-                ?.toLong() ?: return@composable
-
-            EjercicioDetailScreen(
-                ejercicioId = ejercicioId,
-                onBack = { navController.popBackStack() },
-                onOpenSettings = {
-                    // aquí irá el bottom sheet (paso siguiente)
-                }
-            )
-        }
-
     }
 }

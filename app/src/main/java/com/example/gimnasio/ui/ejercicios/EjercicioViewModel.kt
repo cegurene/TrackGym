@@ -39,8 +39,23 @@ class EjercicioViewModel(
         }
     }
 
-    suspend fun getEjercicio(id: Long): EjercicioEntity? {
-        return ejercicioDao.getById(id)
+    fun renombrarEjercicio(id: Long, nuevoNombre: String) {
+        if (nuevoNombre.isBlank()) return
+
+        viewModelScope.launch {
+            ejercicioDao.updateNombre(
+                id = id,
+                nuevoNombre = nuevoNombre.trim()
+            )
+        }
     }
+
+    fun getEjercicio(id: Long) = ejercicioDao
+        .getByIdFlow(id)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null
+        )
 
 }

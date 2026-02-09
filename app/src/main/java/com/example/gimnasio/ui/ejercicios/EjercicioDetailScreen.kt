@@ -5,7 +5,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.gimnasio.data.GymDatabase
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -14,15 +16,31 @@ fun EjercicioDetailScreen(
     onBack: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
+    val context = LocalContext.current
+    val database = remember { GymDatabase.getDatabase(context) }
+
+    val viewModel: EjercicioViewModel = viewModel(
+        factory = EjercicioViewModelFactory(database)
+    )
+
     var showSettings by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var nuevoNombre by remember { mutableStateOf("") }
+
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
 
+    val ejercicio by viewModel
+        .getEjercicio(ejercicioId)
+        .collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ejercicio") },
+                title = {  Text(ejercicio?.nombre ?: "Ejercicio") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Text("←")
@@ -36,14 +54,20 @@ fun EjercicioDetailScreen(
             )
         }
     ) { padding ->
-
         Box(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("Detalle del ejercicio ID = $ejercicioId")
+            if (ejercicio == null) {
+                CircularProgressIndicator()
+            } else {
+                Text(
+                    text = "Ejercicio: ${ejercicio!!.nombre}",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
         }
     }
 
@@ -56,11 +80,75 @@ fun EjercicioDetailScreen(
             EjercicioSettingsSheet(
                 onRename = {
                     showSettings = false
+                    showRenameDialog = true
                 },
                 onDelete = {
                     showSettings = false
+                    showDeleteDialog = true
                 }
             )
         }
     }
+
+    // ⚠️ Diálogo de confirmación
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Eliminar '${ejercicio?.nombre ?: "Ejercicio"}'") },
+            text = {
+                Text("Esta acción no se puede deshacer. ¿Seguro que quieres eliminar este ejercicio?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.borrarEjercicio(ejercicioId)
+                        showDeleteDialog = false
+                        onBack()
+                    }
+                ) {
+                    Text(
+                        text = "Eliminar",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showRenameDialog) {
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Cambiar nombre") },
+            text = {
+                OutlinedTextField(
+                    value = nuevoNombre,
+                    onValueChange = { nuevoNombre = it },
+                    label = { Text(ejercicio?.nombre ?: "Ejercicio") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.renombrarEjercicio(ejercicioId, nuevoNombre)
+                        nuevoNombre = ""
+                        showRenameDialog = false
+                    }
+                ) {
+                    Text("Guardar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
 }

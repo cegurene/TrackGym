@@ -25,4 +25,11 @@ interface EjercicioDao {
     // Borrar ejercicio (se borran relaciones por FK)
     @Query("DELETE FROM ejercicios WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("UPDATE ejercicios SET nombre = :nuevoNombre WHERE id = :id")
+    suspend fun updateNombre(id: Long, nuevoNombre: String)
+
+    @Query("SELECT * FROM ejercicios WHERE id = :id")
+    fun getByIdFlow(id: Long): Flow<EjercicioEntity?>
+
 }
