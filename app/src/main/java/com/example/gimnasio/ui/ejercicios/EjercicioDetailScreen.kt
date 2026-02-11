@@ -1,6 +1,8 @@
 package com.example.gimnasio.ui.ejercicios
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,7 +50,10 @@ fun EjercicioDetailScreen(
                 },
                 actions = {
                     IconButton(onClick = { showSettings = true }) {
-                        Text("⚙️")
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Ajustes"
+                        )
                     }
                 }
             )
@@ -80,6 +85,7 @@ fun EjercicioDetailScreen(
             EjercicioSettingsSheet(
                 onRename = {
                     showSettings = false
+                    nuevoNombre = ejercicio?.nombre ?: ""
                     showRenameDialog = true
                 },
                 onDelete = {
@@ -128,7 +134,7 @@ fun EjercicioDetailScreen(
                 OutlinedTextField(
                     value = nuevoNombre,
                     onValueChange = { nuevoNombre = it },
-                    label = { Text(ejercicio?.nombre ?: "Ejercicio") },
+                    label = { Text("Nombre del ejercicio") },
                     singleLine = true
                 )
             },
@@ -136,7 +142,6 @@ fun EjercicioDetailScreen(
                 TextButton(
                     onClick = {
                         viewModel.renombrarEjercicio(ejercicioId, nuevoNombre)
-                        nuevoNombre = ""
                         showRenameDialog = false
                     }
                 ) {

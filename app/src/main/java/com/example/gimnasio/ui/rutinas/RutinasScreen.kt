@@ -20,7 +20,9 @@ fun RutinasScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel: MainViewModel = viewModel(factory = MainViewModelFactory(context))
+    val viewModel: MainViewModel = viewModel(
+        factory = MainViewModelFactory(context)
+    )
     val rutinas by viewModel.rutinas.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
