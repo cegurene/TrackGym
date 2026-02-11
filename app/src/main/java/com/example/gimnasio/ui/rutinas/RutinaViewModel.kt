@@ -20,14 +20,22 @@ class RutinaViewModel(application: Application) : ViewModel() {
             rutinaDao.insert(RutinaEntity(nombre = nombre))
         }
     }
-}
 
-class RutinaViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(RutinaViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return RutinaViewModel(application) as T
+    fun getRutina(id: Long): Flow<RutinaEntity?> {
+        return rutinaDao.getByIdFlow(id)
+    }
+
+    fun borrarRutina(id: Long) {
+        viewModelScope.launch {
+            rutinaDao.deleteById(id)
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+
+    fun renombrarRutina(id: Long, nuevoNombre: String) {
+        if (nuevoNombre.isBlank()) return
+
+        viewModelScope.launch {
+            rutinaDao.updateNombre(id, nuevoNombre.trim())
+        }
     }
 }

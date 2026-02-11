@@ -24,4 +24,13 @@ interface RutinaDao {
     @Transaction
     @Query("SELECT * FROM rutinas ORDER BY nombre ASC")
     fun getRutinasConEjercicios(): Flow<List<RutinaConEjercicios>>
+
+    @Query("SELECT * FROM rutinas WHERE id = :id")
+    fun getByIdFlow(id: Long): Flow<RutinaEntity?>
+
+    @Query("DELETE FROM rutinas WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    @Query("UPDATE rutinas SET nombre = :nuevoNombre WHERE id = :id")
+    suspend fun updateNombre(id: Long, nuevoNombre: String)
 }

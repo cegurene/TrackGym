@@ -1,4 +1,4 @@
-package com.example.gimnasio.ui.main
+package com.example.gimnasio.ui.rutinas
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
