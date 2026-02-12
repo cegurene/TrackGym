@@ -30,6 +30,7 @@ data class SerieEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val entrenamientoId: Long,
     val ejercicioId: Long,
+    val numeroSerie: Int,
     val peso: Float,
     val repeticiones: Int
 )

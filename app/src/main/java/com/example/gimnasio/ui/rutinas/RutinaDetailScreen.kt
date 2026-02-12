@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -16,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.gimnasio.data.entity.EjercicioEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +39,6 @@ fun RutinaDetailScreen(
 
     var showSettings by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-
     var showRenameDialog by remember { mutableStateOf(false) }
     var nuevoNombre by remember { mutableStateOf("") }
 
@@ -49,6 +50,8 @@ fun RutinaDetailScreen(
     val todosLosEjercicios by viewModel
         .getAllEjercicios()
         .collectAsState(initial = emptyList())
+
+    var ejercicioAEliminar by remember { mutableStateOf<EjercicioEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -99,16 +102,6 @@ fun RutinaDetailScreen(
                         .padding(16.dp)
                 ) {
 
-                    """
-                    // 🔹 Nombre de la rutina
-                    Text(
-                        text = rutina?.nombre ?: "Rutina",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-                    """
-
                     // 🔹 Título sección ejercicios
                     Text(
                         text = "Ejercicios",
@@ -123,8 +116,28 @@ fun RutinaDetailScreen(
                     } else {
                         // 🔹 Lista simple de ejercicios
                         ejercicios.forEach { ejercicio ->
-                            Text("• ${ejercicio.nombre}")
-                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+
+                                Text(
+                                    text = ejercicio.nombre,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+
+                                IconButton(
+                                    onClick = { ejercicioAEliminar = ejercicio }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Eliminar ejercicio"
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -236,6 +249,36 @@ fun RutinaDetailScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showAddDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (ejercicioAEliminar != null) {
+        AlertDialog(
+            onDismissRequest = { ejercicioAEliminar = null },
+            title = { Text("Eliminar ejercicio") },
+            text = {
+                Text("¿Quitar '${ejercicioAEliminar!!.nombre}' de esta rutina?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.quitarEjercicioDeRutina(
+                            rutinaId,
+                            ejercicioAEliminar!!.id
+                        )
+                        ejercicioAEliminar = null
+                    }
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { ejercicioAEliminar = null }
+                ) {
                     Text("Cancelar")
                 }
             }

@@ -64,5 +64,12 @@ class RutinaViewModel(application: Application) : ViewModel() {
             )
         }
     }
+
+    fun quitarEjercicioDeRutina(rutinaId: Long, ejercicioId: Long) {
+        viewModelScope.launch {
+            rutinaEjercicioDao.delete(rutinaId, ejercicioId)
+        }
+    }
+
 }
 

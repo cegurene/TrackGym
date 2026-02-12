@@ -15,7 +15,7 @@ import com.example.gimnasio.data.entity.*
         EntrenamientoEntity::class,
         SerieEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class GymDatabase : RoomDatabase() {
