@@ -28,9 +28,12 @@ fun RutinaDetailScreen(
         factory = RutinaViewModelFactory(context.applicationContext as android.app.Application)
     )
 
-    val rutina by viewModel
-        .getRutina(rutinaId)
+    val rutinaConEjercicios by viewModel
+        .getRutinaConEjercicios(rutinaId)
         .collectAsState(initial = null)
+
+    val rutina = rutinaConEjercicios?.rutina
+    val ejercicios = rutinaConEjercicios?.ejercicios ?: emptyList()
 
     var showSettings by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -41,6 +44,11 @@ fun RutinaDetailScreen(
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
+
+    var showAddDialog by remember { mutableStateOf(false) }
+    val todosLosEjercicios by viewModel
+        .getAllEjercicios()
+        .collectAsState(initial = emptyList())
 
     Scaffold(
         topBar = {
@@ -62,22 +70,64 @@ fun RutinaDetailScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddDialog = true }
+            ) {
+                Text("+")
+            }
         }
     ) { padding ->
 
         Box(
             modifier = Modifier
                 .padding(padding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
         ) {
-            if (rutina == null) {
-                CircularProgressIndicator()
-            } else {
-                Text(
-                    text = "Rutina: ${rutina!!.nombre}",
-                    style = MaterialTheme.typography.titleLarge
+
+            if (rutinaConEjercicios == null) {
+                // Mientras carga
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
                 )
+            } else {
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+
+                    """
+                    // 🔹 Nombre de la rutina
+                    Text(
+                        text = rutina?.nombre ?: "Rutina",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                    """
+
+                    // 🔹 Título sección ejercicios
+                    Text(
+                        text = "Ejercicios",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 🔹 Si no hay ejercicios
+                    if (ejercicios.isEmpty()) {
+                        Text("Esta rutina aún no tiene ejercicios.")
+                    } else {
+                        // 🔹 Lista simple de ejercicios
+                        ejercicios.forEach { ejercicio ->
+                            Text("• ${ejercicio.nombre}")
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                }
             }
         }
     }
@@ -156,6 +206,36 @@ fun RutinaDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showRenameDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddDialog = false },
+            title = { Text("Añadir ejercicio") },
+            text = {
+                Column {
+                    todosLosEjercicios.forEach { ejercicio ->
+                        TextButton(
+                            onClick = {
+                                viewModel.añadirEjercicioARutina(
+                                    rutinaId,
+                                    ejercicio.id
+                                )
+                                showAddDialog = false
+                            }
+                        ) {
+                            Text(ejercicio.nombre)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAddDialog = false }) {
                     Text("Cancelar")
                 }
             }

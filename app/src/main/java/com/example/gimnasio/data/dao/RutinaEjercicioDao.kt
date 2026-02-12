@@ -4,7 +4,10 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.example.gimnasio.data.entity.RutinaEjercicioEntity
+import com.example.gimnasio.data.model.RutinaConEjercicios
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RutinaEjercicioDao {
@@ -20,7 +23,6 @@ interface RutinaEjercicioDao {
     """)
     suspend fun delete(rutinaId: Long, ejercicioId: Long)
 
-    // (Opcional pero útil)
     // Borrar todos los ejercicios de una rutina
     @Query("DELETE FROM rutina_ejercicio WHERE rutinaId = :rutinaId")
     suspend fun deleteByRutina(rutinaId: Long)

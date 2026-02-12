@@ -33,4 +33,8 @@ interface RutinaDao {
 
     @Query("UPDATE rutinas SET nombre = :nuevoNombre WHERE id = :id")
     suspend fun updateNombre(id: Long, nuevoNombre: String)
+
+    @Transaction
+    @Query("SELECT * FROM rutinas WHERE id = :id")
+    fun getRutinaConEjercicios(id: Long): Flow<RutinaConEjercicios?>
 }
