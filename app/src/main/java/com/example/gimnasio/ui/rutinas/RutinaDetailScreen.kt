@@ -6,6 +6,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,12 +32,18 @@ fun RutinaDetailScreen(
         factory = RutinaViewModelFactory(context.applicationContext as android.app.Application)
     )
 
+    // Solo obtenemos la rutina (para nombre, etc.)
     val rutinaConEjercicios by viewModel
         .getRutinaConEjercicios(rutinaId)
         .collectAsState(initial = null)
 
     val rutina = rutinaConEjercicios?.rutina
-    val ejercicios = rutinaConEjercicios?.ejercicios ?: emptyList()
+
+    // 🔥 Ahora los ejercicios vienen ordenados
+    val ejercicios by viewModel
+        .getEjerciciosConOrden(rutinaId)
+        .collectAsState(initial = emptyList())
+
 
     var showSettings by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -115,26 +123,46 @@ fun RutinaDetailScreen(
                         Text("Esta rutina aún no tiene ejercicios.")
                     } else {
                         // 🔹 Lista simple de ejercicios
-                        ejercicios.forEach { ejercicio ->
+                        ejercicios.forEachIndexed { index, item ->
 
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
 
                                 Text(
-                                    text = ejercicio.nombre,
-                                    style = MaterialTheme.typography.bodyLarge
+                                    text = item.ejercicio.nombre,
+                                    modifier = Modifier.weight(1f)
                                 )
 
                                 IconButton(
-                                    onClick = { ejercicioAEliminar = ejercicio }
+                                    onClick = {
+                                        viewModel.moverEjercicio(
+                                            rutinaId,
+                                            item,
+                                            ejercicios[index - 1]
+                                        )
+                                    },
+                                    enabled = index > 0
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Eliminar ejercicio"
+                                        imageVector = Icons.Default.KeyboardArrowUp,
+                                        contentDescription = "Subir"
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = {
+                                        viewModel.moverEjercicio(
+                                            rutinaId,
+                                            item,
+                                            ejercicios[index + 1]
+                                        )
+                                    },
+                                    enabled = index < ejercicios.lastIndex
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Bajar"
                                     )
                                 }
                             }

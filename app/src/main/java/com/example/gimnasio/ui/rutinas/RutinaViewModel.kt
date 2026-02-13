@@ -8,6 +8,7 @@ import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.EjercicioEntity
 import com.example.gimnasio.data.entity.RutinaEjercicioEntity
 import com.example.gimnasio.data.entity.RutinaEntity
+import com.example.gimnasio.data.model.EjercicioConOrden
 import com.example.gimnasio.data.model.RutinaConEjercicios
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -56,10 +57,14 @@ class RutinaViewModel(application: Application) : ViewModel() {
 
     fun añadirEjercicioARutina(rutinaId: Long, ejercicioId: Long) {
         viewModelScope.launch {
+
+            val maxOrden = rutinaEjercicioDao.getMaxOrden(rutinaId) ?: -1
+
             rutinaEjercicioDao.insert(
                 RutinaEjercicioEntity(
                     rutinaId = rutinaId,
-                    ejercicioId = ejercicioId
+                    ejercicioId = ejercicioId,
+                    orden = maxOrden + 1
                 )
             )
         }
@@ -68,6 +73,30 @@ class RutinaViewModel(application: Application) : ViewModel() {
     fun quitarEjercicioDeRutina(rutinaId: Long, ejercicioId: Long) {
         viewModelScope.launch {
             rutinaEjercicioDao.delete(rutinaId, ejercicioId)
+        }
+    }
+
+    fun getEjerciciosConOrden(rutinaId: Long) =
+        rutinaEjercicioDao.getEjerciciosConOrden(rutinaId)
+
+    fun moverEjercicio(
+        rutinaId: Long,
+        actual: EjercicioConOrden,
+        otro: EjercicioConOrden
+    ) {
+        viewModelScope.launch {
+
+            rutinaEjercicioDao.updateOrden(
+                rutinaId,
+                actual.ejercicio.id,
+                otro.orden
+            )
+
+            rutinaEjercicioDao.updateOrden(
+                rutinaId,
+                otro.ejercicio.id,
+                actual.orden
+            )
         }
     }
 
