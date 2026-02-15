@@ -62,5 +62,7 @@ interface RutinaEjercicioDao {
 """)
     fun getEjerciciosConOrden(rutinaId: Long): Flow<List<EjercicioConOrden>>
 
+    @Query("SELECT * FROM rutina_ejercicio WHERE rutinaId = :rutinaId ORDER BY orden ASC")
+    suspend fun getEjerciciosDeRutinaOnce(rutinaId: Long): List<RutinaEjercicioEntity>
 
 }

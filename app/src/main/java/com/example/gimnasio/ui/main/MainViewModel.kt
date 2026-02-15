@@ -18,6 +18,12 @@ class MainViewModel(context: Context) : ViewModel() {
         .getDatabase(context)
         .rutinaDao()
 
+    private val database = GymDatabase.getDatabase(context)
+    private val entrenamientoDao = database.entrenamientoDao()
+    val entrenamientoActivo =
+        entrenamientoDao.getEntrenamientoActivoFlow()
+
+
     val rutinas: StateFlow<List<RutinaConEjercicios>> =
         rutinaDao.getRutinasConEjercicios()
             .stateIn(

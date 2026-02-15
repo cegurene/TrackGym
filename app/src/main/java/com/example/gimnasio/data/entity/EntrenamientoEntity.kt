@@ -1,9 +1,9 @@
 package com.example.gimnasio.data.entity
 
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 import androidx.room.ForeignKey
 import androidx.room.Index
+import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "entrenamientos",
@@ -18,7 +18,10 @@ import androidx.room.Index
     indices = [Index("rutinaId")]
 )
 data class EntrenamientoEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
     val rutinaId: Long,
-    val fecha: Long // timestamp
+    val fechaInicio: Long,
+    val fechaFin: Long? = null,
+    val completado: Boolean = false
 )

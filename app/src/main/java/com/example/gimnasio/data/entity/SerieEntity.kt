@@ -1,36 +1,30 @@
 package com.example.gimnasio.data.entity
 
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 import androidx.room.ForeignKey
 import androidx.room.Index
+import androidx.room.PrimaryKey
+import com.example.gimnasio.data.entity.EntrenamientoEjercicioEntity
 
 @Entity(
     tableName = "series",
     foreignKeys = [
         ForeignKey(
-            entity = EntrenamientoEntity::class,
+            entity = EntrenamientoEjercicioEntity::class,
             parentColumns = ["id"],
-            childColumns = ["entrenamientoId"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = EjercicioEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["ejercicioId"],
+            childColumns = ["entrenamientoEjercicioId"],
             onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [
-        Index("entrenamientoId"),
-        Index("ejercicioId")
+        Index("entrenamientoEjercicioId")
     ]
 )
 data class SerieEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val entrenamientoId: Long,
-    val ejercicioId: Long,
-    val numeroSerie: Int,
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val entrenamientoEjercicioId: Long,
     val peso: Float,
-    val repeticiones: Int
+    val repeticiones: Int,
+    val completada: Boolean = false
 )

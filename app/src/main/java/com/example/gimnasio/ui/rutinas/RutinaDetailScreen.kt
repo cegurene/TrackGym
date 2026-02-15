@@ -25,7 +25,8 @@ import com.example.gimnasio.data.entity.EjercicioEntity
 @Composable
 fun RutinaDetailScreen(
     rutinaId: Long,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onStartEntrenamiento: (Long) -> Unit
 ) {
     val context = LocalContext.current
     val viewModel: RutinaViewModel = viewModel(
@@ -60,6 +61,10 @@ fun RutinaDetailScreen(
         .collectAsState(initial = emptyList())
 
     var ejercicioAEliminar by remember { mutableStateOf<EjercicioEntity?>(null) }
+
+    val entrenamientoActivo by viewModel
+        .entrenamientoActivo
+        .collectAsState(initial = null)
 
     Scaffold(
         topBar = {
@@ -122,6 +127,20 @@ fun RutinaDetailScreen(
                     if (ejercicios.isEmpty()) {
                         Text("Esta rutina aún no tiene ejercicios.")
                     } else {
+                        // 🔹 Botón para iniciar entrenamiento
+                        Button(
+                            onClick = {
+                                viewModel.iniciarEntrenamiento(rutinaId) { entrenamientoId ->
+                                    onStartEntrenamiento(entrenamientoId)
+                                }
+                            },
+                            enabled = entrenamientoActivo == null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Iniciar entrenamiento")
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+
                         // 🔹 Lista simple de ejercicios
                         ejercicios.forEachIndexed { index, item ->
 

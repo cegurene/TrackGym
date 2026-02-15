@@ -14,8 +14,8 @@ interface SerieDao {
 
     @Query("""
         SELECT * FROM series
-        WHERE ejercicioId = :ejercicioId
-        ORDER BY entrenamientoId DESC
+        WHERE entrenamientoEjercicioId = :ejercicioId
+        ORDER BY id DESC
     """)
     fun getSeriesPorEjercicio(ejercicioId: Long): Flow<List<SerieEntity>>
 }

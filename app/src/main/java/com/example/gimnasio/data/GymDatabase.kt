@@ -13,9 +13,10 @@ import com.example.gimnasio.data.entity.*
         EjercicioEntity::class,
         RutinaEjercicioEntity::class,
         EntrenamientoEntity::class,
+        EntrenamientoEjercicioEntity::class,
         SerieEntity::class
     ],
-    version = 5,
+    version = 7,
     exportSchema = false
 )
 abstract class GymDatabase : RoomDatabase() {
@@ -25,6 +26,8 @@ abstract class GymDatabase : RoomDatabase() {
     abstract fun rutinaEjercicioDao(): RutinaEjercicioDao
     abstract fun entrenamientoDao(): EntrenamientoDao
     abstract fun serieDao(): SerieDao
+
+    abstract fun entrenamientoEjercicioDao(): EntrenamientoEjercicioDao
 
     companion object {
 

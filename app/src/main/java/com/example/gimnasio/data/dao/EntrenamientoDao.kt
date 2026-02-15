@@ -15,7 +15,14 @@ interface EntrenamientoDao {
     @Query("""
         SELECT * FROM entrenamientos
         WHERE rutinaId = :rutinaId
-        ORDER BY fecha DESC
+        ORDER BY fechaInicio DESC
     """)
     fun getByRutina(rutinaId: Long): Flow<List<EntrenamientoEntity>>
+
+    @Query("SELECT * FROM entrenamientos WHERE completado = 0 LIMIT 1")
+    suspend fun getEntrenamientoActivo(): EntrenamientoEntity?
+
+    @Query("SELECT * FROM entrenamientos WHERE completado = 0 LIMIT 1")
+    fun getEntrenamientoActivoFlow(): Flow<EntrenamientoEntity?>
+
 }
