@@ -26,7 +26,8 @@ class RutinaViewModel(application: Application) : ViewModel() {
     private val entrenamientoEjercicioDao = database.entrenamientoEjercicioDao()
 
 
-    val rutinas: Flow<List<RutinaEntity>> = rutinaDao.getAllRutinas()
+    val rutinas: Flow<List<RutinaConEjercicios>> =
+        rutinaDao.getRutinasConEjercicios()
 
     val entrenamientoActivo =
         entrenamientoDao.getEntrenamientoActivoFlow()

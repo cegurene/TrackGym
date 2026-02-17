@@ -24,6 +24,7 @@ import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.ui.ejercicios.EjercicioDetailScreen
 import com.example.gimnasio.ui.ejercicios.EjerciciosScreen
 import com.example.gimnasio.ui.entrenamiento.EntrenamientoScreen
+import com.example.gimnasio.ui.home.HomeScreen
 import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
 import com.example.gimnasio.ui.rutinas.RutinasScreen
 
@@ -57,16 +58,16 @@ fun GymNavHost(
 
         NavHost(
             navController = navController,
-            startDestination = "rutinas",
+            startDestination = "home",
             modifier = Modifier.weight(1f)
         ) {
-            composable("rutinas") {
-                RutinasScreen(
+            composable("home") {
+                HomeScreen(
                     onRutinaClick = { rutinaId ->
                         navController.navigate("rutinaDetail/$rutinaId")
                     },
-                    onVerEjerciciosClick = {
-                        navController.navigate("ejercicios")
+                    onEjercicioClick = { ejercicioId ->
+                        navController.navigate("ejercicioDetail/$ejercicioId")
                     }
                 )
             }

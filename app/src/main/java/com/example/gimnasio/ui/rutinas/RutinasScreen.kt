@@ -1,5 +1,6 @@
 package com.example.gimnasio.ui.rutinas
 
+import android.app.Application
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,8 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.gimnasio.ui.main.MainViewModel
-import com.example.gimnasio.ui.main.MainViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,10 +19,10 @@ fun RutinasScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel: MainViewModel = viewModel(
-        factory = MainViewModelFactory(context)
+    val viewModel: RutinaViewModel = viewModel(
+        factory = RutinaViewModelFactory(context.applicationContext as Application)
     )
-    val rutinas by viewModel.rutinas.collectAsState()
+    val rutinas by viewModel.rutinas.collectAsState(initial = emptyList())
 
     var showDialog by remember { mutableStateOf(false) }
     var nombreRutina by remember { mutableStateOf("") }
@@ -32,16 +31,13 @@ fun RutinasScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Rutinas") },
-                actions = {
-                    TextButton(onClick = onVerEjerciciosClick) {
-                        Text("Ejercicios")
-                    }
-                }
+                title = { Text("Rutinas") }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
+            FloatingActionButton(
+                onClick = { showDialog = true }
+            ) {
                 Text("+")
             }
         }
@@ -79,7 +75,7 @@ fun RutinasScreen(
                 TextButton(
                     onClick = {
                         if (nombreRutina.isNotBlank()) {
-                            viewModel.crearRutina(nombreRutina)
+                            viewModel.insertar(nombreRutina)
                         }
                         nombreRutina = ""
                         showDialog = false

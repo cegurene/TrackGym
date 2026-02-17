@@ -34,16 +34,13 @@ fun EjerciciosScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ejercicios") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Text("←")
-                    }
-                }
+                title = { Text("Ejercicios") }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
+            FloatingActionButton(
+                onClick = { showDialog = true }
+            ) {
                 Text("+")
             }
         }

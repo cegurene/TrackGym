@@ -7,6 +7,7 @@ import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.EntrenamientoEjercicioEntity
 import com.example.gimnasio.data.entity.SerieEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class EntrenamientoViewModel(
@@ -61,5 +62,53 @@ class EntrenamientoViewModel(
         }
     }
 
+    fun eliminarSerie(serieId: Long) {
+        viewModelScope.launch {
+            entrenamientoDao.deleteSerie(serieId)
+        }
+    }
+
+    fun eliminarEjercicio(entrenamientoEjercicioId: Long) {
+        viewModelScope.launch {
+            entrenamientoDao.deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId)
+        }
+    }
+
+    fun añadirEjercicioAlEntrenamiento(ejercicioId: Long) {
+        viewModelScope.launch {
+
+            val ejerciciosActuales =
+                ejerciciosDelEntrenamiento.first()
+
+            val nuevoOrden = ejerciciosActuales.size
+
+            entrenamientoDao.insertEjercicioDeEntrenamiento(
+                EntrenamientoEjercicioEntity(
+                    entrenamientoId = entrenamientoId,
+                    ejercicioId = ejercicioId,
+                    orden = nuevoOrden
+                )
+            )
+        }
+    }
+
+    fun cancelarEntrenamiento(onCancelado: () -> Unit) {
+        viewModelScope.launch {
+            entrenamientoDao.deleteEntrenamiento(entrenamientoId)
+            onCancelado()
+        }
+    }
+
+    fun finalizarEntrenamiento(onFinalizado: () -> Unit) {
+        viewModelScope.launch {
+
+            entrenamientoDao.marcarComoCompletado(
+                entrenamientoId = entrenamientoId,
+                fechaFin = System.currentTimeMillis()
+            )
+
+            onFinalizado()
+        }
+    }
 
 }

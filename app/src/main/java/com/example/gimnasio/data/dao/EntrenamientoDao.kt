@@ -75,5 +75,47 @@ interface EntrenamientoDao {
 """)
     suspend fun updateRepsSerie(serieId: Long, reps: Int)
 
+    @Query("DELETE FROM series WHERE id = :serieId")
+    suspend fun deleteSerie(serieId: Long)
+
+    @Query("DELETE FROM entrenamiento_ejercicio WHERE id = :entrenamientoEjercicioId")
+    suspend fun deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId: Long)
+
+    @Query("""
+    UPDATE entrenamientos
+    SET completado = 1,
+        fechaFin = :fechaFin
+    WHERE id = :entrenamientoId
+""")
+    suspend fun finalizarEntrenamiento(
+        entrenamientoId: Long,
+        fechaFin: Long
+    )
+
+    @Query("DELETE FROM entrenamientos WHERE id = :entrenamientoId")
+    suspend fun deleteEntrenamiento(entrenamientoId: Long)
+
+    @Insert
+    suspend fun insertEjercicioDeEntrenamiento(
+        ejercicio: EntrenamientoEjercicioEntity
+    )
+
+    @Query("""
+    UPDATE entrenamientos
+    SET completado = 1,
+        fechaFin = :fechaFin
+    WHERE id = :entrenamientoId
+""")
+    suspend fun marcarComoCompletado(
+        entrenamientoId: Long,
+        fechaFin: Long
+    )
+
+    @Query("""
+    SELECT * FROM entrenamientos
+    WHERE completado = 1
+    ORDER BY fechaInicio DESC
+""")
+    fun getEntrenamientosCompletados(): Flow<List<EntrenamientoEntity>>
 
 }
