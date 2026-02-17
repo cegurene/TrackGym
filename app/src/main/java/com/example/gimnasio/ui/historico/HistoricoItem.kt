@@ -1,0 +1,56 @@
+package com.example.gimnasio.ui.historico
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.example.gimnasio.data.model.EntrenamientoConRutina
+
+
+@Composable
+fun HistoricoItem(
+    item: EntrenamientoConRutina,
+    onClick: () -> Unit
+) {
+
+    val inicioMillis = item.entrenamiento.fechaInicio
+    val finMillis = item.entrenamiento.fechaFin
+
+    val duracionMin = if (finMillis != null) {
+        ((finMillis - inicioMillis) / 1000 / 60)
+    } else 0
+
+    val fecha = android.text.format.DateFormat
+        .format("dd/MM/yyyy", inicioMillis)
+        .toString()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp),
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
+            Text(
+                text = item.rutina.nombre,
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text("Fecha: $fecha")
+
+            Text("Duración: $duracionMin min")
+        }
+    }
+}

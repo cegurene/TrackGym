@@ -7,6 +7,7 @@ import androidx.room.Transaction
 import com.example.gimnasio.data.entity.EntrenamientoEjercicioEntity
 import com.example.gimnasio.data.entity.EntrenamientoEntity
 import com.example.gimnasio.data.entity.SerieEntity
+import com.example.gimnasio.data.model.EntrenamientoConRutina
 import com.example.gimnasio.data.model.EntrenamientoEjercicioConSeries
 import kotlinx.coroutines.flow.Flow
 
@@ -117,5 +118,14 @@ interface EntrenamientoDao {
     ORDER BY fechaInicio DESC
 """)
     fun getEntrenamientosCompletados(): Flow<List<EntrenamientoEntity>>
+
+    @Transaction
+    @Query("""
+    SELECT * FROM entrenamientos
+    WHERE completado = 1
+    ORDER BY fechaInicio DESC
+""")
+    fun getEntrenamientosCompletadosConRutina():
+            Flow<List<EntrenamientoConRutina>>
 
 }

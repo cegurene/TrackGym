@@ -8,7 +8,7 @@ fun EjerciciosTab(
     onEjercicioClick: (Long) -> Unit
 ) {
     EjerciciosScreen(
-        onBack = {}, // No queremos botón back dentro del tab
+        onBack = {},
         onEjercicioClick = onEjercicioClick
     )
 }

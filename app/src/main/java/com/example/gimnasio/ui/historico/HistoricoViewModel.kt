@@ -12,6 +12,6 @@ class HistoricoViewModel(context: Context) : ViewModel() {
     private val entrenamientoDao =
         GymDatabase.getDatabase(context).entrenamientoDao()
 
-    val entrenamientos: Flow<List<EntrenamientoEntity>> =
-        entrenamientoDao.getEntrenamientosCompletados()
+    val entrenamientos =
+        entrenamientoDao.getEntrenamientosCompletadosConRutina()
 }
