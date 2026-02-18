@@ -23,6 +23,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.ui.ejercicios.EjercicioDetailScreen
 import com.example.gimnasio.ui.ejercicios.EjerciciosScreen
+import com.example.gimnasio.ui.entrenamiento.EntrenamientoDetailScreen
 import com.example.gimnasio.ui.entrenamiento.EntrenamientoScreen
 import com.example.gimnasio.ui.home.HomeScreen
 import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
@@ -68,6 +69,9 @@ fun GymNavHost(
                     },
                     onEjercicioClick = { ejercicioId ->
                         navController.navigate("ejercicioDetail/$ejercicioId")
+                    },
+                    onEntrenamientoClick = { entrenamientoId ->
+                        navController.navigate("entrenamientoDetail/$entrenamientoId")
                     }
                 )
             }
@@ -122,6 +126,23 @@ fun GymNavHost(
                     onBack = { navController.popBackStack() }
                 )
             }
+
+            composable("entrenamientoDetalle/{entrenamientoId}") { backStackEntry ->
+
+                val entrenamientoId =
+                    backStackEntry.arguments
+                        ?.getString("entrenamientoId")
+                        ?.toLong() ?: return@composable
+
+                EntrenamientoDetailScreen(
+                    entrenamientoId = entrenamientoId,
+                    onBack = { navController.popBackStack() },
+                    onNavigateToEntrenamiento = { nuevoId ->
+                        navController.navigate("entrenamiento/$nuevoId")
+                    }
+                )
+            }
+
         }
 
         if (

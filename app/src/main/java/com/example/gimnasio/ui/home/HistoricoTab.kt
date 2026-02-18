@@ -8,7 +8,7 @@ import com.example.gimnasio.ui.historico.HistoricoScreen
 
 @Composable
 fun HistoricoTab(
-    onEntrenamientoClick: (Long) -> Unit = {}
+    onEntrenamientoClick: (Long) -> Unit
 ) {
     HistoricoScreen(
         onEntrenamientoClick = onEntrenamientoClick

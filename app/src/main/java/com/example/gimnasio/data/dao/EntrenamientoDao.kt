@@ -7,6 +7,7 @@ import androidx.room.Transaction
 import com.example.gimnasio.data.entity.EntrenamientoEjercicioEntity
 import com.example.gimnasio.data.entity.EntrenamientoEntity
 import com.example.gimnasio.data.entity.SerieEntity
+import com.example.gimnasio.data.model.EntrenamientoConEjerciciosYSeries
 import com.example.gimnasio.data.model.EntrenamientoConRutina
 import com.example.gimnasio.data.model.EntrenamientoEjercicioConSeries
 import kotlinx.coroutines.flow.Flow
@@ -127,5 +128,17 @@ interface EntrenamientoDao {
 """)
     fun getEntrenamientosCompletadosConRutina():
             Flow<List<EntrenamientoConRutina>>
+
+    @Transaction
+    @Query("SELECT * FROM entrenamientos WHERE id = :id")
+    fun getEntrenamientoConRutinaById(
+        id: Long
+    ): Flow<EntrenamientoConRutina?>
+
+    @Transaction
+    @Query("SELECT * FROM entrenamientos WHERE id = :id")
+    fun getEntrenamientoCompleto(
+        id: Long
+    ): Flow<EntrenamientoConEjerciciosYSeries?>
 
 }

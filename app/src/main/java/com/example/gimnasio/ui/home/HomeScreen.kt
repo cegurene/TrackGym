@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     onRutinaClick: (Long) -> Unit,
-    onEjercicioClick: (Long) -> Unit
+    onEjercicioClick: (Long) -> Unit,
+    onEntrenamientoClick: (Long) -> Unit
 ) {
 
     val pagerState = rememberPagerState(pageCount = { 3 })
@@ -45,7 +46,7 @@ fun HomeScreen(
             when (page) {
                 0 -> RutinasTab(onRutinaClick)
                 1 -> EjerciciosTab(onEjercicioClick)
-                2 -> HistoricoTab()
+                2 -> HistoricoTab(onEntrenamientoClick)
             }
         }
     }
