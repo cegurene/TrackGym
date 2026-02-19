@@ -14,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.platform.LocalContext
 import com.example.gimnasio.data.GymDatabase
-import com.example.gimnasio.ui.rutinas.RutinaViewModel
 import com.example.gimnasio.ui.rutinas.RutinaViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,7 +36,6 @@ fun EntrenamientoScreen(
         .ejerciciosDelEntrenamiento
         .collectAsState(initial = emptyList())
 
-    //val context = LocalContext.current
     val database = remember { GymDatabase.getDatabase(context) }
     val ejercicioDao = remember { database.ejercicioDao() }
 
@@ -46,6 +44,9 @@ fun EntrenamientoScreen(
         .collectAsState(initial = emptyList())
 
     var showAddExerciseDialog by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -74,13 +75,23 @@ fun EntrenamientoScreen(
 
                 items(ejercicios) { ejercicioConSeries ->
 
-                    // 🔹 Cabecera ejercicio
+                    // 🔹 Cabecera ejercicio con checkbox
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
+
+                        Checkbox(
+                            checked = ejercicioConSeries.entrenamientoEjercicio.completado,
+                            onCheckedChange = { checked ->
+                                viewModel.marcarEjercicioCompletado(
+                                    ejercicioConSeries.entrenamientoEjercicio.id,
+                                    checked
+                                )
+                            }
+                        )
 
                         Text(
                             text = ejercicioConSeries.ejercicio.nombre,
@@ -89,6 +100,7 @@ fun EntrenamientoScreen(
                         )
 
                         IconButton(
+                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado,
                             onClick = {
                                 viewModel.eliminarEjercicio(
                                     ejercicioConSeries.entrenamientoEjercicio.id
@@ -102,26 +114,15 @@ fun EntrenamientoScreen(
                         }
                     }
 
-                    val totalSeries = ejercicioConSeries.series.size
-
+                    // 🔹 Series
                     ejercicioConSeries.series.forEachIndexed { index, serie ->
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .padding(start = 16.dp, bottom = 8.dp)
                                 .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-
-                            Checkbox(
-                                checked = serie.completada,
-                                onCheckedChange = { checked ->
-                                    viewModel.marcarSerieCompletada(
-                                        serie.id,
-                                        checked
-                                    )
-                                }
-                            )
 
                             Text(
                                 text = "Serie ${index + 1}",
@@ -136,7 +137,8 @@ fun EntrenamientoScreen(
                                 },
                                 label = { Text("Kg") },
                                 modifier = Modifier.width(90.dp),
-                                singleLine = true
+                                singleLine = true,
+                                enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
                             )
 
                             Spacer(modifier = Modifier.width(8.dp))
@@ -149,14 +151,14 @@ fun EntrenamientoScreen(
                                 },
                                 label = { Text("Reps") },
                                 modifier = Modifier.width(90.dp),
-                                singleLine = true
+                                singleLine = true,
+                                enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
                             )
 
-                            if (index == totalSeries - 1) {
+                            if (index == ejercicioConSeries.series.size - 1) {
                                 IconButton(
-                                    onClick = {
-                                        viewModel.eliminarSerie(serie.id)
-                                    }
+                                    onClick = { viewModel.eliminarSerie(serie.id) },
+                                    enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
@@ -176,7 +178,8 @@ fun EntrenamientoScreen(
                             )
                         },
                         modifier = Modifier
-                            .padding(start = 32.dp, bottom = 16.dp)
+                            .padding(start = 32.dp, bottom = 16.dp),
+                        enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
                     ) {
                         Text("+ Añadir serie")
                     }
@@ -203,11 +206,7 @@ fun EntrenamientoScreen(
             ) {
 
                 OutlinedButton(
-                    onClick = {
-                        viewModel.cancelarEntrenamiento {
-                            onBack()
-                        }
-                    },
+                    onClick = { showCancelDialog = true },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Cancelar")
@@ -215,9 +214,9 @@ fun EntrenamientoScreen(
 
                 Button(
                     onClick = {
-                        viewModel.finalizarEntrenamiento {
-                            onBack()
-                        }
+                        val haySinCompletar = ejercicios.any { !it.entrenamientoEjercicio.completado }
+                        if (haySinCompletar) showErrorDialog = true
+                        else viewModel.finalizarEntrenamiento { showSuccessDialog = true }
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -227,6 +226,7 @@ fun EntrenamientoScreen(
         }
     }
 
+    // 🔹 Dialogos
     if (showAddExerciseDialog) {
         AlertDialog(
             onDismissRequest = { showAddExerciseDialog = false },
@@ -247,13 +247,47 @@ fun EntrenamientoScreen(
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(
-                    onClick = { showAddExerciseDialog = false }
-                ) {
-                    Text("Cancelar")
-                }
+                TextButton(onClick = { showAddExerciseDialog = false }) { Text("Cancelar") }
             }
         )
     }
 
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text("Cancelar entrenamiento") },
+            text = { Text("¿Estás seguro? Se perderán los datos.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCancelDialog = false
+                    viewModel.cancelarEntrenamiento { onBack() }
+                }) { Text("Sí") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false }) { Text("No") }
+            }
+        )
+    }
+
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { Text("Ejercicios sin completar") },
+            text = { Text("Debes completar o eliminar todos los ejercicios antes de finalizar.") },
+            confirmButton = {
+                TextButton(onClick = { showErrorDialog = false }) { Text("Entendido") }
+            }
+        )
+    }
+
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Entrenamiento completado") },
+            text = { Text("¡Buen trabajo!") },
+            confirmButton = {
+                TextButton(onClick = { showSuccessDialog = false; onBack() }) { Text("Aceptar") }
+            }
+        )
+    }
 }

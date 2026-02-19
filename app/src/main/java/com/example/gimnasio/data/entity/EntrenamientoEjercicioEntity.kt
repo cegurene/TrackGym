@@ -31,5 +31,6 @@ data class EntrenamientoEjercicioEntity(
     val id: Long = 0,
     val entrenamientoId: Long,
     val ejercicioId: Long,
-    val orden: Int
+    val orden: Int,
+    val completado: Boolean = false
 )

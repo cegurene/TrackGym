@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.EntrenamientoEjercicioEntity
 import com.example.gimnasio.data.entity.SerieEntity
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -21,11 +20,7 @@ class EntrenamientoViewModel(
     val ejerciciosDelEntrenamiento =
         entrenamientoDao.getEjerciciosConSeries(entrenamientoId)
 
-    fun añadirSerie(
-        entrenamientoEjercicioId: Long,
-        peso: Float,
-        repeticiones: Int
-    ) {
+    fun añadirSerie(entrenamientoEjercicioId: Long, peso: Float, repeticiones: Int) {
         viewModelScope.launch {
             entrenamientoDao.insertSerie(
                 SerieEntity(
@@ -38,50 +33,26 @@ class EntrenamientoViewModel(
         }
     }
 
-    fun marcarSerieCompletada(
-        serieId: Long,
-        completada: Boolean
-    ) {
-        viewModelScope.launch {
-            entrenamientoDao.updateSerieCompletada(
-                serieId = serieId,
-                completada = completada
-            )
-        }
-    }
-
     fun actualizarPesoSerie(serieId: Long, peso: Float) {
-        viewModelScope.launch {
-            entrenamientoDao.updatePesoSerie(serieId, peso)
-        }
+        viewModelScope.launch { entrenamientoDao.updatePesoSerie(serieId, peso) }
     }
 
     fun actualizarRepsSerie(serieId: Long, reps: Int) {
-        viewModelScope.launch {
-            entrenamientoDao.updateRepsSerie(serieId, reps)
-        }
+        viewModelScope.launch { entrenamientoDao.updateRepsSerie(serieId, reps) }
     }
 
     fun eliminarSerie(serieId: Long) {
-        viewModelScope.launch {
-            entrenamientoDao.deleteSerie(serieId)
-        }
+        viewModelScope.launch { entrenamientoDao.deleteSerie(serieId) }
     }
 
     fun eliminarEjercicio(entrenamientoEjercicioId: Long) {
-        viewModelScope.launch {
-            entrenamientoDao.deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId)
-        }
+        viewModelScope.launch { entrenamientoDao.deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId) }
     }
 
     fun añadirEjercicioAlEntrenamiento(ejercicioId: Long) {
         viewModelScope.launch {
-
-            val ejerciciosActuales =
-                ejerciciosDelEntrenamiento.first()
-
+            val ejerciciosActuales = ejerciciosDelEntrenamiento.first()
             val nuevoOrden = ejerciciosActuales.size
-
             entrenamientoDao.insertEjercicioDeEntrenamiento(
                 EntrenamientoEjercicioEntity(
                     entrenamientoId = entrenamientoId,
@@ -90,6 +61,10 @@ class EntrenamientoViewModel(
                 )
             )
         }
+    }
+
+    fun marcarEjercicioCompletado(id: Long, completado: Boolean) {
+        viewModelScope.launch { entrenamientoDao.actualizarEstadoEjercicio(id, completado) }
     }
 
     fun cancelarEntrenamiento(onCancelado: () -> Unit) {
@@ -101,14 +76,8 @@ class EntrenamientoViewModel(
 
     fun finalizarEntrenamiento(onFinalizado: () -> Unit) {
         viewModelScope.launch {
-
-            entrenamientoDao.marcarComoCompletado(
-                entrenamientoId = entrenamientoId,
-                fechaFin = System.currentTimeMillis()
-            )
-
+            entrenamientoDao.marcarComoCompletado(entrenamientoId, System.currentTimeMillis())
             onFinalizado()
         }
     }
-
 }

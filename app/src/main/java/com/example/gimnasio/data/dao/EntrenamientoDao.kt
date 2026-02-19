@@ -141,4 +141,11 @@ interface EntrenamientoDao {
         id: Long
     ): Flow<EntrenamientoConEjerciciosYSeries?>
 
+    @Query("""
+    UPDATE entrenamiento_ejercicio
+    SET completado = :completado
+    WHERE id = :id
+""")
+    suspend fun actualizarEstadoEjercicio(id: Long, completado: Boolean)
+
 }
