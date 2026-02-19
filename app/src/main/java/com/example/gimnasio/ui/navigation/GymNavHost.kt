@@ -127,7 +127,7 @@ fun GymNavHost(
                 )
             }
 
-            composable("entrenamientoDetalle/{entrenamientoId}") { backStackEntry ->
+            composable("entrenamientoDetail/{entrenamientoId}") { backStackEntry ->
 
                 val entrenamientoId =
                     backStackEntry.arguments

@@ -2,6 +2,7 @@ package com.example.gimnasio.ui.entrenamiento
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +30,10 @@ fun EntrenamientoDetailScreen(
         .getEntrenamientoCompleto(entrenamientoId)
         .collectAsState(initial = null)
 
+    val entrenamientoConRutina by viewModel
+        .getEntrenamiento(entrenamientoId)
+        .collectAsState(initial = null)
+
     val entrenamientoActivo by viewModel
         .entrenamientoActivo
         .collectAsState(initial = null)
@@ -46,7 +51,7 @@ fun EntrenamientoDetailScreen(
         }
     ) { padding ->
 
-        if (entrenamiento == null) {
+        if (entrenamiento == null || entrenamientoConRutina == null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -58,9 +63,10 @@ fun EntrenamientoDetailScreen(
         } else {
 
             val data = entrenamiento!!
+            val rutina = entrenamientoConRutina!!.rutina
 
             fun calcularVolumen(series: List<SerieEntity>): Int {
-                return series.sumOf { it.peso * it.repeticiones }
+                return series.sumOf { (it.peso * it.repeticiones).toInt() }
             }
 
             LazyColumn(
@@ -80,7 +86,7 @@ fun EntrenamientoDetailScreen(
                     ) {
 
                         Text(
-                            text = data.rutina.nombre,
+                            text = rutina.nombre,
                             style = MaterialTheme.typography.titleLarge
                         )
 
