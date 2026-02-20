@@ -3,6 +3,8 @@ package com.example.gimnasio.ui.entrenamiento
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,7 +19,8 @@ import com.example.gimnasio.data.entity.SerieEntity
 fun EntrenamientoDetailScreen(
     entrenamientoId: Long,
     onBack: () -> Unit,
-    onNavigateToEntrenamiento: (Long) -> Unit
+    onNavigateToEntrenamiento: (Long) -> Unit,
+    onNavigateToEjercicio: (Long) -> Unit
 ) {
 
     val context = LocalContext.current
@@ -38,6 +41,14 @@ fun EntrenamientoDetailScreen(
         .entrenamientoActivo
         .collectAsState(initial = null)
 
+    var showSettings by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var nuevoNombre by remember { mutableStateOf("") }
+
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -46,7 +57,16 @@ fun EntrenamientoDetailScreen(
                     IconButton(onClick = onBack) {
                         Text("←")
                     }
+                },
+                actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Ajustes"
+                        )
+                    }
                 }
+
             )
         }
     ) { padding ->
@@ -111,7 +131,10 @@ fun EntrenamientoDetailScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        onClick = {
+                            onNavigateToEjercicio(ejercicioConSeries.ejercicio.id)
+                        }
                     ) {
 
                         Column(
@@ -145,4 +168,55 @@ fun EntrenamientoDetailScreen(
             }
         }
     }
+
+    if (showSettings) {
+        ModalBottomSheet(
+            onDismissRequest = { showSettings = false },
+            sheetState = sheetState
+        ) {
+            TextButton(
+                onClick = {
+                    showSettings = false
+                    nuevoNombre = entrenamiento?.entrenamiento?.nombre ?: ""
+                    showRenameDialog = true
+                }
+            ) {
+                Text("Cambiar nombre")
+            }
+        }
+    }
+
+    if (showRenameDialog) {
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Cambiar nombre") },
+            text = {
+                OutlinedTextField(
+                    value = nuevoNombre,
+                    onValueChange = { nuevoNombre = it },
+                    label = { Text("Nombre del entrenamiento") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.renombrarEntrenamiento(
+                            entrenamientoId,
+                            nuevoNombre
+                        )
+                        showRenameDialog = false
+                    }
+                ) {
+                    Text("Guardar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
 }

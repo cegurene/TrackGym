@@ -139,6 +139,9 @@ fun GymNavHost(
                     onBack = { navController.popBackStack() },
                     onNavigateToEntrenamiento = { nuevoId ->
                         navController.navigate("entrenamiento/$nuevoId")
+                    },
+                    onNavigateToEjercicio = { ejercicioId ->
+                        navController.navigate("ejercicioDetail/$ejercicioId")
                     }
                 )
             }

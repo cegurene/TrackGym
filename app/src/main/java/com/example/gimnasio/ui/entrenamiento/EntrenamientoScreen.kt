@@ -47,6 +47,9 @@ fun EntrenamientoScreen(
     var showCancelDialog by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
+    var showValidationDialog by remember { mutableStateOf(false) }
+    var validationMessage by remember { mutableStateOf("") }
+    var showFinishConfirmDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -214,9 +217,40 @@ fun EntrenamientoScreen(
 
                 Button(
                     onClick = {
-                        val haySinCompletar = ejercicios.any { !it.entrenamientoEjercicio.completado }
-                        if (haySinCompletar) showErrorDialog = true
-                        else viewModel.finalizarEntrenamiento { showSuccessDialog = true }
+
+                        val haySinCompletar = ejercicios.any {
+                            !it.entrenamientoEjercicio.completado
+                        }
+
+                        if (haySinCompletar) {
+                            showErrorDialog = true
+                            return@Button
+                        }
+
+                        val hayEjercicioSinSeries = ejercicios.any {
+                            it.series.isEmpty()
+                        }
+
+                        if (hayEjercicioSinSeries) {
+                            validationMessage = "Hay ejercicios sin ninguna serie registrada."
+                            showValidationDialog = true
+                            return@Button
+                        }
+
+                        val haySeriesInvalidas = ejercicios.any { ejercicio ->
+                            ejercicio.series.any { serie ->
+                                serie.peso == 0f || serie.repeticiones == 0
+                            }
+                        }
+
+                        if (haySeriesInvalidas) {
+                            validationMessage = "Hay series con 0 repeticiones o 0 peso."
+                            showValidationDialog = true
+                            return@Button
+                        }
+
+                        // 👇 Si todo está correcto mostramos confirmación
+                        showFinishConfirmDialog = true
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -287,6 +321,44 @@ fun EntrenamientoScreen(
             text = { Text("¡Buen trabajo!") },
             confirmButton = {
                 TextButton(onClick = { showSuccessDialog = false; onBack() }) { Text("Aceptar") }
+            }
+        )
+    }
+
+    if (showValidationDialog) {
+        AlertDialog(
+            onDismissRequest = { showValidationDialog = false },
+            title = { Text("Datos incompletos") },
+            text = { Text(validationMessage) },
+            confirmButton = {
+                TextButton(onClick = { showValidationDialog = false }) {
+                    Text("Entendido")
+                }
+            }
+        )
+    }
+
+    if (showFinishConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showFinishConfirmDialog = false },
+            title = { Text("Finalizar entrenamiento") },
+            text = { Text("¿Estás seguro de que quieres finalizar el entrenamiento?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showFinishConfirmDialog = false
+                    viewModel.finalizarEntrenamiento {
+                        showSuccessDialog = true
+                    }
+                }) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showFinishConfirmDialog = false
+                }) {
+                    Text("No")
+                }
             }
         )
     }

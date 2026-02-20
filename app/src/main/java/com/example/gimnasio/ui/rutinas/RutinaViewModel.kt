@@ -126,6 +126,7 @@ class RutinaViewModel(application: Application) : ViewModel() {
             val nuevoId = entrenamientoDao.insert(
                 EntrenamientoEntity(
                     rutinaId = rutinaId,
+                    nombre = "Entrenamiento",
                     fechaInicio = System.currentTimeMillis(),
                     fechaFin = null,
                     completado = false

@@ -34,6 +34,7 @@ class EntrenamientoDetailViewModel (context: Context) : ViewModel(){
                 EntrenamientoEntity(
                     rutinaId = entrenamiento.entrenamiento.rutinaId,
                     fechaInicio = System.currentTimeMillis(),
+                    nombre = entrenamiento.entrenamiento.nombre + " (Repetición)",
                     fechaFin = null,
                     completado = false
                 )
@@ -42,5 +43,12 @@ class EntrenamientoDetailViewModel (context: Context) : ViewModel(){
             onNavigate(nuevoId)
         }
     }
+
+    fun renombrarEntrenamiento(id: Long, nuevoNombre: String) {
+        viewModelScope.launch {
+            dao.renombrarEntrenamiento(id, nuevoNombre)
+        }
+    }
+
 
 }

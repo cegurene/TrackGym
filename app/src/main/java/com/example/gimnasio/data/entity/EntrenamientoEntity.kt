@@ -21,6 +21,7 @@ data class EntrenamientoEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val rutinaId: Long,
+    val nombre: String,
     val fechaInicio: Long,
     val fechaFin: Long? = null,
     val completado: Boolean = false

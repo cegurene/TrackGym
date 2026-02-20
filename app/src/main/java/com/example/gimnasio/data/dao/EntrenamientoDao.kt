@@ -148,4 +148,7 @@ interface EntrenamientoDao {
 """)
     suspend fun actualizarEstadoEjercicio(id: Long, completado: Boolean)
 
+    @Query("UPDATE entrenamientos SET nombre = :nuevoNombre WHERE id = :id")
+    suspend fun renombrarEntrenamiento(id: Long, nuevoNombre: String)
+
 }

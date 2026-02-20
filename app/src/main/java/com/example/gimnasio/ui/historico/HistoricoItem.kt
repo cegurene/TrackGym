@@ -42,8 +42,13 @@ fun HistoricoItem(
         ) {
 
             Text(
-                text = item.rutina.nombre,
+                text = item.entrenamiento.nombre,
                 style = MaterialTheme.typography.titleMedium
+            )
+
+            Text(
+                text = "Basado en: ${item.rutina.nombre}",
+                style = MaterialTheme.typography.bodySmall
             )
 
             Spacer(modifier = Modifier.height(4.dp))
