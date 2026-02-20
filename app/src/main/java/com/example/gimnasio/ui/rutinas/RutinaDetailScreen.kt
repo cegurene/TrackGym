@@ -1,5 +1,6 @@
 package com.example.gimnasio.ui.rutinas
 
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -26,7 +27,8 @@ import com.example.gimnasio.data.entity.EjercicioEntity
 fun RutinaDetailScreen(
     rutinaId: Long,
     onBack: () -> Unit,
-    onStartEntrenamiento: (Long) -> Unit
+    onStartEntrenamiento: (Long) -> Unit,
+    onNavigateToEjercicio: (Long) -> Unit
 ) {
     val context = LocalContext.current
     val viewModel: RutinaViewModel = viewModel(
@@ -150,7 +152,11 @@ fun RutinaDetailScreen(
 
                                 Text(
                                     text = item.ejercicio.nombre,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            onNavigateToEjercicio(item.ejercicio.id)
+                                        }
                                 )
 
                                 IconButton(
@@ -184,6 +190,18 @@ fun RutinaDetailScreen(
                                         contentDescription = "Bajar"
                                     )
                                 }
+
+                                IconButton(
+                                    onClick = {
+                                        ejercicioAEliminar = item.ejercicio
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Eliminar ejercicio"
+                                    )
+                                }
+
                             }
                         }
                     }
