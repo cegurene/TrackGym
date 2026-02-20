@@ -17,7 +17,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun EjercicioSettingsSheet(
     onRename: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEditMusculos: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -32,6 +33,13 @@ fun EjercicioSettingsSheet(
         )
 
         Divider()
+
+        TextButton(
+            onClick = onEditMusculos,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("💪 Modificar músculos")
+        }
 
         TextButton(
             onClick = onRename,

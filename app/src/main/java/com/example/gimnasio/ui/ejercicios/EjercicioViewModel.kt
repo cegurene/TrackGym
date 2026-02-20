@@ -1,7 +1,6 @@
 package com.example.gimnasio.ui.ejercicios
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.dao.EjercicioDao
 import com.example.gimnasio.data.entity.EjercicioEntity
@@ -30,7 +29,7 @@ class EjercicioViewModel(
             ejercicioDao.insert(
                 EjercicioEntity(
                     nombre = nombre.trim(),
-                    musculos = musculos,
+                    musculos = musculos
                 )
             )
         }
@@ -43,6 +42,7 @@ class EjercicioViewModel(
         }
     }
 
+    // Renombrar ejercicio
     fun renombrarEjercicio(id: Long, nuevoNombre: String) {
         if (nuevoNombre.isBlank()) return
 
@@ -54,6 +54,15 @@ class EjercicioViewModel(
         }
     }
 
+    // Actualizar músculos
+    fun actualizarMusculos(id: Long, musculos: List<Musculo>) {
+        viewModelScope.launch {
+            val musculosStr = musculos.joinToString(",") { it.name }
+            ejercicioDao.updateMusculos(id, musculosStr)
+        }
+    }
+
+    // Obtener ejercicio por id (Flow)
     fun getEjercicio(id: Long) = ejercicioDao
         .getByIdFlow(id)
         .stateIn(
@@ -61,5 +70,4 @@ class EjercicioViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = null
         )
-
 }

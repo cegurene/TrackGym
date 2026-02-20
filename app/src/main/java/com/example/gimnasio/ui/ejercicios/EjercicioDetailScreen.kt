@@ -8,8 +8,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
+import com.example.gimnasio.data.entity.Musculo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,26 +29,21 @@ fun EjercicioDetailScreen(
 
     var showSettings by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showEditMusculosDialog by remember { mutableStateOf(false) }
+
     var nuevoNombre by remember { mutableStateOf("") }
+    var musculosSeleccionados by remember { mutableStateOf(setOf<Musculo>()) }
 
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
-    )
-
-    val ejercicio by viewModel
-        .getEjercicio(ejercicioId)
-        .collectAsState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val ejercicio by viewModel.getEjercicio(ejercicioId).collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {  Text(ejercicio?.nombre ?: "Ejercicio") },
+                title = { Text(ejercicio?.nombre ?: "Ejercicio") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Text("←")
-                    }
+                    IconButton(onClick = onBack) { Text("←") }
                 },
                 actions = {
                     IconButton(onClick = { showSettings = true }) {
@@ -65,18 +62,19 @@ fun EjercicioDetailScreen(
                 .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            if (ejercicio == null) {
+            val ejercicioLocal = ejercicio
+            if (ejercicioLocal == null) {
                 CircularProgressIndicator()
             } else {
                 Text(
-                    text = "Ejercicio: ${ejercicio!!.nombre}",
+                    text = "Ejercicio: ${ejercicioLocal.nombre}",
                     style = MaterialTheme.typography.titleLarge
                 )
             }
         }
     }
 
-    // 🔽 BottomSheet de ajustes
+    // 🔹 BottomSheet de ajustes
     if (showSettings) {
         ModalBottomSheet(
             onDismissRequest = { showSettings = false },
@@ -91,41 +89,38 @@ fun EjercicioDetailScreen(
                 onDelete = {
                     showSettings = false
                     showDeleteDialog = true
+                },
+                onEditMusculos = {
+                    showSettings = false
+                    musculosSeleccionados = ejercicio?.musculos?.toSet() ?: emptySet()
+                    showEditMusculosDialog = true
                 }
             )
         }
     }
 
-    // ⚠️ Diálogo de confirmación
+    // ⚠️ Diálogo borrar
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Eliminar '${ejercicio?.nombre ?: "Ejercicio"}'") },
-            text = {
-                Text("Esta acción no se puede deshacer. ¿Seguro que quieres eliminar este ejercicio?")
-            },
+            text = { Text("Esta acción no se puede deshacer. ¿Seguro que quieres eliminar este ejercicio?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.borrarEjercicio(ejercicioId)
-                        showDeleteDialog = false
-                        onBack()
-                    }
-                ) {
-                    Text(
-                        text = "Eliminar",
-                        color = MaterialTheme.colorScheme.error
-                    )
+                TextButton(onClick = {
+                    viewModel.borrarEjercicio(ejercicioId)
+                    showDeleteDialog = false
+                    onBack()
+                }) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
-                }
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancelar") }
             }
         )
     }
 
+    // ⚠️ Diálogo renombrar
     if (showRenameDialog) {
         AlertDialog(
             onDismissRequest = { showRenameDialog = false },
@@ -139,21 +134,49 @@ fun EjercicioDetailScreen(
                 )
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.renombrarEjercicio(ejercicioId, nuevoNombre)
-                        showRenameDialog = false
-                    }
-                ) {
-                    Text("Guardar")
-                }
+                TextButton(onClick = {
+                    viewModel.renombrarEjercicio(ejercicioId, nuevoNombre)
+                    showRenameDialog = false
+                }) { Text("Guardar") }
             },
             dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) {
-                    Text("Cancelar")
-                }
+                TextButton(onClick = { showRenameDialog = false }) { Text("Cancelar") }
             }
         )
     }
 
+    // ⚠️ Diálogo editar músculos
+    if (showEditMusculosDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditMusculosDialog = false },
+            title = { Text("Selecciona músculos") },
+            text = {
+                Column {
+                    Musculo.values().forEach { musculo ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = musculosSeleccionados.contains(musculo),
+                                onCheckedChange = { checked ->
+                                    musculosSeleccionados =
+                                        if (checked) musculosSeleccionados + musculo
+                                        else musculosSeleccionados - musculo
+                                }
+                            )
+                            Text(musculo.name)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.actualizarMusculos(ejercicioId, musculosSeleccionados.toList())
+                    showEditMusculosDialog = false
+                }) { Text("Guardar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditMusculosDialog = false }) { Text("Cancelar") }
+            }
+        )
+    }
 }
+

@@ -34,4 +34,7 @@ interface EjercicioDao {
 
     @Query("SELECT * FROM ejercicios WHERE musculos = :musculo ORDER BY nombre ASC")
     fun getEjerciciosPorMusculo(musculo: String): Flow<List<EjercicioEntity>>
+
+    @Query("UPDATE ejercicios SET musculos = :musculos WHERE id = :id")
+    suspend fun updateMusculos(id: Long, musculos: String)
 }
