@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.dao.EjercicioDao
 import com.example.gimnasio.data.entity.EjercicioEntity
+import com.example.gimnasio.data.entity.Musculo
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -22,12 +23,15 @@ class EjercicioViewModel(
         )
 
     // Crear ejercicio
-    fun crearEjercicio(nombre: String) {
+    fun crearEjercicio(nombre: String, musculos: List<Musculo>) {
         if (nombre.isBlank()) return
 
         viewModelScope.launch {
             ejercicioDao.insert(
-                EjercicioEntity(nombre = nombre.trim())
+                EjercicioEntity(
+                    nombre = nombre.trim(),
+                    musculos = musculos,
+                )
             )
         }
     }

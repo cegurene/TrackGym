@@ -5,6 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -117,14 +118,6 @@ fun RutinaDetailScreen(
                         .padding(16.dp)
                 ) {
 
-                    // 🔹 Título sección ejercicios
-                    Text(
-                        text = "Ejercicios",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
                     // 🔹 Si no hay ejercicios
                     if (ejercicios.isEmpty()) {
                         Text("Esta rutina aún no tiene ejercicios.")
@@ -142,6 +135,15 @@ fun RutinaDetailScreen(
                             Text("Iniciar entrenamiento")
                         }
                         Spacer(modifier = Modifier.height(24.dp))
+
+                        // 🔹 Título sección ejercicios
+                        Text(
+                            text = "Ejercicios",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
 
                         // 🔹 Lista simple de ejercicios
                         ejercicios.forEachIndexed { index, item ->
@@ -201,8 +203,8 @@ fun RutinaDetailScreen(
                                         contentDescription = "Eliminar ejercicio"
                                     )
                                 }
-
                             }
+
                         }
                     }
                 }

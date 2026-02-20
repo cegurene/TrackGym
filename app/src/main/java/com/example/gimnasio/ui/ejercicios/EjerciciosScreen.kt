@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
+import com.example.gimnasio.data.entity.Musculo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +31,9 @@ fun EjerciciosScreen(
 
     var showDialog by remember { mutableStateOf(false) }
     var nombreEjercicio by remember { mutableStateOf("") }
+    var musculosSeleccionados by remember { mutableStateOf(setOf<Musculo>()) }
+    var mostrarErrorMusculo by remember { mutableStateOf(false) }
+    var mostrarErrorNombre by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -82,19 +86,86 @@ fun EjerciciosScreen(
             onDismissRequest = { showDialog = false },
             title = { Text("Nuevo ejercicio") },
             text = {
-                OutlinedTextField(
-                    value = nombreEjercicio,
-                    onValueChange = { nombreEjercicio = it },
-                    label = { Text("Nombre del ejercicio") },
-                    singleLine = true
-                )
+                Column {
+                    OutlinedTextField(
+                        value = nombreEjercicio,
+                        onValueChange = {
+                            nombreEjercicio = it
+                            mostrarErrorNombre = false
+                        },
+                        label = { Text("Nombre del ejercicio") },
+                        singleLine = true
+                    )
+
+                    if (mostrarErrorNombre) {
+                        Text(
+                            text = "El nombre del ejercicio no puede estar vacío",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Músculos trabajados")
+
+                    if (mostrarErrorMusculo) {
+                        Text(
+                            text = "Debes seleccionar al menos un músculo",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    Musculo.values().forEach { musculo ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = musculosSeleccionados.contains(musculo),
+                                onCheckedChange = { checked ->
+                                    musculosSeleccionados =
+                                        if (checked) {
+                                            musculosSeleccionados + musculo
+                                        } else {
+                                            musculosSeleccionados - musculo
+                                        }
+                                    mostrarErrorMusculo = false
+                                }
+                            )
+                            Text(musculo.name)
+                        }
+                    }
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.crearEjercicio(nombreEjercicio)
-                        nombreEjercicio = ""
-                        showDialog = false
+                        var hayError = false
+
+                        if (nombreEjercicio.isBlank()) {
+                            mostrarErrorNombre = true
+                            hayError = true
+                        } else {
+                            mostrarErrorNombre = false
+                        }
+
+                        if (musculosSeleccionados.isEmpty()) {
+                            mostrarErrorMusculo = true
+                            hayError = true
+                        } else {
+                            mostrarErrorMusculo = false
+                        }
+
+                        if (!hayError) {
+                            viewModel.crearEjercicio(
+                                nombreEjercicio.trim(),
+                                musculosSeleccionados.toList()
+                            )
+                            nombreEjercicio = ""
+                            musculosSeleccionados = emptySet()
+                            showDialog = false
+                        }
                     }
                 ) {
                     Text("Crear")

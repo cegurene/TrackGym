@@ -11,6 +11,6 @@ import androidx.room.PrimaryKey
 
 data class EjercicioEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val nombre: String
+    val nombre: String,
+    val musculos: List<Musculo>
 )
-

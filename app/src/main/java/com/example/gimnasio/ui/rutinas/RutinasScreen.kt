@@ -60,25 +60,43 @@ fun RutinasScreen(
 
     // 🔹 Diálogo crear rutina
     if (showDialog) {
+        var mostrarErrorNombre by remember { mutableStateOf(false) }
+
         AlertDialog(
             onDismissRequest = { showDialog = false },
             title = { Text("Nueva rutina") },
             text = {
-                OutlinedTextField(
-                    value = nombreRutina,
-                    onValueChange = { nombreRutina = it },
-                    label = { Text("Nombre de la rutina") },
-                    singleLine = true
-                )
+                Column {
+                    OutlinedTextField(
+                        value = nombreRutina,
+                        onValueChange = {
+                            nombreRutina = it
+                            mostrarErrorNombre = false
+                        },
+                        label = { Text("Nombre de la rutina") },
+                        singleLine = true
+                    )
+
+                    if (mostrarErrorNombre) {
+                        Text(
+                            text = "El nombre de la rutina no puede estar vacío",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (nombreRutina.isNotBlank()) {
-                            viewModel.insertar(nombreRutina)
+                        if (nombreRutina.isBlank()) {
+                            mostrarErrorNombre = true
+                        } else {
+                            viewModel.insertar(nombreRutina.trim())
+                            nombreRutina = ""
+                            showDialog = false
+                            mostrarErrorNombre = false
                         }
-                        nombreRutina = ""
-                        showDialog = false
                     }
                 ) {
                     Text("Crear")

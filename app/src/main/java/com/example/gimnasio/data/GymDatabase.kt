@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.gimnasio.data.dao.*
 import com.example.gimnasio.data.entity.*
+import androidx.room.TypeConverters
+import com.example.gimnasio.data.converter.MusculoConverter
 
 @Database(
     entities = [
@@ -16,9 +18,10 @@ import com.example.gimnasio.data.entity.*
         EntrenamientoEjercicioEntity::class,
         SerieEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
+@TypeConverters(MusculoConverter::class)
 abstract class GymDatabase : RoomDatabase() {
 
     abstract fun rutinaDao(): RutinaDao

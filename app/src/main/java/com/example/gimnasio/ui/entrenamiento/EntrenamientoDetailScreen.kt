@@ -174,15 +174,13 @@ fun EntrenamientoDetailScreen(
             onDismissRequest = { showSettings = false },
             sheetState = sheetState
         ) {
-            TextButton(
-                onClick = {
+            EntrenamientoSettingsSheet(
+                onRename = {
                     showSettings = false
                     nuevoNombre = entrenamiento?.entrenamiento?.nombre ?: ""
                     showRenameDialog = true
                 }
-            ) {
-                Text("Cambiar nombre")
-            }
+            )
         }
     }
 
