@@ -14,13 +14,14 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     onRutinaClick: (Long) -> Unit,
     onEjercicioClick: (Long) -> Unit,
-    onEntrenamientoClick: (Long) -> Unit
+    onEntrenamientoClick: (Long) -> Unit,
+    onEstadisticasClick: () -> Unit
 ) {
 
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val pagerState = rememberPagerState(pageCount = { 4 })
     val scope = rememberCoroutineScope()
 
-    val tabs = listOf("Rutinas", "Ejercicios", "Histórico")
+    val tabs = listOf("Rutinas", "Ejercicios", "Histórico", "Estadísticas")
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -33,7 +34,9 @@ fun HomeScreen(
                             pagerState.animateScrollToPage(index)
                         }
                     },
-                    text = { Text(title) }
+                    text = { Text(
+                            text = title,
+                            maxLines = 1) }
                 )
             }
         }
@@ -47,6 +50,7 @@ fun HomeScreen(
                 0 -> RutinasTab(onRutinaClick)
                 1 -> EjerciciosTab(onEjercicioClick)
                 2 -> HistoricoTab(onEntrenamientoClick)
+                3 -> EstadisticasTab(onEstadisticasClick)
             }
         }
     }

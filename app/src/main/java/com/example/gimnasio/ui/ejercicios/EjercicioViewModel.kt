@@ -6,6 +6,7 @@ import com.example.gimnasio.data.dao.EjercicioDao
 import com.example.gimnasio.data.entity.EjercicioEntity
 import com.example.gimnasio.data.entity.Musculo
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -69,5 +70,19 @@ class EjercicioViewModel(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = null
+        )
+
+    val estadisticasMusculos = ejercicios
+        .map { lista ->
+            Musculo.values().associateWith { musculo ->
+                lista.count { ejercicio ->
+                    ejercicio.musculos.contains(musculo)
+                }
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyMap()
         )
 }

@@ -1,18 +1,12 @@
 package com.example.gimnasio.ui.navigation
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -27,7 +21,6 @@ import com.example.gimnasio.ui.entrenamiento.EntrenamientoDetailScreen
 import com.example.gimnasio.ui.entrenamiento.EntrenamientoScreen
 import com.example.gimnasio.ui.home.HomeScreen
 import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
-import com.example.gimnasio.ui.rutinas.RutinasScreen
 
 @Composable
 fun GymNavHost(
@@ -42,12 +35,12 @@ fun GymNavHost(
         .getEntrenamientoActivoFlow()
         .collectAsState(initial = null)
 
-    // 🔥 Comprobación automática al arrancar
+    // Comprobación automática al arrancar
     LaunchedEffect(Unit) {
         val activo = entrenamientoDao.getEntrenamientoActivo()
         if (activo != null) {
             navController.navigate("entrenamiento/${activo.id}") {
-                popUpTo("rutinas") { inclusive = false }
+                popUpTo("home") { inclusive = false }
             }
         }
     }
@@ -62,6 +55,7 @@ fun GymNavHost(
             startDestination = "home",
             modifier = Modifier.weight(1f)
         ) {
+
             composable("home") {
                 HomeScreen(
                     onRutinaClick = { rutinaId ->
@@ -72,6 +66,9 @@ fun GymNavHost(
                     },
                     onEntrenamientoClick = { entrenamientoId ->
                         navController.navigate("entrenamientoDetail/$entrenamientoId")
+                    },
+                    onEstadisticasClick = {
+                        // No navega porque es una TAB dentro de Home
                     }
                 )
             }
@@ -99,7 +96,6 @@ fun GymNavHost(
                     onNavigateToEjercicio = { ejercicioId ->
                         navController.navigate("ejercicioDetail/$ejercicioId")
                     }
-
                 )
             }
 
@@ -111,19 +107,15 @@ fun GymNavHost(
                 EjercicioDetailScreen(
                     ejercicioId = ejercicioId,
                     onBack = { navController.popBackStack() },
-                    onOpenSettings = {
-                        // aquí abriremos el BottomSheet en el siguiente paso
-                    }
+                    onOpenSettings = { }
                 )
-
             }
 
-            composable(
-                "entrenamiento/{entrenamientoId}"
-            ) { backStackEntry ->
-
+            composable("entrenamiento/{entrenamientoId}") { backStackEntry ->
                 val entrenamientoId =
-                    backStackEntry.arguments?.getString("entrenamientoId")?.toLong() ?: 0L
+                    backStackEntry.arguments
+                        ?.getString("entrenamientoId")
+                        ?.toLong() ?: 0L
 
                 EntrenamientoScreen(
                     entrenamientoId = entrenamientoId,
@@ -132,7 +124,6 @@ fun GymNavHost(
             }
 
             composable("entrenamientoDetail/{entrenamientoId}") { backStackEntry ->
-
                 val entrenamientoId =
                     backStackEntry.arguments
                         ?.getString("entrenamientoId")
@@ -149,9 +140,9 @@ fun GymNavHost(
                     }
                 )
             }
-
         }
 
+        // Banner entrenamiento activo
         if (
             entrenamientoActivo != null &&
             currentRoute?.startsWith("entrenamiento") != true
@@ -162,7 +153,6 @@ fun GymNavHost(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    //.padding(8.dp)
                     .padding(horizontal = 8.dp)
                     .padding(bottom = 25.dp)
             ) {
@@ -173,6 +163,4 @@ fun GymNavHost(
             }
         }
     }
-
 }
-
