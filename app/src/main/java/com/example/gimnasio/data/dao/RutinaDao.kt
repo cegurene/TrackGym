@@ -37,4 +37,7 @@ interface RutinaDao {
     @Transaction
     @Query("SELECT * FROM rutinas WHERE id = :id")
     fun getRutinaConEjercicios(id: Long): Flow<RutinaConEjercicios?>
+
+    @Query("SELECT COUNT(*) FROM rutinas")
+    fun getTotalRutinasFlow(): Flow<Int>
 }

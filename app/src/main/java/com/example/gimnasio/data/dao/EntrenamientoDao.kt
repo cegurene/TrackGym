@@ -151,4 +151,13 @@ interface EntrenamientoDao {
     @Query("UPDATE entrenamientos SET nombre = :nuevoNombre WHERE id = :id")
     suspend fun renombrarEntrenamiento(id: Long, nuevoNombre: String)
 
+    @Query("SELECT COUNT(*) FROM entrenamientos")
+    fun getTotalEntrenamientosFlow(): Flow<Int>
+
+    @Query("""
+    SELECT MAX(fechaFin - fechaInicio)
+    FROM entrenamientos
+    WHERE fechaFin IS NOT NULL
+""")
+    suspend fun getEntrenamientoMasLargo(): Long?
 }

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.gimnasio.data.entity.EjercicioEntity
+import com.example.gimnasio.data.model.MusculoCount
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -37,4 +38,16 @@ interface EjercicioDao {
 
     @Query("UPDATE ejercicios SET musculos = :musculos WHERE id = :id")
     suspend fun updateMusculos(id: Long, musculos: String)
+
+    // 🔹 Total ejercicios
+    @Query("SELECT COUNT(*) FROM ejercicios")
+    fun getTotalEjerciciosFlow(): Flow<Int>
+
+    // 🔹 Conteo por músculo
+    @Query("""
+    SELECT musculos as musculo, COUNT(*) as total
+    FROM ejercicios
+    GROUP BY musculos
+""")
+    fun getConteoPorMusculo(): Flow<List<MusculoCount>>
 }

@@ -1,19 +1,27 @@
 package com.example.gimnasio.ui.estadisticas
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.ui.ejercicios.EjercicioViewModel
 import com.example.gimnasio.ui.ejercicios.EjercicioViewModelFactory
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EstadisticasScreen(
     onEstadisticasClick: () -> Unit
@@ -21,62 +29,185 @@ fun EstadisticasScreen(
 
     val context = LocalContext.current
     val database = remember { GymDatabase.getDatabase(context) }
-    val viewModel: EjercicioViewModel = viewModel(
-        factory = EjercicioViewModelFactory(database)
+
+    val viewModel: EstadisticasViewModel = viewModel(
+        factory = EstadisticasViewModelFactory(database)
     )
 
-    val stats by viewModel.estadisticasMusculos.collectAsState()
+    val stats by viewModel.distribucionMusculos.collectAsState()
+    val volumen by viewModel.volumenPorMusculo.collectAsState()
+    val resumen by viewModel.resumenGeneral.collectAsState()
+    val records by viewModel.records.collectAsState()
+
+    val volumenPorMusculo by viewModel.volumenPorMusculo.collectAsState()
 
     val totalEjercicios = stats.values.sum()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+
+    val sections = listOf("Resumen", "Distribución", "Volumen", "Récords")
+    var currentSection by remember { mutableStateOf("Resumen") }
+
+    // Detectar sección activa automáticamente
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collectLatest { index ->
+                currentSection = when {
+                    index == 0 -> "Resumen"
+                    index in 1..stats.size -> "Distribución"
+                    index == stats.size + 1 -> "Volumen"
+                    else -> "Récords"
+                }
+            }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                LazyColumn(
+                    modifier = Modifier
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Text("Índice", style = MaterialTheme.typography.titleLarge)
+                    }
+
+                    items(sections) { section ->
+                        val isSelected = section == currentSection
+                        Text(
+                            text = section,
+                            modifier = Modifier
+                                .background(
+                                    if (isSelected)
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    else Color.Transparent
+                                )
+                                .clickable {
+                                    coroutineScope.launch {
+                                        val index = when (section) {
+                                            "Resumen" -> 0
+                                            "Distribución" -> 1
+                                            "Volumen" -> stats.size + 1
+                                            "Récords" -> stats.size + 2
+                                            else -> 0
+                                        }
+                                        listState.animateScrollToItem(index)
+                                        drawerState.close()
+                                    }
+                                }
+                                .padding(12.dp),
+                            color = if (isSelected)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
     ) {
 
-        Text(
-            text = "Estadísticas por músculo",
-            style = MaterialTheme.typography.titleLarge
-        )
+        Box(modifier = Modifier.fillMaxSize()) {
 
-        Spacer(modifier = Modifier.height(16.dp))
+            // -------------------
+            // CONTENIDO PRINCIPAL
+            // -------------------
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
 
-        if (totalEjercicios == 0) {
-            Text("No hay ejercicios creados todavía.")
-        } else {
+                // -------------------
+                // 1️⃣ RESUMEN GENERAL
+                // -------------------
+                item {
+                    Text("Resumen", style = MaterialTheme.typography.titleLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Total ejercicios: ${resumen.totalEjercicios}")
+                    Text("Total rutinas: ${resumen.totalRutinas}")
+                    Text("Total entrenamientos: ${resumen.totalEntrenamientos}")
+                    resumen.musculoMasEntrenado?.let {
+                        Text("Músculo más trabajado: $it")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
-            LazyColumn {
-                items(
-                    stats.toList()
-                        .sortedByDescending { it.second }
-                ) { (musculo, cantidad) ->
+                // -------------------
+                // 2️⃣ DISTRIBUCIÓN POR MÚSCULO
+                // -------------------
+                item {
+                    Text("Distribución por músculo", style = MaterialTheme.typography.titleLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
-                    val porcentaje =
-                        if (totalEjercicios > 0)
-                            (cantidad * 100) / totalEjercicios
-                        else 0
+                items(stats.toList().sortedByDescending { it.second }) { (musculo, cantidad) ->
+                    val porcentaje = if (totalEjercicios > 0) (cantidad * 100) / totalEjercicios else 0
 
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        Text("${musculo.name} • $cantidad ejercicios • $porcentaje%")
+                        LinearProgressIndicator(
+                            progress = porcentaje / 100f,
+                            modifier = Modifier.fillMaxWidth().height(8.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                // -------------------
+                // 3️⃣ VOLUMEN POR MÚSCULO
+                // -------------------
+                item {
+                    Text("Volumen por músculo", style = MaterialTheme.typography.titleLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                items(volumenPorMusculo.toList().sortedByDescending { it.second }) { (musculo, volumen) ->
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        onClick = {
-                            onEstadisticasClick()
-                        }
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { /* opcional */ }
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp)
-                        ) {
-                            Text(
-                                text = musculo.name
-                            )
-                            Text(
-                                text = "$cantidad ejercicios • $porcentaje%"
-                            )
+                        Column(Modifier.padding(12.dp)) {
+                            Text(musculo.name)
+                            Text(String.format("%.1f kg levantados", volumen))
                         }
                     }
                 }
+
+                // -------------------
+                // 4️⃣ RÉCORDS PERSONALES
+                // -------------------
+                item {
+                    Text("Récords personales", style = MaterialTheme.typography.titleLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    records.diaMasVolumen?.let { Text("Día con más volumen: $it") }
+                    records.serieMasVolumen?.let { Text("Serie con más volumen: $it kg") }
+                    records.entrenamientoMasLargo?.let { Text("Entrenamiento más largo: $it ") }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+
+            // -------------------
+            // BOTÓN FLOTANTE ESTILO iPad
+            // -------------------
+            FloatingActionButton(
+                onClick = {
+                    coroutineScope.launch {
+                        drawerState.open()
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 10.dp, end = 10.dp)
+            ) {
+                Icon(Icons.Default.Menu, contentDescription = "Abrir índice")
             }
         }
     }
