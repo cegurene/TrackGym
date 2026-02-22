@@ -35,10 +35,8 @@ fun EstadisticasScreen(
     )
 
     val stats by viewModel.distribucionMusculos.collectAsState()
-    val volumen by viewModel.volumenPorMusculo.collectAsState()
     val resumen by viewModel.resumenGeneral.collectAsState()
     val records by viewModel.records.collectAsState()
-
     val volumenPorMusculo by viewModel.volumenPorMusculo.collectAsState()
 
     val totalEjercicios = stats.values.sum()
@@ -186,8 +184,14 @@ fun EstadisticasScreen(
                     Text("Récords personales", style = MaterialTheme.typography.titleLarge)
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    records.diaMasVolumen?.let { Text("Día con más volumen: $it") }
-                    records.serieMasVolumen?.let { Text("Serie con más volumen: $it kg") }
+                    records.diaMasVolumen?.let {
+                        val volumenDia = records.volumenDiaMasVolumen ?: 0.0
+                        Text("Día con más volumen: $it")
+                        Text("Volumen total ese día: ${String.format("%.1f", volumenDia)} kg")
+                    }
+                    records.serieMasVolumen?.let {
+                        Text("Serie con más volumen: ${String.format("%.1f", it.toDouble())} kg")
+                    }
                     records.entrenamientoMasLargo?.let { Text("Entrenamiento más largo: $it ") }
 
                     Spacer(modifier = Modifier.height(16.dp))

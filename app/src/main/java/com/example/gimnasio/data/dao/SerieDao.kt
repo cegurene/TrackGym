@@ -29,7 +29,6 @@ interface SerieDao {
         ON ee.id = s.entrenamientoEjercicioId
     INNER JOIN ejercicios e 
         ON e.id = ee.ejercicioId
-    WHERE s.completada = 1
     GROUP BY e.musculos
 """)
     fun getVolumenPorMusculoRaw(): Flow<List<VolumenPorMusculo>>
