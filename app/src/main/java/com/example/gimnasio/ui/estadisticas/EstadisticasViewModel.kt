@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.model.DiaVolumen
+import com.example.gimnasio.data.model.SerieRecord
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -74,13 +75,22 @@ class EstadisticasViewModel(
             val diaMax: DiaVolumen? = serieDao.getDiaMasVolumen()
 
             // Serie con más volumen
-            val serieMax: Double? = serieDao.getSerieMasVolumen()
+            val serieMax: SerieRecord? = serieDao.getSerieMasVolumen()
 
             // Entrenamiento más largo (en milisegundos)
             val entrenamientoMaxMs: Long? = entrenamientoDao.getEntrenamientoMasLargo()
 
+            // Entrenamiento más corto (en milisegundos)
+            val entrenamientoMinMs: Long? = entrenamientoDao.getEntrenamientoMasCorto()
+
             // Convertir ms a horas:minutos
             val entrenamientoStr = entrenamientoMaxMs?.let {
+                val horas = (it / 1000 / 60 / 60)
+                val minutos = (it / 1000 / 60) % 60
+                "${horas}h ${minutos}m"
+            }
+
+            val entrenamientoMinStr = entrenamientoMinMs?.let {
                 val horas = (it / 1000 / 60 / 60)
                 val minutos = (it / 1000 / 60) % 60
                 "${horas}h ${minutos}m"
@@ -90,8 +100,9 @@ class EstadisticasViewModel(
             _records.value = RecordPersonal(
                 diaMasVolumen = diaMax?.dia,
                 volumenDiaMasVolumen = diaMax?.volumenTotal,
-                serieMasVolumen = serieMax?.toString(),
-                entrenamientoMasLargo = entrenamientoStr
+                serieMasVolumen = serieMax,
+                entrenamientoMasLargo = entrenamientoStr,
+                entrenamientoMasCorto = entrenamientoMinStr
             )
         }
     }
@@ -107,6 +118,7 @@ data class ResumenGeneral(
 data class RecordPersonal(
     val diaMasVolumen: String? = null,
     val volumenDiaMasVolumen: Double? = null,
-    val serieMasVolumen: String? = null,
-    val entrenamientoMasLargo: String? = null
+    val serieMasVolumen: SerieRecord? = null,
+    val entrenamientoMasLargo: String? = null,
+    val entrenamientoMasCorto: String? = null
 )

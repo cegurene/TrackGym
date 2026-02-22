@@ -160,4 +160,11 @@ interface EntrenamientoDao {
     WHERE fechaFin IS NOT NULL
 """)
     suspend fun getEntrenamientoMasLargo(): Long?
+
+    @Query("""
+    SELECT MIN(fechaFin - fechaInicio)
+    FROM entrenamientos
+    WHERE fechaFin IS NOT NULL
+""")
+    suspend fun getEntrenamientoMasCorto(): Long?
 }

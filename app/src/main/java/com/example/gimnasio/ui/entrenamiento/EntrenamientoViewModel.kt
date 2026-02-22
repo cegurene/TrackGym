@@ -16,20 +16,29 @@ class EntrenamientoViewModel(
 
     private val database = GymDatabase.getDatabase(application)
     private val entrenamientoDao = database.entrenamientoDao()
+    private val serieDao = database.serieDao()
 
     val ejerciciosDelEntrenamiento =
         entrenamientoDao.getEjerciciosConSeries(entrenamientoId)
 
-    fun añadirSerie(entrenamientoEjercicioId: Long, peso: Float, repeticiones: Int) {
+    fun añadirSerie(entrenamientoEjercicioId: Long, esCardio: Boolean) {
         viewModelScope.launch {
-            entrenamientoDao.insertSerie(
-                SerieEntity(
-                    entrenamientoEjercicioId = entrenamientoEjercicioId,
-                    peso = peso,
-                    repeticiones = repeticiones,
-                    completada = false
+            if (esCardio) {
+                serieDao.insert(
+                    SerieEntity(
+                        entrenamientoEjercicioId = entrenamientoEjercicioId,
+                        tiempo = 0
+                    )
                 )
-            )
+            } else {
+                serieDao.insert(
+                    SerieEntity(
+                        entrenamientoEjercicioId = entrenamientoEjercicioId,
+                        peso = 0f,
+                        repeticiones = 0
+                    )
+                )
+            }
         }
     }
 
@@ -78,6 +87,12 @@ class EntrenamientoViewModel(
         viewModelScope.launch {
             entrenamientoDao.marcarComoCompletado(entrenamientoId, System.currentTimeMillis())
             onFinalizado()
+        }
+    }
+
+    fun actualizarTiempoSerie(idSerie: Long, tiempo: Int) {
+        viewModelScope.launch {
+            serieDao.actualizarTiempo(idSerie, tiempo)
         }
     }
 }

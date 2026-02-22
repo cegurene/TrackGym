@@ -31,7 +31,6 @@ fun EjerciciosScreen(
 
     var showDialog by remember { mutableStateOf(false) }
     var nombreEjercicio by remember { mutableStateOf("") }
-    var musculosSeleccionados by remember { mutableStateOf(setOf<Musculo>()) }
     var mostrarErrorMusculo by remember { mutableStateOf(false) }
     var mostrarErrorNombre by remember { mutableStateOf(false) }
 
@@ -82,6 +81,8 @@ fun EjerciciosScreen(
 
     // 🔹 Diálogo crear ejercicio
     if (showDialog) {
+        var musculoSeleccionado by remember { mutableStateOf<Musculo?>(null) }
+
         AlertDialog(
             onDismissRequest = { showDialog = false },
             title = { Text("Nuevo ejercicio") },
@@ -122,14 +123,9 @@ fun EjerciciosScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
-                                checked = musculosSeleccionados.contains(musculo),
+                                checked = musculoSeleccionado == musculo,
                                 onCheckedChange = { checked ->
-                                    musculosSeleccionados =
-                                        if (checked) {
-                                            musculosSeleccionados + musculo
-                                        } else {
-                                            musculosSeleccionados - musculo
-                                        }
+                                    musculoSeleccionado = if (checked) musculo else null
                                     mostrarErrorMusculo = false
                                 }
                             )
@@ -150,7 +146,7 @@ fun EjerciciosScreen(
                             mostrarErrorNombre = false
                         }
 
-                        if (musculosSeleccionados.isEmpty()) {
+                        if (musculoSeleccionado == null) {
                             mostrarErrorMusculo = true
                             hayError = true
                         } else {
@@ -160,10 +156,10 @@ fun EjerciciosScreen(
                         if (!hayError) {
                             viewModel.crearEjercicio(
                                 nombreEjercicio.trim(),
-                                musculosSeleccionados.toList()
+                                listOf(musculoSeleccionado!!)
                             )
                             nombreEjercicio = ""
-                            musculosSeleccionados = emptySet()
+                            musculoSeleccionado = null
                             showDialog = false
                         }
                     }

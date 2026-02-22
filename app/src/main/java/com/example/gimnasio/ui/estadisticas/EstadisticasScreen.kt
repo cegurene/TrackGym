@@ -1,5 +1,6 @@
 package com.example.gimnasio.ui.estadisticas
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
@@ -133,7 +135,7 @@ fun EstadisticasScreen(
                     resumen.musculoMasEntrenado?.let {
                         Text("Músculo más trabajado: $it")
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                 }
 
                 // -------------------
@@ -141,13 +143,13 @@ fun EstadisticasScreen(
                 // -------------------
                 item {
                     Text("Distribución por músculo", style = MaterialTheme.typography.titleLarge)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    //Spacer(modifier = Modifier.height(20.dp))
                 }
 
                 items(stats.toList().sortedByDescending { it.second }) { (musculo, cantidad) ->
                     val porcentaje = if (totalEjercicios > 0) (cantidad * 100) / totalEjercicios else 0
 
-                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
                         Text("${musculo.name} • $cantidad ejercicios • $porcentaje%")
                         LinearProgressIndicator(
                             progress = porcentaje / 100f,
@@ -161,21 +163,73 @@ fun EstadisticasScreen(
                 // 3️⃣ VOLUMEN POR MÚSCULO
                 // -------------------
                 item {
-                    Text("Volumen por músculo", style = MaterialTheme.typography.titleLarge)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Volumen por músculo",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    //Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                items(volumenPorMusculo.toList().sortedByDescending { it.second }) { (musculo, volumen) ->
+                val listaOrdenada = volumenPorMusculo
+                    .toList()
+                    .sortedByDescending { it.second }
+
+                val maxVolumen = listaOrdenada.maxOfOrNull { it.second } ?: 1.0
+
+                items(listaOrdenada) { (musculo, volumen) ->
+
+                    val progreso = (volumen / maxVolumen).toFloat().coerceIn(0f, 1f)
+                    val progresoAnimado by animateFloatAsState(
+                        targetValue = progreso,
+                        label = ""
+                    )
+
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
                         onClick = { /* opcional */ }
                     ) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(musculo.name)
-                            Text(String.format("%.1f kg levantados", volumen))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min)
+                        ) {
+
+                            // 🔵 Barra de fondo proporcional
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(progresoAnimado)
+                                    .background(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                                    )
+                            )
+
+                            // 🔤 Contenido encima
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = if (volumen == maxVolumen)
+                                        "🔥 ${musculo.name}"
+                                    else musculo.name,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+
+                                Text(
+                                    text = "${String.format("%.1f", volumen)} kg",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
                         }
                     }
                 }
+
 
                 // -------------------
                 // 4️⃣ RÉCORDS PERSONALES
@@ -185,14 +239,24 @@ fun EstadisticasScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     records.diaMasVolumen?.let {
+                        val fechaSolo = it.substringBefore("T")
                         val volumenDia = records.volumenDiaMasVolumen ?: 0.0
-                        Text("Día con más volumen: $it")
+
+                        Text("Día con más volumen: $fechaSolo")
                         Text("Volumen total ese día: ${String.format("%.1f", volumenDia)} kg")
                     }
-                    records.serieMasVolumen?.let {
-                        Text("Serie con más volumen: ${String.format("%.1f", it.toDouble())} kg")
+
+                    records.serieMasVolumen?.let { record ->
+                        Text(
+                            "Serie con más volumen: " +
+                                    "${String.format("%.1f", record.volumen)} kg\n" +
+                                    "Ejercicio: ${record.nombreEjercicio}\n" +
+                                    "Músculo: ${record.musculo}"
+                        )
                     }
+
                     records.entrenamientoMasLargo?.let { Text("Entrenamiento más largo: $it ") }
+                    records.entrenamientoMasCorto?.let { Text("Entrenamiento más corto: $it ") }
 
                     Spacer(modifier = Modifier.height(16.dp))
                 }

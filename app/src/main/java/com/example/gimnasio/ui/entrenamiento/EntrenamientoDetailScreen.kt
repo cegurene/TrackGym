@@ -86,7 +86,9 @@ fun EntrenamientoDetailScreen(
             val rutina = entrenamientoConRutina!!.rutina
 
             fun calcularVolumen(series: List<SerieEntity>): Int {
-                return series.sumOf { (it.peso * it.repeticiones).toInt() }
+                return series.sumOf {
+                    ((it.peso ?: 0f) * (it.repeticiones ?: 0)).toInt()
+                }
             }
 
             LazyColumn(
