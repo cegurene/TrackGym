@@ -106,7 +106,14 @@ fun GymNavHost(
 
                 EjercicioDetailScreen(
                     ejercicioId = ejercicioId,
-                    onBack = { navController.popBackStack() },
+                    onBack = {
+                        val popped = navController.popBackStack()
+                        if (!popped) {
+                            navController.navigate("ejercicios") {
+                                popUpTo("home")
+                            }
+                        }
+                    },
                     onOpenSettings = { }
                 )
             }
