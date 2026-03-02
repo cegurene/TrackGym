@@ -1,5 +1,7 @@
 package com.example.gimnasio.ui
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
@@ -15,5 +17,7 @@ fun GymApp() {
     GymNavHost(
         navController = navController,
         modifier = Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
     )
 }

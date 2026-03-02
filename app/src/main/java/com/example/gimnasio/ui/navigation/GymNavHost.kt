@@ -3,6 +3,7 @@ package com.example.gimnasio.ui.navigation
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
@@ -57,21 +58,9 @@ fun GymNavHost(
         ) {
 
             composable("home") {
-                HomeScreen(
-                    onRutinaClick = { rutinaId ->
-                        navController.navigate("rutinaDetail/$rutinaId")
-                    },
-                    onEjercicioClick = { ejercicioId ->
-                        navController.navigate("ejercicioDetail/$ejercicioId")
-                    },
-                    onEntrenamientoClick = { entrenamientoId ->
-                        navController.navigate("entrenamientoDetail/$entrenamientoId")
-                    },
-                    onEstadisticasClick = {
-                        // No navega porque es una TAB dentro de Home
-                    }
-                )
+                HomeScreen()
             }
+
 
             composable("ejercicios") {
                 EjerciciosScreen(
@@ -161,7 +150,7 @@ fun GymNavHost(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
-                    .padding(bottom = 25.dp)
+                    .navigationBarsPadding()
             ) {
                 Text(
                     text = "Entrenamiento en curso — Tocar para volver",
