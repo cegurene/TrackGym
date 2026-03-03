@@ -22,18 +22,28 @@ class EjercicioViewModel(
 
     private val ejerciciosOriginal = ejercicioDao.getAll()
 
+    private val _selectedMusculos = MutableStateFlow<Set<Musculo>>(emptySet())
+    val selectedMusculos = _selectedMusculos
+
     // Lista reactiva filtrada
     val ejercicios = combine(
         ejerciciosOriginal,
-        _searchQuery
-    ) { lista, query ->
-        if (query.isBlank()) {
-            lista
-        } else {
-            lista.filter {
-                it.nombre.contains(query, ignoreCase = true)
-            }
+        _searchQuery,
+        _selectedMusculos
+    ) { lista, query, musculosSeleccionados ->
+
+        lista.filter { ejercicio ->
+
+            val coincideNombre =
+                query.isBlank() || ejercicio.nombre.contains(query, ignoreCase = true)
+
+            val coincideMusculo =
+                musculosSeleccionados.isEmpty() ||
+                        ejercicio.musculos.any { it in musculosSeleccionados }
+
+            coincideNombre && coincideMusculo
         }
+
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -42,6 +52,19 @@ class EjercicioViewModel(
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
+    }
+
+    fun toggleMusculo(musculo: Musculo) {
+        _selectedMusculos.value =
+            if (_selectedMusculos.value.contains(musculo)) {
+                _selectedMusculos.value - musculo
+            } else {
+                _selectedMusculos.value + musculo
+            }
+    }
+
+    fun clearMusculos() {
+        _selectedMusculos.value = emptySet()
     }
 
     // ---------- TU CÓDIGO ORIGINAL ----------

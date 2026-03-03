@@ -1,9 +1,18 @@
 package com.example.gimnasio.ui.ejercicios
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +43,14 @@ fun EjerciciosScreen(
     var mostrarErrorMusculo by remember { mutableStateOf(false) }
     var mostrarErrorNombre by remember { mutableStateOf(false) }
 
+    // Para la busqueda y filtros
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val selectedMusculos by viewModel.selectedMusculos.collectAsState()
+    var showFilterSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = false // permite partial + full
+    )
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -56,14 +73,80 @@ fun EjerciciosScreen(
         ) {
 
             OutlinedTextField(
-                value = viewModel.searchQuery.collectAsState().value,
+                value = searchQuery,
                 onValueChange = { viewModel.onSearchQueryChange(it) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 singleLine = true,
                 label = { Text("Buscar ejercicio") }
             )
+
+            Button(
+                onClick = { showFilterSheet = true },
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+            ) {
+                if (selectedMusculos.isEmpty()) {
+                    Text("Filtrar por músculo")
+                } else {
+                    Text("Filtrar (${selectedMusculos.size})")
+                }
+            }
+
+            AnimatedVisibility(
+                visible = selectedMusculos.isNotEmpty(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+
+                Surface(
+                    tonalElevation = 3.dp,   // sombra ligera
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+
+                            selectedMusculos.forEach { musculo ->
+
+                                AssistChip(
+                                    onClick = { viewModel.toggleMusculo(musculo) },
+                                    label = {
+                                        Text(
+                                            musculo.name
+                                                .lowercase()
+                                                .replaceFirstChar { it.uppercase() }
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Quitar filtro"
+                                        )
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        AssistChip(
+                            onClick = { viewModel.clearMusculos() },
+                            label = { Text("Limpiar todo") }
+                        )
+                    }
+                }
+            }
 
             if (ejercicios.isEmpty()) {
                 Box(
@@ -184,5 +267,58 @@ fun EjerciciosScreen(
                 }
             }
         )
+    }
+
+    // Ventana de filtros de musculos
+    if (showFilterSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showFilterSheet = false },
+            sheetState = sheetState
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = "Filtrar por músculo",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Musculo.values().forEach { musculo ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.toggleMusculo(musculo) }
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Checkbox(
+                            checked = selectedMusculos.contains(musculo),
+                            onCheckedChange = { viewModel.toggleMusculo(musculo) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(musculo.name.lowercase().replaceFirstChar { it.uppercase() })
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(onClick = { viewModel.clearMusculos() }) {
+                        Text("Limpiar")
+                    }
+                    Button(onClick = { showFilterSheet = false }) {
+                        Text("Aplicar")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
     }
 }
