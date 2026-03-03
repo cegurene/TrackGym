@@ -49,31 +49,42 @@ fun EjerciciosScreen(
         }
     ) { padding ->
 
-        if (ejercicios.isEmpty()) {
-            Box(
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+
+            OutlinedTextField(
+                value = viewModel.searchQuery.collectAsState().value,
+                onValueChange = { viewModel.onSearchQueryChange(it) },
                 modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No hay ejercicios todavía",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-            ) {
-                items(ejercicios) { ejercicio ->
-                    EjercicioItem(
-                        nombre = ejercicio.nombre,
-                        onClick = {
-                            onEjercicioClick(ejercicio.id)
-                        }
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                singleLine = true,
+                label = { Text("Buscar ejercicio") }
+            )
+
+            if (ejercicios.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No hay ejercicios",
+                        style = MaterialTheme.typography.bodyLarge
                     )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(ejercicios) { ejercicio ->
+                        EjercicioItem(
+                            nombre = ejercicio.nombre,
+                            onClick = { onEjercicioClick(ejercicio.id) }
+                        )
+                    }
                 }
             }
         }
