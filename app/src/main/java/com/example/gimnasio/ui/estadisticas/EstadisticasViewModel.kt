@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.model.DiaVolumen
+import com.example.gimnasio.data.model.RutinaVeces
 import com.example.gimnasio.data.model.SerieRecord
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -106,6 +107,57 @@ class EstadisticasViewModel(
                 SharingStarted.WhileSubscribed(5000),
                 RecordPersonal()
             )
+
+    // Actividad
+    private val _actividad = MutableStateFlow(ActividadStats())
+    val actividad: StateFlow<ActividadStats> = _actividad
+
+    // Tiempo
+    private val _tiempo = MutableStateFlow(TiempoStats())
+    val tiempo: StateFlow<TiempoStats> = _tiempo
+
+    // Rutinas
+    private val _rutinas = MutableStateFlow(RutinaStats())
+    val rutinas: StateFlow<RutinaStats> = _rutinas
+    private val _rutinasFrecuencia = MutableStateFlow<List<RutinaVeces>>(emptyList())
+    val rutinasFrecuencia: StateFlow<List<RutinaVeces>> =
+        entrenamientoDao.getVecesRutinasFlow()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    init {
+
+        viewModelScope.launch {
+
+            val semana = entrenamientoDao.getEntrenamientosUltimaSemana()
+            val mes = entrenamientoDao.getEntrenamientosUltimoMes()
+
+            _actividad.value = ActividadStats(
+                entrenamientosSemana = semana,
+                entrenamientosMes = mes
+            )
+
+            val totalTiempo = entrenamientoDao.getTiempoTotalEntrenado() ?: 0
+            val media = entrenamientoDao.getDuracionMedia() ?: 0.0
+
+            fun format(ms: Long): String {
+                val h = ms / 1000 / 3600
+                val m = (ms / 1000 / 60) % 60
+                return "${h}h ${m}m"
+            }
+
+            _tiempo.value = TiempoStats(
+                tiempoTotal = format(totalTiempo),
+                duracionMedia = format(media.toLong())
+            )
+
+            val rutinaTop = entrenamientoDao.getRutinaMasUsada()
+
+            _rutinas.value = RutinaStats(
+                rutinaMasUsada = rutinaTop
+            )
+
+        }
+    }
 }
 
 data class ResumenGeneral(
@@ -121,4 +173,18 @@ data class RecordPersonal(
     val serieMasVolumen: SerieRecord? = null,
     val entrenamientoMasLargo: String? = null,
     val entrenamientoMasCorto: String? = null
+)
+
+data class ActividadStats(
+    val entrenamientosSemana: Int = 0,
+    val entrenamientosMes: Int = 0
+)
+
+data class TiempoStats(
+    val tiempoTotal: String = "",
+    val duracionMedia: String = ""
+)
+
+data class RutinaStats(
+    val rutinaMasUsada: String? = null
 )

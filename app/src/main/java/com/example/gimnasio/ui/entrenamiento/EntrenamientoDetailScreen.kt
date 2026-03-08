@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -136,7 +137,8 @@ fun EntrenamientoDetailScreen(
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                         onClick = {
                             onNavigateToEjercicio(ejercicioConSeries.ejercicio.id)
-                        }
+                        },
+                        elevation = CardDefaults.cardElevation(4.dp)
                     ) {
 
                         Column(

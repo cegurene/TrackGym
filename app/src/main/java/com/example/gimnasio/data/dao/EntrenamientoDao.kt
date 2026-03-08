@@ -10,6 +10,7 @@ import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.EntrenamientoConEjerciciosYSeries
 import com.example.gimnasio.data.model.EntrenamientoConRutina
 import com.example.gimnasio.data.model.EntrenamientoEjercicioConSeries
+import com.example.gimnasio.data.model.RutinaVeces
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -167,4 +168,61 @@ interface EntrenamientoDao {
     WHERE fechaFin IS NOT NULL
 """)
     suspend fun getEntrenamientoMasCorto(): Long?
+
+    @Query("""
+    SELECT COUNT(*) FROM entrenamientos
+    WHERE completado = 1
+    AND fechaInicio >= strftime('%s','now','-7 day') * 1000
+    """)
+    suspend fun getEntrenamientosUltimaSemana(): Int
+
+
+    @Query("""
+    SELECT COUNT(*) FROM entrenamientos
+    WHERE completado = 1
+    AND fechaInicio >= strftime('%s','now','-30 day') * 1000
+    """)
+    suspend fun getEntrenamientosUltimoMes(): Int
+
+    @Query("""
+    SELECT SUM(fechaFin - fechaInicio)
+    FROM entrenamientos
+    WHERE fechaFin IS NOT NULL
+    """)
+    suspend fun getTiempoTotalEntrenado(): Long?
+
+    @Query("""
+    SELECT AVG(fechaFin - fechaInicio)
+    FROM entrenamientos
+    WHERE fechaFin IS NOT NULL
+    """)
+    suspend fun getDuracionMedia(): Double?
+
+    @Query("""
+    SELECT r.nombre
+    FROM entrenamientos e
+    INNER JOIN rutinas r ON r.id = e.rutinaId
+    GROUP BY r.id
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+    """)
+    suspend fun getRutinaMasUsada(): String?
+
+    @Query("""
+    SELECT r.id, r.nombre, COUNT(e.id) as veces
+    FROM entrenamientos e
+    INNER JOIN rutinas r ON r.id = e.rutinaId
+    WHERE e.completado = 1
+    GROUP BY r.id
+    ORDER BY veces DESC
+    """)
+    suspend fun getVecesRutinas(): List<RutinaVeces>
+
+    @Query("""
+    SELECT r.id, r.nombre, COUNT(e.id) as veces
+    FROM rutinas r
+    LEFT JOIN entrenamientos e ON e.rutinaId = r.id
+    GROUP BY r.id
+""")
+    fun getVecesRutinasFlow(): Flow<List<RutinaVeces>>
 }

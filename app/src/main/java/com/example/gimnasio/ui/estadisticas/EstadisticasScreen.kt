@@ -47,18 +47,31 @@ fun EstadisticasScreen(
     val coroutineScope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
 
-    val sections = listOf("Resumen", "Distribución", "Volumen", "Récords")
-    var currentSection by remember { mutableStateOf("Resumen") }
+    val sections = listOf(
+        "Actividad",
+        "Tiempo",
+        "Ejercicios",
+        "Volumen",
+        "Rutinas"
+    )
+    var currentSection by remember { mutableStateOf("Actividad") }
+
+    val actividad by viewModel.actividad.collectAsState()
+    val tiempo by viewModel.tiempo.collectAsState()
+    val rutinas by viewModel.rutinas.collectAsState()
+
+    val rutinasFrecuencia by viewModel.rutinasFrecuencia.collectAsState()
 
     // Detectar sección activa automáticamente
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .collectLatest { index ->
                 currentSection = when {
-                    index == 0 -> "Resumen"
-                    index in 1..stats.size -> "Distribución"
-                    index == stats.size + 1 -> "Volumen"
-                    else -> "Récords"
+                    index == 0 -> "Actividad"
+                    index == 1 -> "Tiempo"
+                    index == 2 -> "Ejercicios"
+                    index in 3..(stats.size + 2) -> "Volumen"
+                    else -> "Rutinas"
                 }
             }
     }
@@ -88,13 +101,16 @@ fun EstadisticasScreen(
                                 )
                                 .clickable {
                                     coroutineScope.launch {
+
                                         val index = when (section) {
-                                            "Resumen" -> 0
-                                            "Distribución" -> 1
-                                            "Volumen" -> stats.size + 1
-                                            "Récords" -> stats.size + 2
+                                            "Actividad" -> 0
+                                            "Tiempo" -> 1
+                                            "Ejercicios" -> 2
+                                            "Volumen" -> stats.size + 2
+                                            "Rutinas" -> stats.size + 3
                                             else -> 0
                                         }
+
                                         listState.animateScrollToItem(index)
                                         drawerState.close()
                                     }
@@ -124,53 +140,135 @@ fun EstadisticasScreen(
             ) {
 
                 // -------------------
-                // 1️⃣ RESUMEN GENERAL
+                //     ACTIVIDAD
                 // -------------------
                 item {
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Resumen", style = MaterialTheme.typography.titleLarge)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Total ejercicios: ${resumen.totalEjercicios}")
-                            Text("Total rutinas: ${resumen.totalRutinas}")
-                            Text("Total entrenamientos: ${resumen.totalEntrenamientos}")
-                            resumen.musculoMasEntrenado?.let {
-                                Text("Músculo más trabajado: $it")
+
+                        Column(Modifier.padding(16.dp)) {
+
+                            Text("📈 Actividad", style = MaterialTheme.typography.titleLarge)
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("Entrenamientos esta semana")
+                                    Text("${actividad.entrenamientosSemana}")
+                                }
+                            }
+
+                            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("Entrenamientos este mes")
+                                    Text("${actividad.entrenamientosMes}")
+                                }
+                            }
+
+                            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("Total de entrenamientos")
+                                    Text("${resumen.totalEntrenamientos}")
+                                }
                             }
                         }
                     }
                 }
 
                 // -------------------
-                // 2️⃣ DISTRIBUCIÓN POR MÚSCULO
+                //       TIEMPO
                 // -------------------
                 item {
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Distribución por músculo", style = MaterialTheme.typography.titleLarge)
-                            Spacer(modifier = Modifier.height(8.dp))
+
+                        Column(Modifier.padding(16.dp)) {
+
+                            Text("⏱ Tiempo entrenado", style = MaterialTheme.typography.titleLarge)
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("Tiempo total")
+                                    Text(tiempo.tiempoTotal)
+                                }
+                            }
+
+                            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("Duración media")
+                                    Text(tiempo.duracionMedia)
+                                }
+                            }
+
+                            records.entrenamientoMasLargo?.let {
+                                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                    Column(Modifier.padding(12.dp)) {
+                                        Text("Entrenamiento más largo")
+                                        Text(it)
+                                    }
+                                }
+                            }
+
+                            records.entrenamientoMasCorto?.let {
+                                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                    Column(Modifier.padding(12.dp)) {
+                                        Text("Entrenamiento más corto")
+                                        Text(it)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // -------------------
+                // EJERCICIOS
+                // -------------------
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(4.dp)
+                    ) {
+
+                        Column(Modifier.padding(16.dp)) {
+
+                            Text("💪 Ejercicios", style = MaterialTheme.typography.titleLarge)
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("Total ejercicios creados")
+                                    Text("${resumen.totalEjercicios}")
+                                }
+                            }
 
                             stats.toList().sortedByDescending { it.second }.forEach { (musculo, cantidad) ->
-                                val porcentaje = if (totalEjercicios > 0) (cantidad * 100) / totalEjercicios else 0
 
-                                Column(modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
+                                val porcentaje =
+                                    if (totalEjercicios > 0) (cantidad * 100) / totalEjercicios else 0
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .padding(horizontal = 12.dp)
                                 ) {
+
                                     Text("${musculo.name} • $cantidad ejercicios • $porcentaje%")
+
                                     LinearProgressIndicator(
                                         progress = porcentaje / 100f,
-                                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(8.dp),
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -180,7 +278,7 @@ fun EstadisticasScreen(
                 }
 
                 // -------------------
-                // 3️⃣ VOLUMEN POR MÚSCULO
+                // VOLUMEN POR MÚSCULO
                 // -------------------
                 item {
                     Card(
@@ -190,7 +288,7 @@ fun EstadisticasScreen(
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Volumen por músculo", style = MaterialTheme.typography.titleLarge)
+                            Text("🏋️ Volumen por músculo", style = MaterialTheme.typography.titleLarge)
                             Spacer(modifier = Modifier.height(8.dp))
 
                             val listaOrdenada = volumenPorMusculo.toList().sortedByDescending { it.second }
@@ -203,8 +301,8 @@ fun EstadisticasScreen(
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    onClick = { /* opcional */ }
+                                        .padding(vertical = 4.dp)
+                                        .padding(horizontal = 12.dp)
                                 ) {
                                     Box(
                                         modifier = Modifier
@@ -243,40 +341,73 @@ fun EstadisticasScreen(
                 }
 
                 // -------------------
-                // 4️⃣ RÉCORDS PERSONALES
+                //      RUTINAS
                 // -------------------
                 item {
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Récords personales", style = MaterialTheme.typography.titleLarge)
-                            Spacer(modifier = Modifier.height(8.dp))
 
-                            records.diaMasVolumen?.let {
-                                val fechaSolo = it.substringBefore("T")
-                                val volumenDia = records.volumenDiaMasVolumen ?: 0.0
+                        Column(Modifier.padding(16.dp)) {
 
-                                Text("Día con más volumen: $fechaSolo")
-                                Text("Volumen total ese día: ${String.format("%.1f", volumenDia)} kg")
-                            }
+                            Text("📋 Rutinas", style = MaterialTheme.typography.titleLarge)
+                            Text("Total rutinas creadas: ${resumen.totalRutinas}")
+                            Spacer(Modifier.height(12.dp))
 
-                            records.serieMasVolumen?.let { record ->
-                                Text(
-                                    "Serie con más volumen: ${String.format("%.1f", record.volumen)} kg\n" +
-                                            "Ejercicio: ${record.nombreEjercicio}\n" +
-                                            "Músculo: ${record.musculo}"
+                            val listaOrdenada = rutinasFrecuencia.sortedByDescending { it.veces }
+                            val maxVeces = listaOrdenada.maxOfOrNull { it.veces } ?: 1
+
+                            listaOrdenada.forEach { rutina ->
+
+                                val progreso = rutina.veces.toFloat() / maxVeces
+                                val progresoAnimado by animateFloatAsState(
+                                    targetValue = progreso,
+                                    label = ""
                                 )
-                            }
 
-                            records.entrenamientoMasLargo?.let { Text("Entrenamiento más largo: $it ") }
-                            records.entrenamientoMasCorto?.let { Text("Entrenamiento más corto: $it ") }
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .padding(horizontal = 12.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(IntrinsicSize.Min)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxHeight()
+                                                .fillMaxWidth(progresoAnimado)
+                                                .background(
+                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                                                )
+                                        )
+
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = if (rutina.veces == maxVeces) "🔥 ${rutina.nombre}" else rutina.nombre,
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                            Text("${rutina.veces} veces", style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+
             }
 
             // -------------------
