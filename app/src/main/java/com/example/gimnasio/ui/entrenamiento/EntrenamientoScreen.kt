@@ -115,139 +115,142 @@ fun EntrenamientoScreen(
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(8.dp), // padding general
+                verticalArrangement = Arrangement.spacedBy(15.dp) // separación entre cards
             ) {
-
                 items(ejercicios) { ejercicioConSeries ->
 
                     val esCardio = ejercicioConSeries.ejercicio.musculos.contains(Musculo.CARDIO)
 
-                    // 🔹 Cabecera ejercicio
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(4.dp)
                     ) {
-
-                        Checkbox(
-                            checked = ejercicioConSeries.entrenamientoEjercicio.completado,
-                            onCheckedChange = { checked ->
-                                viewModel.marcarEjercicioCompletado(
-                                    ejercicioConSeries.entrenamientoEjercicio.id,
-                                    checked
-                                )
-                            }
-                        )
-
-                        Text(
-                            text = ejercicioConSeries.ejercicio.nombre,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        IconButton(
-                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado,
-                            onClick = {
-                                viewModel.eliminarEjercicio(
-                                    ejercicioConSeries.entrenamientoEjercicio.id
-                                )
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Eliminar ejercicio"
-                            )
-                        }
-                    }
-
-                    // 🔹 SERIES
-                    ejercicioConSeries.series.forEachIndexed { index, serie ->
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .padding(16.dp) // padding interno de la card
                         ) {
 
-                            Text(
-                                text = "Serie ${index + 1}",
-                                modifier = Modifier.width(80.dp)
-                            )
-
-                            if (!esCardio) {
-
-                                // 🔵 FUERZA
-                                OutlinedTextField(
-                                    value = serie.peso?.toString() ?: "",
-                                    onValueChange = {
-                                        val peso = it.toFloatOrNull() ?: 0f
-                                        viewModel.actualizarPesoSerie(serie.id, peso)
-                                    },
-                                    label = { Text("Kg") },
-                                    modifier = Modifier.width(90.dp),
-                                    singleLine = true,
-                                    enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                            // 🔹 Cabecera ejercicio
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Checkbox(
+                                    checked = ejercicioConSeries.entrenamientoEjercicio.completado,
+                                    onCheckedChange = { checked ->
+                                        viewModel.marcarEjercicioCompletado(
+                                            ejercicioConSeries.entrenamientoEjercicio.id,
+                                            checked
+                                        )
+                                    }
                                 )
 
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                OutlinedTextField(
-                                    value = serie.repeticiones?.toString() ?: "",
-                                    onValueChange = {
-                                        val reps = it.toIntOrNull() ?: 0
-                                        viewModel.actualizarRepsSerie(serie.id, reps)
-                                    },
-                                    label = { Text("Reps") },
-                                    modifier = Modifier.width(90.dp),
-                                    singleLine = true,
-                                    enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                Text(
+                                    text = ejercicioConSeries.ejercicio.nombre,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.weight(1f)
                                 )
 
-                            } else {
-
-                                // 🔴 CARDIO
-                                OutlinedTextField(
-                                    value = serie.tiempo?.toString() ?: "",
-                                    onValueChange = {
-                                        val tiempo = it.toIntOrNull() ?: 0
-                                        viewModel.actualizarTiempoSerie(serie.id, tiempo)
-                                    },
-                                    label = { Text("Min") },
-                                    modifier = Modifier.width(90.dp),
-                                    singleLine = true,
-                                    enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
-                                )
-                            }
-
-                            if (index == ejercicioConSeries.series.size - 1) {
                                 IconButton(
-                                    onClick = { viewModel.eliminarSerie(serie.id) },
-                                    enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                    enabled = !ejercicioConSeries.entrenamientoEjercicio.completado,
+                                    onClick = {
+                                        viewModel.eliminarEjercicio(
+                                            ejercicioConSeries.entrenamientoEjercicio.id
+                                        )
+                                    }
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
-                                        contentDescription = "Eliminar serie"
+                                        contentDescription = "Eliminar ejercicio"
                                     )
                                 }
                             }
-                        }
-                    }
 
-                    // 🔹 BOTÓN AÑADIR SERIE
-                    Button(
-                        onClick = {
-                            viewModel.añadirSerie(
-                                ejercicioConSeries.entrenamientoEjercicio.id,
-                                esCardio
-                            )
-                        },
-                        modifier = Modifier
-                            .padding(start = 32.dp, bottom = 16.dp),
-                        enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
-                    ) {
-                        Text("+ Añadir serie")
+                            // 🔹 SERIES
+                            ejercicioConSeries.series.forEachIndexed { index, serie ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 0.dp, vertical = 4.dp)
+                                ) {
+
+                                    Text(
+                                        text = "Serie ${index + 1}",
+                                        modifier = Modifier.width(80.dp)
+                                    )
+
+                                    if (!esCardio) {
+                                        OutlinedTextField(
+                                            value = serie.peso?.toString() ?: "",
+                                            onValueChange = {
+                                                val peso = it.toFloatOrNull() ?: 0f
+                                                viewModel.actualizarPesoSerie(serie.id, peso)
+                                            },
+                                            label = { Text("Kg") },
+                                            modifier = Modifier.width(90.dp),
+                                            singleLine = true,
+                                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                        )
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                        OutlinedTextField(
+                                            value = serie.repeticiones?.toString() ?: "",
+                                            onValueChange = {
+                                                val reps = it.toIntOrNull() ?: 0
+                                                viewModel.actualizarRepsSerie(serie.id, reps)
+                                            },
+                                            label = { Text("Reps") },
+                                            modifier = Modifier.width(90.dp),
+                                            singleLine = true,
+                                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                        )
+                                    } else {
+                                        OutlinedTextField(
+                                            value = serie.tiempo?.toString() ?: "",
+                                            onValueChange = {
+                                                val tiempo = it.toIntOrNull() ?: 0
+                                                viewModel.actualizarTiempoSerie(serie.id, tiempo)
+                                            },
+                                            label = { Text("Min") },
+                                            modifier = Modifier.width(90.dp),
+                                            singleLine = true,
+                                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                        )
+                                    }
+
+                                    if (index == ejercicioConSeries.series.size - 1) {
+                                        IconButton(
+                                            onClick = { viewModel.eliminarSerie(serie.id) },
+                                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Eliminar serie"
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 🔹 BOTÓN AÑADIR SERIE
+                            Button(
+                                onClick = {
+                                    viewModel.añadirSerie(
+                                        ejercicioConSeries.entrenamientoEjercicio.id,
+                                        esCardio
+                                    )
+                                },
+                                modifier = Modifier
+                                    .padding(top = 8.dp),
+                                enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                            ) {
+                                Text("+ Añadir serie")
+                            }
+                        }
                     }
                 }
 
@@ -256,7 +259,7 @@ fun EntrenamientoScreen(
                     Button(
                         onClick = { showAddExerciseDialog = true },
                         modifier = Modifier
-                            .padding(16.dp)
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
                             .fillMaxWidth()
                     ) {
                         Text("+ Añadir ejercicio")
@@ -268,7 +271,7 @@ fun EntrenamientoScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
