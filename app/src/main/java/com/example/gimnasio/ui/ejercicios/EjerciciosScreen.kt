@@ -23,7 +23,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EjerciciosScreen(
     onBack: () -> Unit,
