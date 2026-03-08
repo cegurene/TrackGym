@@ -21,6 +21,9 @@ class EntrenamientoViewModel(
     val ejerciciosDelEntrenamiento =
         entrenamientoDao.getEjerciciosConSeries(entrenamientoId)
 
+    val entrenamiento =
+        entrenamientoDao.getEntrenamientoCompleto(entrenamientoId)
+
     fun añadirSerie(entrenamientoEjercicioId: Long, esCardio: Boolean) {
         viewModelScope.launch {
             if (esCardio) {

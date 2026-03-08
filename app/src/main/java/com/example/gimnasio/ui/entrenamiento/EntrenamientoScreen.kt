@@ -15,7 +15,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.platform.LocalContext
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
-import com.example.gimnasio.ui.rutinas.RutinaViewModelFactory
+import androidx.compose.material3.Icon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +37,35 @@ fun EntrenamientoScreen(
         .ejerciciosDelEntrenamiento
         .collectAsState(initial = emptyList())
 
+    val entrenamiento by viewModel.entrenamiento.collectAsState(initial = null)
+
+    var tiempoActual by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(1000)
+            tiempoActual = System.currentTimeMillis()
+        }
+    }
+
+    val duracionMs = entrenamiento?.entrenamiento?.fechaInicio?.let {
+        tiempoActual - it
+    } ?: 0L
+
+    fun formatearDuracion(ms: Long): String {
+
+        val segundos = ms / 1000
+        val horas = segundos / 3600
+        val minutos = (segundos % 3600) / 60
+        val seg = segundos % 60
+
+        return if (horas > 0) {
+            "%02d:%02d:%02d".format(horas, minutos, seg)
+        } else {
+            "%02d:%02d".format(minutos, seg)
+        }
+    }
+
     val database = remember { GymDatabase.getDatabase(context) }
     val ejercicioDao = remember { database.ejercicioDao() }
 
@@ -55,7 +84,19 @@ fun EntrenamientoScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Entrenamiento en curso") },
+                title = {
+                    Column {
+                        Text("Entrenamiento en curso")
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("⏱ ")
+                            Text(
+                                text = formatearDuracion(duracionMs),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Text("←")
