@@ -67,45 +67,45 @@ class EstadisticasViewModel(
 
     // 4️⃣ Récords personales
     private val _records = MutableStateFlow(RecordPersonal())
-    val records: StateFlow<RecordPersonal> = _records
+    val records: StateFlow<RecordPersonal> =
+        entrenamientoDao.getEntrenamientosCompletados()
+            .flatMapLatest {
 
-    init {
-        viewModelScope.launch {
-            // Día con más volumen
-            val diaMax: DiaVolumen? = serieDao.getDiaMasVolumen()
+                flow {
 
-            // Serie con más volumen
-            val serieMax: SerieRecord? = serieDao.getSerieMasVolumen()
+                    val diaMax: DiaVolumen? = serieDao.getDiaMasVolumen()
+                    val serieMax: SerieRecord? = serieDao.getSerieMasVolumen()
+                    val entrenamientoMaxMs: Long? = entrenamientoDao.getEntrenamientoMasLargo()
+                    val entrenamientoMinMs: Long? = entrenamientoDao.getEntrenamientoMasCorto()
 
-            // Entrenamiento más largo (en milisegundos)
-            val entrenamientoMaxMs: Long? = entrenamientoDao.getEntrenamientoMasLargo()
+                    val entrenamientoStr = entrenamientoMaxMs?.let {
+                        val horas = (it / 1000 / 60 / 60)
+                        val minutos = (it / 1000 / 60) % 60
+                        "${horas}h ${minutos}m"
+                    }
 
-            // Entrenamiento más corto (en milisegundos)
-            val entrenamientoMinMs: Long? = entrenamientoDao.getEntrenamientoMasCorto()
+                    val entrenamientoMinStr = entrenamientoMinMs?.let {
+                        val horas = (it / 1000 / 60 / 60)
+                        val minutos = (it / 1000 / 60) % 60
+                        "${horas}h ${minutos}m"
+                    }
 
-            // Convertir ms a horas:minutos
-            val entrenamientoStr = entrenamientoMaxMs?.let {
-                val horas = (it / 1000 / 60 / 60)
-                val minutos = (it / 1000 / 60) % 60
-                "${horas}h ${minutos}m"
+                    emit(
+                        RecordPersonal(
+                            diaMasVolumen = diaMax?.dia,
+                            volumenDiaMasVolumen = diaMax?.volumenTotal,
+                            serieMasVolumen = serieMax,
+                            entrenamientoMasLargo = entrenamientoStr,
+                            entrenamientoMasCorto = entrenamientoMinStr
+                        )
+                    )
+                }
             }
-
-            val entrenamientoMinStr = entrenamientoMinMs?.let {
-                val horas = (it / 1000 / 60 / 60)
-                val minutos = (it / 1000 / 60) % 60
-                "${horas}h ${minutos}m"
-            }
-
-            // Actualizar records
-            _records.value = RecordPersonal(
-                diaMasVolumen = diaMax?.dia,
-                volumenDiaMasVolumen = diaMax?.volumenTotal,
-                serieMasVolumen = serieMax,
-                entrenamientoMasLargo = entrenamientoStr,
-                entrenamientoMasCorto = entrenamientoMinStr
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5000),
+                RecordPersonal()
             )
-        }
-    }
 }
 
 data class ResumenGeneral(
