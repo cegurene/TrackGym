@@ -5,6 +5,8 @@ import androidx.room.Insert
 import androidx.room.Query
 import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.DiaVolumen
+import com.example.gimnasio.data.model.EjercicioRecords
+import com.example.gimnasio.data.model.PuntoProgreso
 import com.example.gimnasio.data.model.SerieRecord
 import com.example.gimnasio.data.model.VolumenPorMusculo
 import kotlinx.coroutines.flow.Flow
@@ -64,4 +66,60 @@ interface SerieDao {
 
     @Query("UPDATE series SET tiempo = :tiempo WHERE id = :idSerie")
     suspend fun actualizarTiempo(idSerie: Long, tiempo: Int)
+
+    @Query("""
+    SELECT 
+        e.fechaInicio as fecha,
+        MAX(COALESCE(s.peso,0)) as pesoMax
+    FROM series s
+    JOIN entrenamiento_ejercicio ee
+        ON ee.id = s.entrenamientoEjercicioId
+    JOIN entrenamientos e
+        ON e.id = ee.entrenamientoId
+    WHERE ee.ejercicioId = :ejercicioId
+    GROUP BY e.id
+    ORDER BY e.fechaInicio ASC
+    """)
+    fun getProgresoEjercicio(ejercicioId: Long): Flow<List<PuntoProgreso>>
+
+    @Query("""
+    SELECT
+        MAX(COALESCE(s.peso,0) * COALESCE(s.repeticiones,0)) as volumenMaxSerie,
+        SUM(COALESCE(s.peso,0) * COALESCE(s.repeticiones,0)) as volumenTotal,
+        COUNT(*) as seriesTotales,
+        SUM(COALESCE(s.repeticiones,0)) as repeticionesTotales
+    FROM series s
+    JOIN entrenamiento_ejercicio ee
+        ON ee.id = s.entrenamientoEjercicioId
+    WHERE ee.ejercicioId = :ejercicioId
+    """)
+    fun getRecordsEjercicio(ejercicioId: Long): Flow<EjercicioRecords>
+
+    @Query("""
+    SELECT ee.id
+    FROM entrenamiento_ejercicio ee
+    JOIN entrenamientos e
+    ON e.id = ee.entrenamientoId
+    WHERE ee.ejercicioId = :ejercicioId
+    ORDER BY e.fechaInicio DESC
+    LIMIT 1
+    """)
+    suspend fun getUltimoEntrenamientoEjercicioId(ejercicioId: Long): Long?
+
+    @Query("""
+    SELECT e.fechaInicio
+    FROM entrenamiento_ejercicio ee
+    JOIN entrenamientos e
+    ON e.id = ee.entrenamientoId
+    WHERE ee.id = :entrenamientoEjercicioId
+    """)
+    suspend fun getFechaEntrenamiento(entrenamientoEjercicioId: Long): Long?
+
+    @Query("""
+    SELECT *
+    FROM series
+    WHERE entrenamientoEjercicioId = :entrenamientoEjercicioId
+    ORDER BY id ASC
+    """)
+    suspend fun getSeriesEntrenamiento(entrenamientoEjercicioId: Long): List<SerieEntity>
 }

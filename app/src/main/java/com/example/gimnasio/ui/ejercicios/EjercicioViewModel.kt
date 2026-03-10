@@ -3,8 +3,10 @@ package com.example.gimnasio.ui.ejercicios
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.dao.EjercicioDao
+import com.example.gimnasio.data.dao.SerieDao
 import com.example.gimnasio.data.entity.EjercicioEntity
 import com.example.gimnasio.data.entity.Musculo
+import com.example.gimnasio.data.model.UltimaSesionEjercicio
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -14,7 +16,8 @@ import kotlinx.coroutines.launch
 import kotlin.collections.emptyMap
 
 class EjercicioViewModel(
-    private val ejercicioDao: EjercicioDao
+    private val ejercicioDao: EjercicioDao,
+    private val serieDao: SerieDao
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -127,4 +130,29 @@ class EjercicioViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = emptyMap()
         )
+
+    fun getProgresoEjercicio(ejercicioId: Long) =
+        serieDao.getProgresoEjercicio(ejercicioId)
+
+    fun getRecordsEjercicio(ejercicioId: Long) =
+        serieDao.getRecordsEjercicio(ejercicioId)
+
+    suspend fun getUltimaSesion(ejercicioId: Long): UltimaSesionEjercicio? {
+
+        val entrenamientoEjercicioId =
+            serieDao.getUltimoEntrenamientoEjercicioId(ejercicioId)
+                ?: return null
+
+        val fecha =
+            serieDao.getFechaEntrenamiento(entrenamientoEjercicioId)
+                ?: return null
+
+        val series =
+            serieDao.getSeriesEntrenamiento(entrenamientoEjercicioId)
+
+        return UltimaSesionEjercicio(
+            fecha = fecha,
+            series = series
+        )
+    }
 }

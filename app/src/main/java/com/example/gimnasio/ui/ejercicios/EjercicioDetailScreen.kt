@@ -1,6 +1,7 @@
 package com.example.gimnasio.ui.ejercicios
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -12,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
+import com.example.gimnasio.data.model.UltimaSesionEjercicio
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +40,25 @@ fun EjercicioDetailScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val ejercicio by viewModel.getEjercicio(ejercicioId).collectAsState()
 
+    val progreso by viewModel
+        .getProgresoEjercicio(ejercicioId)
+        .collectAsState(initial = emptyList())
+
+    val records by viewModel
+        .getRecordsEjercicio(ejercicioId)
+        .collectAsState(initial = null)
+
+    var ultimaSesion by remember { mutableStateOf<UltimaSesionEjercicio?>(null) }
+
+    LaunchedEffect(ejercicioId) {
+        ultimaSesion = viewModel.getUltimaSesion(ejercicioId)
+    }
+
+    fun formatearFecha(timestamp: Long): String {
+        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+        return sdf.format(java.util.Date(timestamp))
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,16 +81,199 @@ fun EjercicioDetailScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
-            contentAlignment = Alignment.Center
         ) {
             val ejercicioLocal = ejercicio
             if (ejercicioLocal == null) {
                 CircularProgressIndicator()
             } else {
-                Text(
-                    text = "Ejercicio: ${ejercicioLocal.nombre}",
-                    style = MaterialTheme.typography.titleLarge
-                )
+
+                // -------------------
+                // CONTENIDO PRINCIPAL
+                // -------------------
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+
+                    // -------------------
+                    //    ÚLTIMA SESIÓN
+                    // -------------------
+                    item{
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = CardDefaults.cardElevation(4.dp)
+                        ){
+                            Column(Modifier.padding(16.dp)) {
+
+                                Text("Última sesión", style = MaterialTheme.typography.titleLarge)
+
+                                Spacer(Modifier.height(12.dp))
+
+                                if (ultimaSesion == null) {
+                                    Text("Este ejercicio aún no se ha realizado.")
+                                } else {
+
+                                    Text("Fecha: ${formatearFecha(ultimaSesion!!.fecha)}")
+
+                                    Spacer(Modifier.height(12.dp))
+
+                                    ultimaSesion!!.series.forEachIndexed { index, serie ->
+
+                                        Card(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(12.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+
+                                                Text("Serie ${index + 1}:")
+
+                                                Text("${serie.peso ?: 0f} kg")
+
+                                                Text("${serie.repeticiones ?: 0} reps")
+
+                                            }
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+                        }
+                    }
+
+
+                    // -------------------
+                    //       ACTIVIDAD
+                    // -------------------
+                    item{
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = CardDefaults.cardElevation(4.dp)
+                        ){
+                            Column(Modifier.padding(16.dp)) {
+
+                                Text("📈 Actividad", style = MaterialTheme.typography.titleLarge)
+
+                                Spacer(Modifier.height(12.dp))
+
+                                if (progreso.isEmpty()) {
+
+                                    Text("Aún no hay datos de progreso.")
+
+                                } else {
+
+                                    val primerPeso = progreso.first().pesoMax
+                                    val ultimoPeso = progreso.last().pesoMax
+                                    val diferencia = ultimoPeso - primerPeso
+
+                                    Text("Primer peso registrado: ${primerPeso} kg")
+                                    Text("Último peso registrado: ${ultimoPeso} kg")
+
+                                    Spacer(Modifier.height(8.dp))
+
+                                    Text(
+                                        text = "Diferencia: ${if (diferencia >= 0) "+" else ""}$diferencia kg",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+
+                                    Spacer(Modifier.height(16.dp))
+
+                                    // Placeholder para la gráfica
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(180.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("Gráfica de progreso (próximamente)")
+                                        }
+                                    }
+
+                                }
+
+                            }
+                        }
+                    }
+
+
+                    // -------------------
+                    //        RECORDS
+                    // -------------------
+                    item{
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = CardDefaults.cardElevation(4.dp)
+                        ){
+                            Column(Modifier.padding(16.dp)) {
+
+                                Text("🏆 Records", style = MaterialTheme.typography.titleLarge)
+
+                                Spacer(Modifier.height(12.dp))
+
+                                if (records == null) {
+
+                                    Text("Aún no hay estadísticas.")
+
+                                } else {
+
+                                    Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                        Row(
+                                            Modifier.padding(12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text("Mayor volumen en 1 serie: ")
+                                            Text("${records!!.volumenMaxSerie ?: 0f} kg")
+                                        }
+                                    }
+
+                                    Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                        Row(
+                                            Modifier.padding(12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text("Volumen total: ")
+                                            Text("${records!!.volumenTotal ?: 0f} kg")
+                                        }
+                                    }
+
+                                    Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                        Row(
+                                            Modifier.padding(12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text("Series totales: ")
+                                            Text("${records!!.seriesTotales}")
+                                        }
+                                    }
+
+                                    Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                        Row(
+                                            Modifier.padding(12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text("Repeticiones totales: ")
+                                            Text("${records!!.repeticionesTotales ?: 0}")
+                                        }
+                                    }
+
+                                }
+
+                            }
+                        }
+                    }
+
+                }
+
             }
         }
     }

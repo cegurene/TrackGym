@@ -11,7 +11,8 @@ class EjercicioViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(EjercicioViewModel::class.java)) {
             return EjercicioViewModel(
-                ejercicioDao = database.ejercicioDao()
+                ejercicioDao = database.ejercicioDao(),
+                serieDao = database.serieDao()
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
