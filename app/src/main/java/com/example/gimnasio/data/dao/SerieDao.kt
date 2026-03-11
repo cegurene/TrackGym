@@ -6,6 +6,7 @@ import androidx.room.Query
 import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.DiaVolumen
 import com.example.gimnasio.data.model.EjercicioRecords
+import com.example.gimnasio.data.model.EjercicioRecordsCardio
 import com.example.gimnasio.data.model.PuntoProgreso
 import com.example.gimnasio.data.model.SerieRecord
 import com.example.gimnasio.data.model.VolumenPorMusculo
@@ -94,6 +95,18 @@ interface SerieDao {
     WHERE ee.ejercicioId = :ejercicioId
     """)
     fun getRecordsEjercicio(ejercicioId: Long): Flow<EjercicioRecords>
+
+    @Query("""
+    SELECT
+        MAX(COALESCE(s.tiempo,0)) as mejorTiempo,
+        SUM(COALESCE(s.tiempo,0)) as tiempoTotal,
+        COUNT(*) as seriesTotales
+    FROM series s
+    JOIN entrenamiento_ejercicio ee
+        ON ee.id = s.entrenamientoEjercicioId
+    WHERE ee.ejercicioId = :ejercicioId
+    """)
+    fun getRecordsEjercicioCardio(ejercicioId: Long): Flow<EjercicioRecordsCardio>
 
     @Query("""
     SELECT ee.id

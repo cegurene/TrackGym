@@ -137,6 +137,9 @@ class EjercicioViewModel(
     fun getRecordsEjercicio(ejercicioId: Long) =
         serieDao.getRecordsEjercicio(ejercicioId)
 
+    fun getRecordsEjercicioCardio(ejercicioId: Long) =
+        serieDao.getRecordsEjercicioCardio(ejercicioId)
+
     suspend fun getUltimaSesion(ejercicioId: Long): UltimaSesionEjercicio? {
 
         val entrenamientoEjercicioId =
@@ -155,4 +158,30 @@ class EjercicioViewModel(
             series = series
         )
     }
+
+    fun getUltimaSesionFlow(ejercicioId: Long) =
+        kotlinx.coroutines.flow.flow {
+
+            val entrenamientoEjercicioId =
+                serieDao.getUltimoEntrenamientoEjercicioId(ejercicioId)
+
+            if (entrenamientoEjercicioId == null) {
+                emit(null)
+                return@flow
+            }
+
+            val fecha =
+                serieDao.getFechaEntrenamiento(entrenamientoEjercicioId)
+                    ?: return@flow emit(null)
+
+            val series =
+                serieDao.getSeriesEntrenamiento(entrenamientoEjercicioId)
+
+            emit(
+                UltimaSesionEjercicio(
+                    fecha = fecha,
+                    series = series
+                )
+            )
+        }
 }
