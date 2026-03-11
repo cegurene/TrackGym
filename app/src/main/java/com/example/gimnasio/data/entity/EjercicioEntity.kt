@@ -1,5 +1,6 @@
 package com.example.gimnasio.data.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -12,5 +13,6 @@ import androidx.room.PrimaryKey
 data class EjercicioEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val nombre: String,
-    val musculos: List<Musculo>
+    val musculos: List<Musculo>,
+    @ColumnInfo(name = "comentario") val comentario: String? = ""
 )

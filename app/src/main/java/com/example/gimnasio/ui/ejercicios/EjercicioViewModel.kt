@@ -184,4 +184,15 @@ class EjercicioViewModel(
                 )
             )
         }
+
+    fun actualizarComentario(ejercicioId: Long, comentario: String?) {
+        viewModelScope.launch {
+            ejercicioDao.actualizarComentario(ejercicioId, comentario ?: "")
+        }
+    }
+
+    // Nuevo helper para obtener comentario actual de un ejercicio
+    fun getComentario(ejercicioId: Long) =
+        ejercicioDao.getByIdFlow(ejercicioId)
+            .map { it?.comentario ?: "" }
 }

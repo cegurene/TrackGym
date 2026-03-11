@@ -50,4 +50,8 @@ interface EjercicioDao {
     GROUP BY musculos
 """)
     fun getConteoPorMusculo(): Flow<List<MusculoCount>>
+
+    // Actualizar comentario
+    @Query("UPDATE ejercicios SET comentario = :comentario WHERE id = :ejercicioId")
+    suspend fun actualizarComentario(ejercicioId: Long, comentario: String)
 }

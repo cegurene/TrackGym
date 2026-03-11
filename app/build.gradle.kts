@@ -57,6 +57,7 @@ dependencies {
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
+    implementation(libs.androidx.compose.runtime.saveable)
     ksp(libs.room.compiler)
     
     // ViewModel & Lifecycle

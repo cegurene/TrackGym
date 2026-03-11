@@ -3,25 +3,45 @@ package com.example.gimnasio.ui.ejercicios
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.model.PuntoProgreso
 import com.example.gimnasio.data.model.UltimaSesionEjercicio
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.time.delay
+import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Date
+import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,164 +88,237 @@ fun EjercicioDetailScreen(
         .getRecordsEjercicioCardio(ejercicioId)
         .collectAsState(initial = null)
 
-    //val esCardio = ejercicio?.musculos?.contains(Musculo.CARDIO) == true
-
-    fun formatearFecha(timestamp: Long): String {
-        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
-        return sdf.format(java.util.Date(timestamp))
-    }
-
     // ----------------------------
-    // GRAFICA DE PESO
+    // GRAFICA
     // ----------------------------
     @Composable
-    fun GraficaProgresoPeso(progreso: List<PuntoProgreso>, modifier: Modifier = Modifier) {
-        if (progreso.size < 2) {
-            Box(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .height(220.dp),
-                contentAlignment = Alignment.Center
+    fun GraficaProgresoScrollable(
+        valores: List<Float>,
+        fechas: List<String>,
+        modifier: Modifier = Modifier
+    ) {
+
+        if (valores.isEmpty()) return
+
+        val scrollState = rememberScrollState()
+        val scope = rememberCoroutineScope()
+
+        val puntoWidth = 90.dp
+        val graficaWidth = puntoWidth * valores.size
+
+        val max = valores.maxOrNull() ?: 1f
+        val min = valores.minOrNull() ?: 0f
+        val rango = (max - min).takeIf { it != 0f } ?: 1f
+
+        var containerWidthPx by remember { mutableStateOf(0) }
+
+        Row(modifier = modifier.height(260.dp)) {
+
+            // =========================
+            // EJE Y (FIJO)
+            // =========================
+
+            Canvas(
+                modifier = Modifier
+                    .width(60.dp)
+                    .fillMaxHeight()
             ) {
-                Text("Aún no hay suficientes datos para la gráfica")
-            }
-            return
-        }
 
-        val pesos = progreso.mapNotNull { it.pesoMax }
-        val maxPeso = pesos.maxOrNull() ?: 1f
-        val minPeso = pesos.minOrNull() ?: 0f
-        val rangoPeso = (maxPeso - minPeso).takeIf { it != 0f } ?: 1f
+                val divisiones = 4
+                val heightGrafica = size.height - 40f
+                val step = heightGrafica / divisiones
 
-        val colorLinea = MaterialTheme.colorScheme.primary
-        val colorEjes = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                drawLine(
+                    color = Color.Gray,
+                    start = Offset(size.width, 0f),
+                    end = Offset(size.width, heightGrafica),
+                    strokeWidth = 4f
+                )
 
-        Canvas(modifier = modifier.fillMaxWidth().height(240.dp)) {
-            val paddingLeft = 90f
-            val paddingBottom = 60f
-            val width = size.width - paddingLeft
-            val height = size.height - paddingBottom
-            val stepX = width / (progreso.size - 1)
+                for (i in 0..divisiones) {
 
-            // EJE Y
-            drawLine(color = colorEjes, start = Offset(paddingLeft, 0f), end = Offset(paddingLeft, height), strokeWidth = 4f)
-            // EJE X
-            drawLine(color = colorEjes, start = Offset(paddingLeft, height), end = Offset(size.width, height), strokeWidth = 4f)
+                    val y = heightGrafica - i * step
+                    val valor = min + (rango / divisiones) * i
 
-            val divisiones = 4
-            val textPaint = android.graphics.Paint().apply {
-                color = android.graphics.Color.GRAY
-                textSize = 30f
-                textAlign = android.graphics.Paint.Align.RIGHT
-            }
+                    drawLine(
+                        color = Color.Gray.copy(alpha = 0.6f),
+                        start = Offset(size.width - 10f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = 3f
+                    )
 
-            for (i in 0..divisiones) {
-                val y = height - (height / divisiones) * i
-                drawLine(color = colorEjes.copy(alpha = 0.2f), start = Offset(paddingLeft, y), end = Offset(size.width, y), strokeWidth = 2f)
-                val peso = minPeso + (rangoPeso / divisiones) * i
-                drawContext.canvas.nativeCanvas.drawText("${peso.toInt()}", paddingLeft - 20f, y + 10f, textPaint)
-            }
-
-            val labelPaint = android.graphics.Paint().apply {
-                color = android.graphics.Color.GRAY
-                textSize = 34f
-                textAlign = android.graphics.Paint.Align.CENTER
-            }
-
-            drawContext.canvas.nativeCanvas.drawText("Entrenamientos", paddingLeft + width / 2, size.height - 10f, labelPaint)
-            drawContext.canvas.nativeCanvas.save()
-            drawContext.canvas.nativeCanvas.rotate(-90f, 20f, height / 2)
-            drawContext.canvas.nativeCanvas.drawText("Peso (kg)", 20f, height / 2, labelPaint)
-            drawContext.canvas.nativeCanvas.restore()
-
-            val puntos = progreso.mapIndexedNotNull { index, punto ->
-                punto.pesoMax?.let {
-                    val x = paddingLeft + index * stepX
-                    val normalized = (it - minPeso) / rangoPeso
-                    val y = height - (normalized * height)
-                    Offset(x, y)
+                    drawContext.canvas.nativeCanvas.drawText(
+                        valor.toInt().toString(),
+                        0f,
+                        y + 10f,
+                        android.graphics.Paint().apply {
+                            textSize = 28f
+                            color = android.graphics.Color.DKGRAY
+                        }
+                    )
                 }
             }
 
-            for (i in 0 until puntos.size - 1) {
-                drawLine(color = colorLinea, start = puntos[i], end = puntos[i + 1], strokeWidth = 6f)
-            }
-            puntos.forEach { drawCircle(color = colorLinea, radius = 8f, center = it) }
-        }
-    }
+            // =========================
+            // GRAFICA SCROLLABLE
+            // =========================
 
-    // ----------------------------
-    // GRAFICA DE TIEMPO (CARDIO)
-    // ----------------------------
-    @Composable
-    fun GraficaProgresoTiempo(progreso: List<PuntoProgreso>, modifier: Modifier = Modifier) {
-        if (progreso.size < 2) {
-            Box(
-                modifier = modifier.fillMaxWidth().height(220.dp),
-                contentAlignment = Alignment.Center
-            ) { Text("Aún no hay suficientes datos para la gráfica") }
-            return
-        }
+            Box(modifier = Modifier.fillMaxSize()) {
 
-        val tiempos = progreso.mapNotNull { it.tiempo }
-        val maxTiempo = tiempos.maxOrNull() ?: 1
-        val minTiempo = tiempos.minOrNull() ?: 0
-        val rangoTiempo = (maxTiempo - minTiempo).takeIf { it != 0 } ?: 1
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(scrollState)
+                        .onSizeChanged {
+                            containerWidthPx = it.width
+                            scope.launch {
+                                scrollState.scrollTo(scrollState.maxValue)
+                            }
+                        }
+                ) {
 
-        val colorLinea = MaterialTheme.colorScheme.primary
-        val colorEjes = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    Canvas(
+                        modifier = Modifier
+                            .width(graficaWidth)
+                            .fillMaxHeight()
+                            .padding(horizontal = 8.dp)
+                    ) {
 
-        Canvas(modifier = modifier.fillMaxWidth().height(240.dp)) {
-            val paddingLeft = 90f
-            val paddingBottom = 60f
-            val width = size.width - paddingLeft
-            val height = size.height - paddingBottom
-            val stepX = width / (progreso.size - 1)
+                        val stepX = size.width / valores.size
+                        val heightGrafica = size.height - 40f
 
-            // EJE Y
-            drawLine(color = colorEjes, start = Offset(paddingLeft, 0f), end = Offset(paddingLeft, height), strokeWidth = 4f)
-            // EJE X
-            drawLine(color = colorEjes, start = Offset(paddingLeft, height), end = Offset(size.width, height), strokeWidth = 4f)
+                        // =========================
+                        // GRID HORIZONTAL (más oscuro)
+                        // =========================
 
-            val divisiones = 4
-            val textPaint = android.graphics.Paint().apply {
-                color = android.graphics.Color.GRAY
-                textSize = 30f
-                textAlign = android.graphics.Paint.Align.RIGHT
-            }
+                        val divisiones = 4
+                        val stepY = heightGrafica / divisiones
 
-            for (i in 0..divisiones) {
-                val y = height - (height / divisiones) * i
-                drawLine(color = colorEjes.copy(alpha = 0.2f), start = Offset(paddingLeft, y), end = Offset(size.width, y), strokeWidth = 2f)
-                val tiempo = minTiempo + (rangoTiempo / divisiones) * i
-                drawContext.canvas.nativeCanvas.drawText("${tiempo} min", paddingLeft - 20f, y + 10f, textPaint)
-            }
+                        for (i in 0..divisiones) {
 
-            val labelPaint = android.graphics.Paint().apply {
-                color = android.graphics.Color.GRAY
-                textSize = 34f
-                textAlign = android.graphics.Paint.Align.CENTER
-            }
+                            val y = heightGrafica - i * stepY
 
-            drawContext.canvas.nativeCanvas.drawText("Entrenamientos", paddingLeft + width / 2, size.height - 10f, labelPaint)
-            drawContext.canvas.nativeCanvas.save()
-            drawContext.canvas.nativeCanvas.rotate(-90f, 20f, height / 2)
-            drawContext.canvas.nativeCanvas.drawText("Tiempo (min)", 20f, height / 2, labelPaint)
-            drawContext.canvas.nativeCanvas.restore()
+                            drawLine(
+                                color = Color.Gray.copy(alpha = 0.5f),
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = 2.5f
+                            )
+                        }
 
-            val puntos = progreso.mapIndexedNotNull { index, punto ->
-                punto.tiempo?.let {
-                    val x = paddingLeft + index * stepX
-                    val normalized = (it - minTiempo).toFloat() / rangoTiempo
-                    val y = height - (normalized * height)
-                    Offset(x, y)
+                        // =========================
+                        // EJE X
+                        // =========================
+
+                        drawLine(
+                            color = Color.Gray,
+                            start = Offset(0f, heightGrafica),
+                            end = Offset(size.width, heightGrafica),
+                            strokeWidth = 4f
+                        )
+
+                        valores.forEachIndexed { i, valor ->
+
+                            val normalized = (valor - min) / rango
+
+                            val x = stepX * i + stepX / 2
+                            val y = heightGrafica - normalized * heightGrafica
+
+                            // =========================
+                            // LINEAS
+                            // =========================
+
+                            if (i > 0) {
+
+                                val prevValor = valores[i - 1]
+                                val prevNorm = (prevValor - min) / rango
+
+                                val prevX = stepX * (i - 1) + stepX / 2
+                                val prevY = heightGrafica - prevNorm * heightGrafica
+
+                                val colorLinea = when {
+                                    valor > prevValor -> Color(0xFF4CAF50)
+                                    valor < prevValor -> Color.Red
+                                    else -> Color.Blue
+                                }
+
+                                drawLine(
+                                    color = colorLinea,
+                                    start = Offset(prevX, prevY),
+                                    end = Offset(x, y),
+                                    strokeWidth = 6f
+                                )
+                            }
+
+                            // =========================
+                            // PUNTOS
+                            // =========================
+
+                            drawCircle(
+                                color = Color.White,
+                                radius = 10f,
+                                center = Offset(x, y)
+                            )
+
+                            drawCircle(
+                                color = Color.Black,
+                                radius = 6f,
+                                center = Offset(x, y)
+                            )
+
+                            // =========================
+                            // FECHA EJE X
+                            // =========================
+
+                            if (i < fechas.size) {
+
+                                drawContext.canvas.nativeCanvas.drawText(
+                                    fechas[i],
+                                    x - 25f,
+                                    size.height - 5f,
+                                    android.graphics.Paint().apply {
+                                        textSize = 26f
+                                        color = android.graphics.Color.DKGRAY
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // =========================
+                // FLECHA IZQUIERDA
+                // =========================
+
+                if (scrollState.value > 0) {
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                scrollState.animateScrollBy(-containerWidthPx.toFloat())
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    ) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Anterior")
+                    }
+                }
+
+                // =========================
+                // FLECHA DERECHA
+                // =========================
+
+                if (scrollState.value < scrollState.maxValue) {
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                scrollState.animateScrollBy(containerWidthPx.toFloat())
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    ) {
+                        Icon(Icons.Default.ArrowForward, contentDescription = "Siguiente")
+                    }
                 }
             }
-
-            for (i in 0 until puntos.size - 1) {
-                drawLine(color = colorLinea, start = puntos[i], end = puntos[i + 1], strokeWidth = 6f)
-            }
-            puntos.forEach { drawCircle(color = colorLinea, radius = 8f, center = it) }
         }
     }
 
@@ -265,13 +358,17 @@ fun EjercicioDetailScreen(
                         ) {
                             Column(Modifier.padding(16.dp)) {
 
-                                Text("💪 Músculo", style = MaterialTheme.typography.titleLarge)
+                                if(esCardio) {
+                                    Text("🏃‍♂️ Cardio", style = MaterialTheme.typography.titleLarge)
+                                } else {
+                                    Text("💪 Músculo", style = MaterialTheme.typography.titleLarge)
 
-                                Spacer(Modifier.height(8.dp))
+                                    Spacer(Modifier.height(8.dp))
 
-                                Text(
-                                    ejercicioLocal.musculos.joinToString { it.name }
-                                )
+                                    Text(
+                                        ejercicioLocal.musculos.joinToString { it.name }
+                                    )
+                                }
                             }
                         }
                     }
@@ -335,6 +432,79 @@ fun EjercicioDetailScreen(
                     }
 
                     // -------------------
+                    //     COMENTARIOS
+                    // -------------------
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = CardDefaults.cardElevation(4.dp)
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+
+                                Text(
+                                    text = "💬 Comentarios",
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+
+                                Spacer(Modifier.height(12.dp))
+
+                                // Observamos el comentario guardado desde DB
+                                val comentarioDB by viewModel.getComentario(ejercicioId).collectAsState(initial = "")
+
+                                // Estado editable por el usuario, inicializado con DB
+                                var comentarioTemp by rememberSaveable { mutableStateOf(comentarioDB) }
+
+                                // Si cambia el valor de la DB, actualizamos el TextField
+                                LaunchedEffect(comentarioDB) {
+                                    comentarioTemp = comentarioDB
+                                }
+
+                                OutlinedTextField(
+                                    value = comentarioTemp,
+                                    onValueChange = { nuevoValor ->
+                                        comentarioTemp = nuevoValor
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .defaultMinSize(minHeight = 120.dp),
+                                    placeholder = { Text("Escribe un comentario...") },
+                                    maxLines = Int.MAX_VALUE,
+                                    singleLine = false
+                                )
+
+                                Spacer(Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+
+                                    // Botón Cancelar: restaura el valor original
+                                    Button(
+                                        onClick = { comentarioTemp = comentarioDB },
+                                        enabled = comentarioTemp != comentarioDB
+                                    ) {
+                                        Text("Cancelar")
+                                    }
+
+                                    // Botón Guardar: actualiza DB
+                                    Button(
+                                        onClick = {
+                                            viewModel.actualizarComentario(
+                                                ejercicioId,
+                                                if (comentarioTemp.isBlank()) null else comentarioTemp
+                                            )
+                                        },
+                                        enabled = comentarioTemp != comentarioDB
+                                    ) {
+                                        Text("Guardar")
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // -------------------
                     //       ACTIVIDAD
                     // -------------------
 
@@ -343,6 +513,7 @@ fun EjercicioDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                             elevation = CardDefaults.cardElevation(4.dp)
                         ) {
+
                             Column(Modifier.padding(16.dp)) {
 
                                 Text("📈 Actividad", style = MaterialTheme.typography.titleLarge)
@@ -355,54 +526,56 @@ fun EjercicioDetailScreen(
 
                                 } else {
 
-                                    if (!esCardio) {
+                                    // -------------------
+                                    // DATOS BASE
+                                    // -------------------
 
-                                        val primerPeso = progreso.first().pesoMax ?: 0f
-                                        val ultimoPeso = progreso.last().pesoMax ?: 0f
-                                        val diferencia = ultimoPeso - primerPeso
-
-                                        Text("Primer peso registrado: ${primerPeso} kg")
-                                        Text("Último peso registrado: ${ultimoPeso} kg")
-
-                                        Spacer(Modifier.height(8.dp))
-
-                                        Text(
-                                            text = "Diferencia: ${if (diferencia >= 0) "+" else ""}$diferencia kg",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-
-                                        Spacer(Modifier.height(16.dp))
-
-                                        GraficaProgresoPeso(
-                                            progreso = progreso,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-
+                                    val valores = if (esCardio) {
+                                        progreso.map { (it.tiempo ?: 0).toFloat() }
                                     } else {
-
-                                        val tiempos = progreso.map { it.tiempo ?: 0 }
-
-                                        val primerTiempo = tiempos.first()
-                                        val ultimoTiempo = tiempos.last()
-                                        val diferencia = ultimoTiempo - primerTiempo
-
-                                        Text("Primer tiempo registrado: $primerTiempo min")
-                                        Text("Último tiempo registrado: $ultimoTiempo min")
-
-                                        Spacer(Modifier.height(8.dp))
-
-                                        Text(
-                                            text = "Diferencia: ${if (diferencia >= 0) "+" else ""}$diferencia min",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-
-                                        Spacer(Modifier.height(16.dp))
-
-                                        GraficaProgresoTiempo(
-                                            progreso = progreso,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
+                                        progreso.map { it.pesoMax ?: 0f }
                                     }
+
+                                    val unidad = if (esCardio) "min" else "kg"
+
+                                    val primerValor = valores.first()
+                                    val ultimoValor = valores.last()
+                                    val diferencia = ultimoValor - primerValor
+
+                                    val fechas = progreso.map {
+                                        val fecha = Instant
+                                            .ofEpochMilli(it.fecha)
+                                            .atZone(ZoneId.systemDefault())
+                                            .toLocalDate()
+
+                                        "${fecha.dayOfMonth}/${fecha.monthValue}"
+                                    }
+
+                                    // -------------------
+                                    // TEXTO
+                                    // -------------------
+
+                                    Text("Primer valor registrado: $primerValor $unidad")
+                                    Text("Último valor registrado: $ultimoValor $unidad")
+
+                                    Spacer(Modifier.height(8.dp))
+
+                                    Text(
+                                        text = "Diferencia: ${if (diferencia >= 0) "+" else ""}$diferencia $unidad",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+
+                                    Spacer(Modifier.height(16.dp))
+
+                                    // -------------------
+                                    // GRAFICA
+                                    // -------------------
+
+                                    GraficaProgresoScrollable(
+                                        valores = valores,
+                                        fechas = fechas,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                 }
                             }
                         }
@@ -434,7 +607,7 @@ fun EjercicioDetailScreen(
                                                 Modifier.padding(12.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                             ) {
-                                                Text("Mayor volumen en 1 serie:")
+                                                Text("Mayor volumen en 1 serie: ")
                                                 Text("${records!!.volumenMaxSerie ?: 0f} kg")
                                             }
                                         }
@@ -444,7 +617,7 @@ fun EjercicioDetailScreen(
                                                 Modifier.padding(12.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                             ) {
-                                                Text("Volumen total:")
+                                                Text("Volumen total: ")
                                                 Text("${records!!.volumenTotal ?: 0f} kg")
                                             }
                                         }
@@ -454,7 +627,7 @@ fun EjercicioDetailScreen(
                                                 Modifier.padding(12.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                             ) {
-                                                Text("Series totales:")
+                                                Text("Series totales: ")
                                                 Text("${records!!.seriesTotales}")
                                             }
                                         }
@@ -464,7 +637,7 @@ fun EjercicioDetailScreen(
                                                 Modifier.padding(12.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                             ) {
-                                                Text("Repeticiones totales:")
+                                                Text("Repeticiones totales: ")
                                                 Text("${records!!.repeticionesTotales ?: 0}")
                                             }
                                         }
@@ -482,7 +655,7 @@ fun EjercicioDetailScreen(
                                                 Modifier.padding(12.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                             ) {
-                                                Text("Mejor tiempo:")
+                                                Text("Mejor tiempo: ")
                                                 Text("${recordsCardio!!.mejorTiempo ?: 0} min")
                                             }
                                         }
@@ -492,7 +665,7 @@ fun EjercicioDetailScreen(
                                                 Modifier.padding(12.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                             ) {
-                                                Text("Tiempo total:")
+                                                Text("Tiempo total: ")
                                                 Text("${recordsCardio!!.tiempoTotal ?: 0} min")
                                             }
                                         }
@@ -502,7 +675,7 @@ fun EjercicioDetailScreen(
                                                 Modifier.padding(12.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                             ) {
-                                                Text("Series totales:")
+                                                Text("Series totales: ")
                                                 Text("${recordsCardio!!.seriesTotales}")
                                             }
                                         }

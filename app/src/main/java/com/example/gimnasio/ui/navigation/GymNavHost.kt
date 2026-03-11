@@ -1,5 +1,7 @@
 package com.example.gimnasio.ui.navigation
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +27,7 @@ import com.example.gimnasio.ui.entrenamiento.EntrenamientoScreen
 import com.example.gimnasio.ui.home.HomeScreen
 import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun GymNavHost(
     navController: NavHostController,
@@ -40,6 +43,7 @@ fun GymNavHost(
         .collectAsState(initial = null)
 
     // Solo navegamos automáticamente si NO estamos ya en la pantalla de entrenamiento
+
     LaunchedEffect(entrenamientoActivo) {
         entrenamientoActivo?.let { activo ->
             val currentRoute = navController.currentBackStackEntry?.destination?.route
@@ -50,6 +54,7 @@ fun GymNavHost(
             }
         }
     }
+
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
