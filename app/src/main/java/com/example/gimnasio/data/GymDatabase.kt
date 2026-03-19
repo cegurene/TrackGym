@@ -18,7 +18,7 @@ import com.example.gimnasio.data.converter.MusculoConverter
         EntrenamientoEjercicioEntity::class,
         SerieEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(MusculoConverter::class)

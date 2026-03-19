@@ -10,12 +10,32 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import android.app.Application
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
 import androidx.compose.material3.Icon
+
+@Composable
+private fun SerieInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    enabled: Boolean
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = Modifier.width(90.dp),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        enabled = enabled
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -183,41 +203,55 @@ fun EntrenamientoScreen(
                                     )
 
                                     if (!esCardio) {
-                                        OutlinedTextField(
-                                            value = serie.peso?.toString() ?: "",
+                                        SerieInputField(
+                                            value = if ((serie.peso ?: 0f) == 0f) "" else (serie.peso?.toInt() ?: 0).toString(),
                                             onValueChange = {
-                                                val peso = it.toFloatOrNull() ?: 0f
-                                                viewModel.actualizarPesoSerie(serie.id, peso)
+                                                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                                                    val peso = it.toIntOrNull()?.toFloat() ?: 0f
+                                                    viewModel.actualizarPesoSerie(serie.id, peso)
+                                                }
                                             },
-                                            label = { Text("Kg") },
-                                            modifier = Modifier.width(90.dp),
-                                            singleLine = true,
+                                            label = "Kg",
                                             enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
                                         )
 
                                         Spacer(modifier = Modifier.width(8.dp))
 
-                                        OutlinedTextField(
-                                            value = serie.repeticiones?.toString() ?: "",
+                                        SerieInputField(
+                                            value = if ((serie.repeticiones ?: 0) == 0) "" else (serie.repeticiones ?: 0).toString(),
                                             onValueChange = {
-                                                val reps = it.toIntOrNull() ?: 0
-                                                viewModel.actualizarRepsSerie(serie.id, reps)
+                                                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                                                    val reps = it.toIntOrNull() ?: 0
+                                                    viewModel.actualizarRepsSerie(serie.id, reps)
+                                                }
                                             },
-                                            label = { Text("Reps") },
-                                            modifier = Modifier.width(90.dp),
-                                            singleLine = true,
+                                            label = "Reps",
                                             enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
                                         )
                                     } else {
-                                        OutlinedTextField(
-                                            value = serie.tiempo?.toString() ?: "",
+                                        SerieInputField(
+                                            value = if ((serie.tiempo ?: 0) == 0) "" else (serie.tiempo ?: 0).toString(),
                                             onValueChange = {
-                                                val tiempo = it.toIntOrNull() ?: 0
-                                                viewModel.actualizarTiempoSerie(serie.id, tiempo)
+                                                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                                                    val tiempo = it.toIntOrNull() ?: 0
+                                                    viewModel.actualizarTiempoSerie(serie.id, tiempo)
+                                                }
                                             },
-                                            label = { Text("Min") },
-                                            modifier = Modifier.width(90.dp),
-                                            singleLine = true,
+                                            label = "Min",
+                                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                        )
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                        SerieInputField(
+                                            value = if ((serie.intensidad ?: 0) == 0) "" else (serie.intensidad ?: 0).toString(),
+                                            onValueChange = {
+                                                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                                                    val intensidad = it.toIntOrNull() ?: 0
+                                                    viewModel.actualizarIntensidadSerie(serie.id, intensidad)
+                                                }
+                                            },
+                                            label = "Intens",
                                             enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
                                         )
                                     }
@@ -311,7 +345,7 @@ fun EntrenamientoScreen(
                         }
 
                         if (haySeriesInvalidas) {
-                            validationMessage = "Hay series con 0 repeticiones o 0 peso."
+                            validationMessage = "Hay series con 0 en alguno de sus campos."
                             showValidationDialog = true
                             return@Button
                         }

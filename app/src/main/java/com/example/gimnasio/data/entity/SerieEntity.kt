@@ -27,7 +27,8 @@ data class SerieEntity(
 
     val peso: Float? = null,
     val repeticiones: Int? = null,
-    val tiempo: Int? = null,   // 🔥 NUEVO
+    val tiempo: Int? = null,
+    val intensidad: Int? = null,
 
     val completada: Boolean = false
 )

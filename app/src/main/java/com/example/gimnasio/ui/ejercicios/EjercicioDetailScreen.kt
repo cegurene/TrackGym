@@ -3,6 +3,7 @@ package com.example.gimnasio.ui.ejercicios
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -68,25 +69,56 @@ fun EjercicioDetailScreen(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    val ejercicio by viewModel
-        .getEjercicio(ejercicioId)
-        .collectAsState()
+    val ejercicioFlow = remember(viewModel, ejercicioId) {
+        viewModel.getEjercicio(ejercicioId)
+    }
+    val ultimaSesionFlow = remember(viewModel, ejercicioId) {
+        viewModel.getUltimaSesionFlow(ejercicioId)
+    }
+    val progresoFuerzaFlow = remember(viewModel, ejercicioId) {
+        viewModel.getProgresoEjercicio(ejercicioId)
+    }
+    val progresoCardioFlow = remember(viewModel, ejercicioId) {
+        viewModel.getProgresoEjercicioCardio(ejercicioId)
+    }
+    val recordsFlow = remember(viewModel, ejercicioId) {
+        viewModel.getRecordsEjercicio(ejercicioId)
+    }
+    val recordsCardioFlow = remember(viewModel, ejercicioId) {
+        viewModel.getRecordsEjercicioCardio(ejercicioId)
+    }
+    val comentarioFlow = remember(viewModel, ejercicioId) {
+        viewModel.getComentario(ejercicioId)
+    }
 
-    val ultimaSesion by viewModel
-        .getUltimaSesionFlow(ejercicioId)
-        .collectAsState(initial = null)
+    val ejercicio by ejercicioFlow.collectAsState(initial = null)
+    val esCardio = remember(ejercicio) {
+        ejercicio?.musculos?.contains(Musculo.CARDIO) == true
+    }
 
-    val progreso by viewModel
-        .getProgresoEjercicio(ejercicioId)
-        .collectAsState(initial = emptyList())
+    val ultimaSesion by ultimaSesionFlow.collectAsState(initial = null)
 
-    val records by viewModel
-        .getRecordsEjercicio(ejercicioId)
-        .collectAsState(initial = null)
+    val progresoFuerza by progresoFuerzaFlow.collectAsState(initial = emptyList())
 
-    val recordsCardio by viewModel
-        .getRecordsEjercicioCardio(ejercicioId)
-        .collectAsState(initial = null)
+    val progresoCardio by progresoCardioFlow.collectAsState(initial = emptyList())
+
+    val progreso = if (esCardio) progresoCardio else progresoFuerza
+
+    val records by recordsFlow.collectAsState(initial = null)
+
+    val recordsCardio by recordsCardioFlow.collectAsState(initial = null)
+
+    val comentarioDB by comentarioFlow.collectAsState(initial = "")
+
+    val pr by viewModel.getPR(ejercicioId).collectAsState(initial = null)
+
+    val mejorSesionFuerza by viewModel.getMejorSesionFuerza(ejercicioId).collectAsState(initial = null)
+
+    val mejorSesionCardio by viewModel.getMejorSesionCardio(ejercicioId).collectAsState(initial = null)
+
+    val mejorCargaCardio by viewModel.getMejorCargaCardio(ejercicioId).collectAsState(initial = null)
+
+    val scrollStateGrafica = rememberScrollState()
 
     // ----------------------------
     // GRAFICA
@@ -95,15 +127,14 @@ fun EjercicioDetailScreen(
     fun GraficaProgresoScrollable(
         valores: List<Float>,
         fechas: List<String>,
+        unidad: String,
+        scrollState: ScrollState = scrollStateGrafica,
         modifier: Modifier = Modifier
     ) {
 
         if (valores.isEmpty()) return
 
-        val scrollState = rememberScrollState()
-        val scope = rememberCoroutineScope()
-
-        val puntoWidth = 90.dp
+        val puntoWidth = 50.dp
         val graficaWidth = puntoWidth * valores.size
 
         val max = valores.maxOrNull() ?: 1f
@@ -111,6 +142,10 @@ fun EjercicioDetailScreen(
         val rango = (max - min).takeIf { it != 0f } ?: 1f
 
         var containerWidthPx by remember { mutableStateOf(0) }
+
+        LaunchedEffect(valores.size) {
+            scrollState.scrollTo(scrollState.maxValue)
+        }
 
         Row(modifier = modifier.height(260.dp)) {
 
@@ -120,7 +155,7 @@ fun EjercicioDetailScreen(
 
             Canvas(
                 modifier = Modifier
-                    .width(60.dp)
+                    .width(22.dp)
                     .fillMaxHeight()
             ) {
 
@@ -165,14 +200,13 @@ fun EjercicioDetailScreen(
 
             Box(modifier = Modifier.fillMaxSize()) {
 
+                val scope = rememberCoroutineScope()
+
                 Row(
                     modifier = Modifier
                         .horizontalScroll(scrollState)
                         .onSizeChanged {
                             containerWidthPx = it.width
-                            scope.launch {
-                                scrollState.scrollTo(scrollState.maxValue)
-                            }
                         }
                 ) {
 
@@ -180,7 +214,7 @@ fun EjercicioDetailScreen(
                         modifier = Modifier
                             .width(graficaWidth)
                             .fillMaxHeight()
-                            .padding(horizontal = 8.dp)
+                            //.padding(horizontal = 8.dp)
                     ) {
 
                         val stepX = size.width / valores.size
@@ -338,8 +372,6 @@ fun EjercicioDetailScreen(
 
             ejercicio?.let { ejercicioLocal ->
 
-                val esCardio = ejercicioLocal.musculos.contains(Musculo.CARDIO)
-
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -414,11 +446,11 @@ fun EjercicioDetailScreen(
 
                                                 if (!esCardio) {
                                                     Text(
-                                                        "Serie ${index + 1}: ${serie.peso ?: 0} kg x ${serie.repeticiones ?: 0}"
+                                                        "Serie ${index + 1}: ${serie.peso ?: 0} kg × ${serie.repeticiones ?: 0} reps"
                                                     )
                                                 } else {
                                                     Text(
-                                                        "Serie ${index + 1}: ${serie.tiempo ?: 0} min"
+                                                        "Serie ${index + 1}: ${serie.tiempo ?: 0} min × ${serie.intensidad ?: 1} intensidad"
                                                     )
                                                 }
 
@@ -448,8 +480,6 @@ fun EjercicioDetailScreen(
 
                                 Spacer(Modifier.height(12.dp))
 
-                                // Observamos el comentario guardado desde DB
-                                val comentarioDB by viewModel.getComentario(ejercicioId).collectAsState(initial = "")
 
                                 // Estado editable por el usuario, inicializado con DB
                                 var comentarioTemp by rememberSaveable { mutableStateOf(comentarioDB) }
@@ -530,52 +560,123 @@ fun EjercicioDetailScreen(
                                     // DATOS BASE
                                     // -------------------
 
-                                    val valores = if (esCardio) {
-                                        progreso.map { (it.tiempo ?: 0).toFloat() }
-                                    } else {
-                                        progreso.map { it.pesoMax ?: 0f }
+                                    val valores = remember(progreso) {
+                                        progreso.map { it.valor }
                                     }
 
-                                    val unidad = if (esCardio) "min" else "kg"
+                                    val unidad = if (esCardio) "pts" else "kg"
 
                                     val primerValor = valores.first()
                                     val ultimoValor = valores.last()
                                     val diferencia = ultimoValor - primerValor
+                                    val colorDiferencia = when {
+                                        diferencia > 0 -> Color(0xFF4CAF50)
+                                        diferencia < 0 -> Color.Red
+                                        else -> Color.Gray
+                                    }
 
-                                    val fechas = progreso.map {
-                                        val fecha = Instant
-                                            .ofEpochMilli(it.fecha)
-                                            .atZone(ZoneId.systemDefault())
-                                            .toLocalDate()
+                                    val fechas = remember(progreso) {
+                                        progreso.map {
+                                            val fecha = Instant
+                                                .ofEpochMilli(it.fecha)
+                                                .atZone(ZoneId.systemDefault())
+                                                .toLocalDate()
 
-                                        "${fecha.dayOfMonth}/${fecha.monthValue}"
+                                            "${fecha.dayOfMonth}/${fecha.monthValue}"
+                                        }
                                     }
 
                                     // -------------------
                                     // TEXTO
                                     // -------------------
 
-                                    Text("Primer valor registrado: $primerValor $unidad")
-                                    Text("Último valor registrado: $ultimoValor $unidad")
+                                    if (esCardio) {
 
-                                    Spacer(Modifier.height(8.dp))
+                                        FilaDato(
+                                            "Primer valor registrado:",
+                                            "${primerValor.toInt()} $unidad"
+                                        )
 
-                                    Text(
-                                        text = "Diferencia: ${if (diferencia >= 0) "+" else ""}$diferencia $unidad",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
+                                        FilaDato(
+                                            "Último valor registrado:",
+                                            "${ultimoValor.toInt()} $unidad"
+                                        )
+
+                                        Spacer(Modifier.height(8.dp))
+
+                                        FilaDato(
+                                            "Diferencia:",
+                                            "${if (diferencia >= 0) "+" else "-"}${diferencia.toInt()} $unidad",
+                                            colorDiferencia
+                                        )
+
+                                    } else {
+
+                                        FilaDato(
+                                            "Primer valor registrado:",
+                                            "$primerValor $unidad"
+                                        )
+
+                                        FilaDato(
+                                            "Último valor registrado:",
+                                            "$ultimoValor $unidad"
+                                        )
+
+                                        Spacer(Modifier.height(8.dp))
+
+                                        FilaDato(
+                                            "Diferencia:",
+                                            "${if (diferencia >= 0) "+" else ""}$diferencia $unidad",
+                                            colorDiferencia
+                                        )
+                                    }
 
                                     Spacer(Modifier.height(16.dp))
 
                                     // -------------------
-                                    // GRAFICA
+                                    // GRAFICAS
                                     // -------------------
+
+                                    val valoresExtra = remember(progreso, esCardio) {
+                                        if (esCardio) {
+                                            progreso.map { (it.tiempo ?: 0).toFloat() }
+                                        } else {
+                                            progreso.map { it.pesoMax ?: 0f }
+                                        }
+                                    }
+
+                                    Text(
+                                        text = if (esCardio) "Tiempo total (min)" else "Peso máximo (kg)",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+
+                                    Spacer(Modifier.height(8.dp))
+
+                                    GraficaProgresoScrollable(
+                                        valores = valoresExtra,
+                                        fechas = fechas,
+                                        unidad = if (esCardio) "min" else "kg",
+                                        scrollState = scrollStateGrafica,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    Spacer(Modifier.height(24.dp))
+
+                                    Text(
+                                        text = if (esCardio) "Carga de cardio (pts)" else "Volumen levantado (kg)",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+
+                                    Spacer(Modifier.height(8.dp))
 
                                     GraficaProgresoScrollable(
                                         valores = valores,
                                         fechas = fechas,
+                                        unidad = if (esCardio) "min" else "kg",
+                                        scrollState = scrollStateGrafica,
                                         modifier = Modifier.fillMaxWidth()
                                     )
+
                                 }
                             }
                         }
@@ -602,46 +703,43 @@ fun EjercicioDetailScreen(
                                         Text("Aún no hay estadísticas.")
                                     } else {
 
-                                        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                            Row(
-                                                Modifier.padding(12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text("Mayor volumen en 1 serie: ")
-                                                Text("${records!!.volumenMaxSerie ?: 0f} kg")
-                                            }
+                                        pr?.let {
+                                            FilaDato("PR:", "${it.pr} kg")
                                         }
 
-                                        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                            Row(
-                                                Modifier.padding(12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text("Volumen total: ")
-                                                Text("${records!!.volumenTotal ?: 0f} kg")
-                                            }
+                                        Spacer(Modifier.height(6.dp))
+
+                                        FilaDato(
+                                            "Mayor volumen en 1 serie:",
+                                            "${records!!.volumenMaxSerie ?: 0f} kg"
+                                        )
+
+                                        Spacer(Modifier.height(6.dp))
+
+                                        mejorSesionFuerza?.let {
+                                            FilaDato("Mejor sesión:", "${it.mejorSesion} kg")
                                         }
 
-                                        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                            Row(
-                                                Modifier.padding(12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text("Series totales: ")
-                                                Text("${records!!.seriesTotales}")
-                                            }
-                                        }
+                                        Spacer(Modifier.height(6.dp))
 
-                                        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                            Row(
-                                                Modifier.padding(12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text("Repeticiones totales: ")
-                                                Text("${records!!.repeticionesTotales ?: 0}")
-                                            }
-                                        }
+                                        FilaDato(
+                                            "Volumen total:",
+                                            "${records!!.volumenTotal ?: 0f} kg"
+                                        )
 
+                                        Spacer(Modifier.height(6.dp))
+
+                                        FilaDato(
+                                            "Series totales:",
+                                            "${records!!.seriesTotales}"
+                                        )
+
+                                        Spacer(Modifier.height(6.dp))
+
+                                        FilaDato(
+                                            "Repeticiones totales:",
+                                            "${records!!.repeticionesTotales ?: 0}"
+                                        )
                                     }
 
                                 } else {
@@ -650,38 +748,45 @@ fun EjercicioDetailScreen(
                                         Text("Aún no hay estadísticas.")
                                     } else {
 
-                                        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                            Row(
-                                                Modifier.padding(12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text("Mejor tiempo: ")
-                                                Text("${recordsCardio!!.mejorTiempo ?: 0} min")
-                                            }
+                                        mejorCargaCardio?.let {
+                                            FilaDato(
+                                                "Mejor carga:",
+                                                "${it.carga}"
+                                            )
+
+                                            FilaDato(
+                                                "",
+                                                "${it.tiempo} min × ${it.intensidad} intensidad"
+                                            )
                                         }
 
-                                        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                            Row(
-                                                Modifier.padding(12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text("Tiempo total: ")
-                                                Text("${recordsCardio!!.tiempoTotal ?: 0} min")
-                                            }
+                                        Spacer(Modifier.height(6.dp))
+
+                                        mejorSesionCardio?.let {
+                                            FilaDato("Mejor sesión", "${it.mejorSesion}")
                                         }
 
-                                        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                            Row(
-                                                Modifier.padding(12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text("Series totales: ")
-                                                Text("${recordsCardio!!.seriesTotales}")
-                                            }
-                                        }
+                                        Spacer(Modifier.height(6.dp))
 
+                                        FilaDato(
+                                            "Mejor carga en 1 serie:",
+                                            "${recordsCardio!!.mejorTiempo?.toInt() ?: 0} pts"
+                                        )
+
+                                        Spacer(Modifier.height(6.dp))
+
+                                        FilaDato(
+                                            "Carga total:",
+                                            "${recordsCardio!!.tiempoTotal?.toInt() ?: 0} pts"
+                                        )
+
+                                        Spacer(Modifier.height(6.dp))
+
+                                        FilaDato(
+                                            "Series totales:",
+                                            "${recordsCardio!!.seriesTotales}"
+                                        )
                                     }
-
                                 }
 
                             }
@@ -779,5 +884,20 @@ fun EjercicioDetailScreen(
             confirmButton = { TextButton(onClick = { viewModel.actualizarMusculos(ejercicioId, musculosSeleccionados.toList()); showEditMusculosDialog = false }) { Text("Guardar") } },
             dismissButton = { TextButton(onClick = { showEditMusculosDialog = false }) { Text("Cancelar") } }
         )
+    }
+}
+
+@Composable
+fun FilaDato(
+    label: String,
+    valor: String,
+    colorValor: Color = Color.Unspecified
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label)
+        Text(valor, color = colorValor)
     }
 }

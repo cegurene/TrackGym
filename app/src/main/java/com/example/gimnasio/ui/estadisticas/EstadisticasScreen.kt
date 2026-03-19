@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
@@ -36,12 +39,31 @@ fun EstadisticasScreen(
         factory = EstadisticasViewModelFactory(database)
     )
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshStats()
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val stats by viewModel.distribucionMusculos.collectAsState()
     val resumen by viewModel.resumenGeneral.collectAsState()
     val records by viewModel.records.collectAsState()
     val volumenPorMusculo by viewModel.volumenPorMusculo.collectAsState()
 
-    val totalEjercicios = stats.values.sum()
+    val totalEjercicios = remember(stats) {
+        stats.values.sum()
+    }
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -61,6 +83,8 @@ fun EstadisticasScreen(
     val rutinas by viewModel.rutinas.collectAsState()
 
     val rutinasFrecuencia by viewModel.rutinasFrecuencia.collectAsState()
+
+    val tiempoCardioTotal by viewModel.tiempoCardioTotal.collectAsState()
 
     // Detectar sección activa automáticamente
     LaunchedEffect(listState) {
@@ -195,7 +219,7 @@ fun EstadisticasScreen(
 
                             Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                                 Column(Modifier.padding(12.dp)) {
-                                    Text("Tiempo total")
+                                    Text("Tiempo total entrenado")
                                     Text(tiempo.tiempoTotal)
                                 }
                             }
@@ -224,6 +248,13 @@ fun EstadisticasScreen(
                                     }
                                 }
                             }
+
+                            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("Tiempo total de cardio")
+                                    Text(tiempoCardioTotal)
+                                }
+                            }
                         }
                     }
                 }
@@ -240,17 +271,15 @@ fun EstadisticasScreen(
                         Column(Modifier.padding(16.dp)) {
 
                             Text("💪 Ejercicios", style = MaterialTheme.typography.titleLarge)
-
+                            Text("Total ejercicios creados: ${resumen.totalEjercicios}")
                             Spacer(Modifier.height(12.dp))
 
-                            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text("Total ejercicios creados")
-                                    Text("${resumen.totalEjercicios}")
-                                }
+
+                            val statsOrdenados = remember(stats) {
+                                stats.toList().sortedByDescending { it.second }
                             }
 
-                            stats.toList().sortedByDescending { it.second }.forEach { (musculo, cantidad) ->
+                            statsOrdenados.forEach { (musculo, cantidad) ->
 
                                 val porcentaje =
                                     if (totalEjercicios > 0) (cantidad * 100) / totalEjercicios else 0
@@ -291,10 +320,15 @@ fun EstadisticasScreen(
                             Text("🏋️ Volumen por músculo", style = MaterialTheme.typography.titleLarge)
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            val listaOrdenada = volumenPorMusculo.toList().sortedByDescending { it.second }
-                            val maxVolumen = listaOrdenada.maxOfOrNull { it.second } ?: 1.0
+                            val volumenOrdenado = remember(volumenPorMusculo) {
+                                volumenPorMusculo.toList().sortedByDescending { it.second }
+                            }
 
-                            listaOrdenada.forEach { (musculo, volumen) ->
+                            val maxVolumen = remember(volumenOrdenado) {
+                                volumenOrdenado.maxOfOrNull { it.second } ?: 1.0
+                            }
+
+                            volumenOrdenado.forEach { (musculo, volumen) ->
                                 val progreso = (volumen / maxVolumen).toFloat().coerceIn(0f, 1f)
                                 val progresoAnimado by animateFloatAsState(targetValue = progreso, label = "")
 
@@ -355,10 +389,15 @@ fun EstadisticasScreen(
                             Text("Total rutinas creadas: ${resumen.totalRutinas}")
                             Spacer(Modifier.height(12.dp))
 
-                            val listaOrdenada = rutinasFrecuencia.sortedByDescending { it.veces }
-                            val maxVeces = listaOrdenada.maxOfOrNull { it.veces } ?: 1
+                            val rutinasOrdenadas = remember(rutinasFrecuencia) {
+                                rutinasFrecuencia.sortedByDescending { it.veces }
+                            }
 
-                            listaOrdenada.forEach { rutina ->
+                            val maxVeces = remember(rutinasOrdenadas) {
+                                rutinasOrdenadas.maxOfOrNull { it.veces } ?: 1
+                            }
+
+                            rutinasOrdenadas.forEach { rutina ->
 
                                 val progreso = rutina.veces.toFloat() / maxVeces
                                 val progresoAnimado by animateFloatAsState(

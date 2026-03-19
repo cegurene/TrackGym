@@ -134,6 +134,9 @@ class EjercicioViewModel(
     fun getProgresoEjercicio(ejercicioId: Long) =
         serieDao.getProgresoEjercicio(ejercicioId)
 
+    fun getProgresoEjercicioCardio(ejercicioId: Long) =
+        serieDao.getProgresoEjercicioCardio(ejercicioId)
+
     fun getRecordsEjercicio(ejercicioId: Long) =
         serieDao.getRecordsEjercicio(ejercicioId)
 
@@ -195,4 +198,12 @@ class EjercicioViewModel(
     fun getComentario(ejercicioId: Long) =
         ejercicioDao.getByIdFlow(ejercicioId)
             .map { it?.comentario ?: "" }
+
+    fun getPR(ejercicioId: Long) = serieDao.getPR(ejercicioId)
+
+    fun getMejorSesionFuerza(ejercicioId: Long) = serieDao.getMejorSesionFuerza(ejercicioId)
+
+    fun getMejorSesionCardio(ejercicioId: Long) = serieDao.getMejorSesionCardio(ejercicioId)
+
+    fun getMejorCargaCardio(ejercicioId: Long) = serieDao.getMejorCargaCardio(ejercicioId)
 }

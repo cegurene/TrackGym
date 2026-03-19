@@ -232,7 +232,7 @@ fun RutinaDetailScreen(
         }
     }
 
-    // ⚠️ Diálogo de confirmación
+    // ⚠️ Diálogo de confirmación de borrar
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },

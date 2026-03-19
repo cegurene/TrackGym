@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.entity.SerieEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +45,7 @@ fun EntrenamientoDetailScreen(
 
     var showSettings by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     var nuevoNombre by remember { mutableStateOf("") }
 
     val sheetState = rememberModalBottomSheetState(
@@ -92,6 +94,13 @@ fun EntrenamientoDetailScreen(
                 }
             }
 
+            fun calcularTiempo(series: List<SerieEntity>): Int {
+                return series.sumOf {
+                    (it.tiempo ?: 0)
+                }
+            }
+
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -128,8 +137,11 @@ fun EntrenamientoDetailScreen(
 
                 items(data.ejercicios) { ejercicioConSeries ->
 
-                    val volumen =
-                        calcularVolumen(ejercicioConSeries.series)
+                    val volumen = calcularVolumen(ejercicioConSeries.series)
+
+                    val tiempo = calcularTiempo(ejercicioConSeries.series)
+
+                    val esCardio = ejercicioConSeries.ejercicio.musculos.contains(Musculo.CARDIO)
 
                     Card(
                         modifier = Modifier
@@ -154,18 +166,38 @@ fun EntrenamientoDetailScreen(
 
                             ejercicioConSeries.series.forEachIndexed { index, serie ->
 
-                                Text(
-                                    text = "Serie ${index + 1}: " +
-                                            "${serie.peso}kg x ${serie.repeticiones}"
-                                )
+                                if (!esCardio) {
+
+                                    Text(
+                                        text = "Serie ${index + 1}: " +
+                                                "${serie.peso}kg × ${serie.repeticiones}"
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Text(
+                                        text = "Volumen total: $volumen kg",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+
+                                } else {
+
+                                    Text(
+                                        text = "Serie ${index + 1}: " +
+                                                "${serie.tiempo}min"
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Text(
+                                        text = "Tiempo total: $tiempo min",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text("Sin implementar - Intensidad")
+
+                                }
+
                             }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Text(
-                                text = "Volumen total: $volumen kg",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
                         }
                     }
                 }
@@ -183,6 +215,10 @@ fun EntrenamientoDetailScreen(
                     showSettings = false
                     nuevoNombre = entrenamiento?.entrenamiento?.nombre ?: ""
                     showRenameDialog = true
+                },
+                onDelete = {
+                    showSettings = false
+                    showDeleteDialog = true
                 }
             )
         }
@@ -215,6 +251,36 @@ fun EntrenamientoDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showRenameDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    // ⚠️ Diálogo de confirmación de borrar
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Eliminar '${entrenamiento?.entrenamiento?.nombre ?: "Entrenamiento"}'") },
+            text = {
+                Text("Esta acción no se puede deshacer. ¿Seguro que quieres eliminar este entrenamiento?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.borrarEntrenamiento(entrenamientoId)
+                        showDeleteDialog = false
+                        onBack()
+                    }
+                ) {
+                    Text(
+                        text = "Eliminar",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
                     Text("Cancelar")
                 }
             }

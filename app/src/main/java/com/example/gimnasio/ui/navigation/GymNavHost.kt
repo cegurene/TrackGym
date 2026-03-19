@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -33,6 +34,7 @@ fun GymNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
+    val homeRoute = "home"
     val context = LocalContext.current
     val database = remember { GymDatabase.getDatabase(context) }
     val entrenamientoDao = remember { database.entrenamientoDao() }
@@ -42,15 +44,20 @@ fun GymNavHost(
         .getEntrenamientoActivoFlow()
         .collectAsState(initial = null)
 
-    // Solo navegamos automáticamente si NO estamos ya en la pantalla de entrenamiento
+    var autoNavegacionInicialHecha by rememberSaveable { mutableStateOf(false) }
+
+    fun navigateToEntrenamiento(entrenamientoId: Long) {
+        navController.navigate("entrenamiento/$entrenamientoId") {
+            launchSingleTop = true
+        }
+    }
 
     LaunchedEffect(entrenamientoActivo) {
         entrenamientoActivo?.let { activo ->
             val currentRoute = navController.currentBackStackEntry?.destination?.route
-            if (currentRoute == "home") { // Solo redirigir si estamos en el inicio
-                navController.navigate("entrenamiento/${activo.id}") {
-                    popUpTo("home") { inclusive = false }
-                }
+            if (!autoNavegacionInicialHecha && currentRoute == homeRoute) {
+                autoNavegacionInicialHecha = true
+                navigateToEntrenamiento(activo.id)
             }
         }
     }
@@ -67,11 +74,11 @@ fun GymNavHost(
 
             NavHost(
                 navController = navController,
-                startDestination = "home",
+                startDestination = homeRoute,
                 modifier = Modifier.weight(1f)
             ) {
 
-                composable("home") {
+                composable(homeRoute) {
                     HomeScreen()
                 }
 
@@ -93,7 +100,7 @@ fun GymNavHost(
                         rutinaId = rutinaId,
                         onBack = { navController.popBackStack() },
                         onStartEntrenamiento = { entrenamientoId ->
-                            navController.navigate("entrenamiento/$entrenamientoId")
+                            navigateToEntrenamiento(entrenamientoId)
                         },
                         onNavigateToEjercicio = { ejercicioId ->
                             navController.navigate("ejercicioDetail/$ejercicioId")
@@ -128,7 +135,15 @@ fun GymNavHost(
 
                     EntrenamientoScreen(
                         entrenamientoId = entrenamientoId,
-                        onBack = { navController.popBackStack() }
+                        onBack = {
+                            val popped = navController.popBackStack()
+                            if (!popped) {
+                                navController.navigate(homeRoute) {
+                                    popUpTo(navController.graph.id) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
                     )
                 }
 
@@ -142,7 +157,7 @@ fun GymNavHost(
                         entrenamientoId = entrenamientoId,
                         onBack = { navController.popBackStack() },
                         onNavigateToEntrenamiento = { nuevoId ->
-                            navController.navigate("entrenamiento/$nuevoId")
+                            navigateToEntrenamiento(nuevoId)
                         },
                         onNavigateToEjercicio = { ejercicioId ->
                             navController.navigate("ejercicioDetail/$ejercicioId")
@@ -158,7 +173,7 @@ fun GymNavHost(
             ) {
                 Card(
                     onClick = {
-                        navController.navigate("entrenamiento/${entrenamientoActivo!!.id}")
+                        navigateToEntrenamiento(entrenamientoActivo!!.id)
                     },
                     modifier = Modifier
                         .fillMaxWidth()

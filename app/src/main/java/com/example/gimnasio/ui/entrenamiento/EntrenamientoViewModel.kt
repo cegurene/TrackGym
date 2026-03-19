@@ -30,7 +30,8 @@ class EntrenamientoViewModel(
                 serieDao.insert(
                     SerieEntity(
                         entrenamientoEjercicioId = entrenamientoEjercicioId,
-                        tiempo = 0
+                        tiempo = 0,
+                        intensidad = 0
                     )
                 )
             } else {
@@ -51,6 +52,18 @@ class EntrenamientoViewModel(
 
     fun actualizarRepsSerie(serieId: Long, reps: Int) {
         viewModelScope.launch { entrenamientoDao.updateRepsSerie(serieId, reps) }
+    }
+
+    fun actualizarTiempoSerie(idSerie: Long, tiempo: Int) {
+        viewModelScope.launch {
+            serieDao.actualizarTiempo(idSerie, tiempo)
+        }
+    }
+
+    fun actualizarIntensidadSerie(idSerie: Long, intensidad: Int) {
+        viewModelScope.launch {
+            serieDao.actualizarIntensidad(idSerie, intensidad)
+        }
     }
 
     fun eliminarSerie(serieId: Long) {
@@ -90,12 +103,6 @@ class EntrenamientoViewModel(
         viewModelScope.launch {
             entrenamientoDao.marcarComoCompletado(entrenamientoId, System.currentTimeMillis())
             onFinalizado()
-        }
-    }
-
-    fun actualizarTiempoSerie(idSerie: Long, tiempo: Int) {
-        viewModelScope.launch {
-            serieDao.actualizarTiempo(idSerie, tiempo)
         }
     }
 }

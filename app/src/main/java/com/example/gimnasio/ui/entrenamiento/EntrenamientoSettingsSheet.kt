@@ -16,7 +16,8 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun EntrenamientoSettingsSheet(
-    onRename: () -> Unit
+    onRename: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -36,6 +37,16 @@ fun EntrenamientoSettingsSheet(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("✏️ Cambiar nombre")
+        }
+
+        TextButton(
+            onClick = onDelete,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "🗑️ Eliminar entrenamiento",
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))

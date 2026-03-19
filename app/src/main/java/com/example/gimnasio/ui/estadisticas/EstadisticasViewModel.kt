@@ -19,6 +19,9 @@ class EstadisticasViewModel(
     private val entrenamientoDao = database.entrenamientoDao()
     private val serieDao = database.serieDao()
 
+    private val _tiempoCardioTotal = MutableStateFlow("")
+    val tiempoCardioTotal: StateFlow<String> = _tiempoCardioTotal
+
     // 1️⃣ Distribución por músculo
     val distribucionMusculos: StateFlow<Map<Musculo, Int>> =
         ejercicioDao.getConteoPorMusculo()
@@ -79,17 +82,20 @@ class EstadisticasViewModel(
                     val entrenamientoMaxMs: Long? = entrenamientoDao.getEntrenamientoMasLargo()
                     val entrenamientoMinMs: Long? = entrenamientoDao.getEntrenamientoMasCorto()
 
-                    val entrenamientoStr = entrenamientoMaxMs?.let {
-                        val horas = (it / 1000 / 60 / 60)
-                        val minutos = (it / 1000 / 60) % 60
-                        "${horas}h ${minutos}m"
+                    fun format(ms: Long): String {
+
+                        val totalSeg = ms / 1000
+
+                        val h = totalSeg / 3600
+                        val m = (totalSeg % 3600) / 60
+                        val s = totalSeg % 60
+
+                        return "${h}h ${m}m ${s}s"
                     }
 
-                    val entrenamientoMinStr = entrenamientoMinMs?.let {
-                        val horas = (it / 1000 / 60 / 60)
-                        val minutos = (it / 1000 / 60) % 60
-                        "${horas}h ${minutos}m"
-                    }
+                    val entrenamientoStr = entrenamientoMaxMs?.let { format(it) }
+
+                    val entrenamientoMinStr = entrenamientoMinMs?.let { format(it) }
 
                     emit(
                         RecordPersonal(
@@ -108,6 +114,62 @@ class EstadisticasViewModel(
                 RecordPersonal()
             )
 
+    fun refreshStats() {
+
+        viewModelScope.launch {
+
+            val semana = entrenamientoDao.getEntrenamientosUltimaSemana()
+            val mes = entrenamientoDao.getEntrenamientosUltimoMes()
+
+            _actividad.value = ActividadStats(
+                entrenamientosSemana = semana,
+                entrenamientosMes = mes
+            )
+
+            val totalTiempo = entrenamientoDao.getTiempoTotalEntrenado() ?: 0
+            val media = entrenamientoDao.getDuracionMedia() ?: 0.0
+
+            val tiempoCardioMin = serieDao.getTiempoTotalCardio() ?: 0
+
+            val h = tiempoCardioMin / 60
+            val m = tiempoCardioMin % 60
+
+            _tiempoCardioTotal.value = "${h}h ${m}m"
+
+            fun format(ms: Long): String {
+
+                val totalSeg = ms / 1000
+
+                val h = totalSeg / 3600
+                val m = (totalSeg % 3600) / 60
+                val s = totalSeg % 60
+
+                return "${h}h ${m}m ${s}s"
+            }
+
+            fun formatSinSegundos(ms: Long): String {
+
+                val totalMin = ms / 1000 / 60
+
+                val h = totalMin / 60
+                val m = totalMin % 60
+
+                return "${h}h ${m}m"
+            }
+
+            _tiempo.value = TiempoStats(
+                tiempoTotal = format(totalTiempo),
+                duracionMedia = format(media.toLong())
+            )
+
+            val rutinaTop = entrenamientoDao.getRutinaMasUsada()
+
+            _rutinas.value = RutinaStats(
+                rutinaMasUsada = rutinaTop
+            )
+        }
+    }
+
     // Actividad
     private val _actividad = MutableStateFlow(ActividadStats())
     val actividad: StateFlow<ActividadStats> = _actividad
@@ -125,38 +187,7 @@ class EstadisticasViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-
-        viewModelScope.launch {
-
-            val semana = entrenamientoDao.getEntrenamientosUltimaSemana()
-            val mes = entrenamientoDao.getEntrenamientosUltimoMes()
-
-            _actividad.value = ActividadStats(
-                entrenamientosSemana = semana,
-                entrenamientosMes = mes
-            )
-
-            val totalTiempo = entrenamientoDao.getTiempoTotalEntrenado() ?: 0
-            val media = entrenamientoDao.getDuracionMedia() ?: 0.0
-
-            fun format(ms: Long): String {
-                val h = ms / 1000 / 3600
-                val m = (ms / 1000 / 60) % 60
-                return "${h}h ${m}m"
-            }
-
-            _tiempo.value = TiempoStats(
-                tiempoTotal = format(totalTiempo),
-                duracionMedia = format(media.toLong())
-            )
-
-            val rutinaTop = entrenamientoDao.getRutinaMasUsada()
-
-            _rutinas.value = RutinaStats(
-                rutinaMasUsada = rutinaTop
-            )
-
-        }
+        refreshStats()
     }
 }
 

@@ -50,5 +50,9 @@ class EntrenamientoDetailViewModel (context: Context) : ViewModel(){
         }
     }
 
-
+    fun borrarEntrenamiento(id: Long) {
+        viewModelScope.launch {
+            dao.deleteEntrenamiento(id)
+        }
+    }
 }
