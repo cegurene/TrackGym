@@ -123,7 +123,8 @@ fun GymNavHost(
                                 }
                             }
                         },
-                        onOpenSettings = { }
+                        onOpenSettings = { },
+                        onGraficaScrollChange = {}
                     )
                 }
 

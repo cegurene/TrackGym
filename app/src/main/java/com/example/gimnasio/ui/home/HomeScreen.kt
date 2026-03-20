@@ -1,5 +1,7 @@
 package com.example.gimnasio.ui.home
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -12,6 +14,7 @@ import com.example.gimnasio.ui.entrenamiento.EntrenamientoDetailScreen
 import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
 import kotlinx.coroutines.launch
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen() {
@@ -38,8 +41,11 @@ fun HomeScreen() {
             }
         }
 
+        var isScrollingGrafica by remember { mutableStateOf(false) }
+
         HorizontalPager(
             state = pagerState,
+            userScrollEnabled = !isScrollingGrafica,
             modifier = Modifier.fillMaxSize()
         ) { page ->
             when (page) {
@@ -65,7 +71,8 @@ fun HomeScreen() {
                     EjercicioDetailScreen(
                         ejercicioId = selectedEjercicioId!!,
                         onBack = { selectedEjercicioId = null },
-                        onOpenSettings = {}
+                        onOpenSettings = {},
+                        onGraficaScrollChange = { isScrollingGrafica = it }
                     )
                 }
                 2 -> if (selectedEntrenamientoId == null) {

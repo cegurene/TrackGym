@@ -21,28 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
-import com.example.gimnasio.data.model.PuntoProgreso
-import com.example.gimnasio.data.model.UltimaSesionEjercicio
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.time.delay
-import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
-import java.util.Date
-import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +36,8 @@ import java.util.Locale
 fun EjercicioDetailScreen(
     ejercicioId: Long,
     onBack: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onGraficaScrollChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val database = remember { GymDatabase.getDatabase(context) }
@@ -119,6 +106,11 @@ fun EjercicioDetailScreen(
     val mejorCargaCardio by viewModel.getMejorCargaCardio(ejercicioId).collectAsState(initial = null)
 
     val scrollStateGrafica = rememberScrollState()
+    var isScrollingGrafica by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isScrollingGrafica) {
+        onGraficaScrollChange(isScrollingGrafica)
+    }
 
     // ----------------------------
     // GRAFICA
@@ -128,7 +120,8 @@ fun EjercicioDetailScreen(
         valores: List<Float>,
         fechas: List<String>,
         unidad: String,
-        scrollState: ScrollState = scrollStateGrafica,
+        scrollState: ScrollState,
+        onScrollStateChange: (Boolean) -> Unit = {},
         modifier: Modifier = Modifier
     ) {
 
@@ -143,26 +136,37 @@ fun EjercicioDetailScreen(
 
         var containerWidthPx by remember { mutableStateOf(0) }
 
+        val scope = rememberCoroutineScope()
+
+        val isUserScrolling = scrollState.isScrollInProgress
+        LaunchedEffect(isUserScrolling) {
+            onScrollStateChange(isUserScrolling)
+        }
+
+        // Auto-scroll al final cuando cambian los datos
         LaunchedEffect(valores.size) {
             scrollState.scrollTo(scrollState.maxValue)
         }
 
-        Row(modifier = modifier.height(260.dp)) {
+        Row(
+            modifier = modifier
+                .height(260.dp)
+                .fillMaxWidth()
+        ) {
 
             // =========================
-            // EJE Y (FIJO)
+            // EJE Y FIJO
             // =========================
-
             Canvas(
                 modifier = Modifier
                     .width(22.dp)
                     .fillMaxHeight()
             ) {
-
                 val divisiones = 4
                 val heightGrafica = size.height - 40f
                 val step = heightGrafica / divisiones
 
+                // Línea eje Y
                 drawLine(
                     color = Color.Gray,
                     start = Offset(size.width, 0f),
@@ -171,7 +175,6 @@ fun EjercicioDetailScreen(
                 )
 
                 for (i in 0..divisiones) {
-
                     val y = heightGrafica - i * step
                     val valor = min + (rango / divisiones) * i
 
@@ -197,38 +200,30 @@ fun EjercicioDetailScreen(
             // =========================
             // GRAFICA SCROLLABLE
             // =========================
-
             Box(modifier = Modifier.fillMaxSize()) {
-
-                val scope = rememberCoroutineScope()
 
                 Row(
                     modifier = Modifier
-                        .horizontalScroll(scrollState)
-                        .onSizeChanged {
-                            containerWidthPx = it.width
-                        }
+                        .horizontalScroll(
+                            state = scrollState,
+                            overscrollEffect = null
+                        )
                 ) {
 
                     Canvas(
                         modifier = Modifier
                             .width(graficaWidth)
                             .fillMaxHeight()
-                            //.padding(horizontal = 8.dp)
                     ) {
 
                         val stepX = size.width / valores.size
                         val heightGrafica = size.height - 40f
 
-                        // =========================
-                        // GRID HORIZONTAL (más oscuro)
-                        // =========================
-
+                        // GRID horizontal
                         val divisiones = 4
                         val stepY = heightGrafica / divisiones
 
                         for (i in 0..divisiones) {
-
                             val y = heightGrafica - i * stepY
 
                             drawLine(
@@ -239,10 +234,7 @@ fun EjercicioDetailScreen(
                             )
                         }
 
-                        // =========================
                         // EJE X
-                        // =========================
-
                         drawLine(
                             color = Color.Gray,
                             start = Offset(0f, heightGrafica),
@@ -253,16 +245,11 @@ fun EjercicioDetailScreen(
                         valores.forEachIndexed { i, valor ->
 
                             val normalized = (valor - min) / rango
-
                             val x = stepX * i + stepX / 2
                             val y = heightGrafica - normalized * heightGrafica
 
-                            // =========================
-                            // LINEAS
-                            // =========================
-
+                            // Líneas entre puntos
                             if (i > 0) {
-
                                 val prevValor = valores[i - 1]
                                 val prevNorm = (prevValor - min) / rango
 
@@ -283,10 +270,7 @@ fun EjercicioDetailScreen(
                                 )
                             }
 
-                            // =========================
-                            // PUNTOS
-                            // =========================
-
+                            // Punto
                             drawCircle(
                                 color = Color.White,
                                 radius = 10f,
@@ -299,12 +283,8 @@ fun EjercicioDetailScreen(
                                 center = Offset(x, y)
                             )
 
-                            // =========================
-                            // FECHA EJE X
-                            // =========================
-
+                            // Fecha en eje X
                             if (i < fechas.size) {
-
                                 drawContext.canvas.nativeCanvas.drawText(
                                     fechas[i],
                                     x - 25f,
@@ -322,7 +302,6 @@ fun EjercicioDetailScreen(
                 // =========================
                 // FLECHA IZQUIERDA
                 // =========================
-
                 if (scrollState.value > 0) {
                     IconButton(
                         onClick = {
@@ -339,7 +318,6 @@ fun EjercicioDetailScreen(
                 // =========================
                 // FLECHA DERECHA
                 // =========================
-
                 if (scrollState.value < scrollState.maxValue) {
                     IconButton(
                         onClick = {
@@ -657,6 +635,7 @@ fun EjercicioDetailScreen(
                                         fechas = fechas,
                                         unidad = if (esCardio) "min" else "kg",
                                         scrollState = scrollStateGrafica,
+                                        onScrollStateChange = { isScrollingGrafica = it },
                                         modifier = Modifier.fillMaxWidth()
                                     )
 
@@ -674,6 +653,7 @@ fun EjercicioDetailScreen(
                                         fechas = fechas,
                                         unidad = if (esCardio) "min" else "kg",
                                         scrollState = scrollStateGrafica,
+                                        onScrollStateChange = { isScrollingGrafica = it },
                                         modifier = Modifier.fillMaxWidth()
                                     )
 
