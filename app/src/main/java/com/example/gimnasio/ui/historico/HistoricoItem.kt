@@ -1,6 +1,8 @@
 package com.example.gimnasio.ui.historico
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,7 +20,8 @@ import com.example.gimnasio.data.model.EntrenamientoConRutina
 @Composable
 fun HistoricoItem(
     item: EntrenamientoConRutina,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    numero: Int
 ) {
 
     val inicioMillis = item.entrenamiento.fechaInicio
@@ -43,10 +46,21 @@ fun HistoricoItem(
             modifier = Modifier.padding(16.dp)
         ) {
 
-            Text(
-                text = item.entrenamiento.nombre,
-                style = MaterialTheme.typography.titleMedium
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ){
+                Text(
+                    text = item.entrenamiento.nombre,
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Text(
+                    text = numero.toString(),
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
 
             Text(
                 text = "Basado en: ${item.rutina.nombre}",

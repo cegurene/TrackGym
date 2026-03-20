@@ -2,9 +2,11 @@ package com.example.gimnasio.ui.ejercicios
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,7 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
@@ -134,6 +139,8 @@ fun EjercicioDetailScreen(
         val min = valores.minOrNull() ?: 0f
         val rango = (max - min).takeIf { it != 0f } ?: 1f
 
+        val density = LocalDensity.current
+
         var containerWidthPx by remember { mutableStateOf(0) }
 
         val scope = rememberCoroutineScope()
@@ -143,10 +150,23 @@ fun EjercicioDetailScreen(
             onScrollStateChange(isUserScrolling)
         }
 
-        // Auto-scroll al final cuando cambian los datos
+        // Auto-scroll al final
         LaunchedEffect(valores.size) {
             scrollState.scrollTo(scrollState.maxValue)
         }
+
+        var selectedIndex by remember { mutableStateOf<Int?>(null) }
+        var selectedOffset by remember { mutableStateOf(Offset.Zero) }
+
+        // Animación tooltip
+        val animatedX by animateFloatAsState(
+            targetValue = selectedOffset.x,
+            label = "tooltipX"
+        )
+        val animatedY by animateFloatAsState(
+            targetValue = selectedOffset.y,
+            label = "tooltipY"
+        )
 
         Row(
             modifier = modifier
@@ -155,7 +175,7 @@ fun EjercicioDetailScreen(
         ) {
 
             // =========================
-            // EJE Y FIJO
+            // EJE Y
             // =========================
             Canvas(
                 modifier = Modifier
@@ -166,7 +186,6 @@ fun EjercicioDetailScreen(
                 val heightGrafica = size.height - 40f
                 val step = heightGrafica / divisiones
 
-                // Línea eje Y
                 drawLine(
                     color = Color.Gray,
                     start = Offset(size.width, 0f),
@@ -198,7 +217,7 @@ fun EjercicioDetailScreen(
             }
 
             // =========================
-            // GRAFICA SCROLLABLE
+            // GRAFICA
             // =========================
             Box(modifier = Modifier.fillMaxSize()) {
 
@@ -208,21 +227,62 @@ fun EjercicioDetailScreen(
                             state = scrollState,
                             overscrollEffect = null
                         )
+                        .onSizeChanged {
+                            containerWidthPx = it.width
+                        }
                 ) {
 
                     Canvas(
                         modifier = Modifier
                             .width(graficaWidth)
                             .fillMaxHeight()
+                            .pointerInput(valores) {
+                                detectTapGestures { offset ->
+
+                                    val stepX = size.width / valores.size
+                                    val heightGrafica = size.height - 40f
+
+                                    val radioDeteccion = 40f // sensibilidad (ajustar)
+
+                                    var encontrado: Int? = null
+                                    var puntoOffset = Offset.Zero
+
+                                    valores.forEachIndexed { i, valor ->
+
+                                        val normalized = (valor - min) / rango
+
+                                        val x = stepX * (i + 0.5f)
+                                        val y = heightGrafica - normalized * heightGrafica
+
+                                        val distancia = kotlin.math.hypot(
+                                            offset.x - x,
+                                            offset.y - y
+                                        )
+
+                                        if (distancia < radioDeteccion) {
+                                            encontrado = i
+                                            puntoOffset = Offset(x, y)
+                                        }
+                                    }
+
+                                    if (encontrado != null) {
+                                        selectedIndex = encontrado
+                                        selectedOffset = puntoOffset
+                                    } else {
+                                        // 👇 AQUÍ está la clave
+                                        selectedIndex = null
+                                    }
+                                }
+                            }
                     ) {
 
                         val stepX = size.width / valores.size
                         val heightGrafica = size.height - 40f
 
-                        // GRID horizontal
                         val divisiones = 4
                         val stepY = heightGrafica / divisiones
 
+                        // GRID
                         for (i in 0..divisiones) {
                             val y = heightGrafica - i * stepY
 
@@ -242,19 +302,25 @@ fun EjercicioDetailScreen(
                             strokeWidth = 4f
                         )
 
-                        valores.forEachIndexed { i, valor ->
+                        // =========================
+                        // 1. LINEAS
+                        // =========================
+                        val puntos = valores.mapIndexed { i, valor ->
 
                             val normalized = (valor - min) / rango
-                            val x = stepX * i + stepX / 2
+                            val x = stepX * (i + 0.5f)
                             val y = heightGrafica - normalized * heightGrafica
 
-                            // Líneas entre puntos
-                            if (i > 0) {
-                                val prevValor = valores[i - 1]
-                                val prevNorm = (prevValor - min) / rango
+                            Offset(x, y)
+                        }
 
-                                val prevX = stepX * (i - 1) + stepX / 2
-                                val prevY = heightGrafica - prevNorm * heightGrafica
+                        puntos.forEachIndexed { i, punto ->
+
+                            if (i > 0) {
+
+                                val prev = puntos[i - 1]
+                                val valor = valores[i]
+                                val prevValor = valores[i - 1]
 
                                 val colorLinea = when {
                                     valor > prevValor -> Color(0xFF4CAF50)
@@ -264,30 +330,39 @@ fun EjercicioDetailScreen(
 
                                 drawLine(
                                     color = colorLinea,
-                                    start = Offset(prevX, prevY),
-                                    end = Offset(x, y),
+                                    start = prev,
+                                    end = punto,
                                     strokeWidth = 6f
                                 )
                             }
+                        }
 
-                            // Punto
+                        // =========================
+                        // 2. PUNTOS
+                        // =========================
+                        puntos.forEachIndexed { i, punto ->
+
+                            val isSelected = selectedIndex == i
+
+                            // círculo exterior
                             drawCircle(
-                                color = Color.White,
-                                radius = 10f,
-                                center = Offset(x, y)
+                                color = if (isSelected) Color.Yellow else Color.Black,
+                                radius = if (isSelected) 15f else 10f,
+                                center = punto
                             )
 
+                            // círculo interior
                             drawCircle(
                                 color = Color.Black,
                                 radius = 6f,
-                                center = Offset(x, y)
+                                center = punto
                             )
 
-                            // Fecha en eje X
+                            // fecha
                             if (i < fechas.size) {
                                 drawContext.canvas.nativeCanvas.drawText(
                                     fechas[i],
-                                    x - 25f,
+                                    punto.x - 25f,
                                     size.height - 5f,
                                     android.graphics.Paint().apply {
                                         textSize = 26f
@@ -296,11 +371,38 @@ fun EjercicioDetailScreen(
                                 )
                             }
                         }
+
                     }
                 }
 
                 // =========================
-                // FLECHA IZQUIERDA
+                // TOOLTIP SOBRE EL PUNTO
+                // =========================
+                selectedIndex?.let { index ->
+
+                    val valor = valores[index]
+                    val fecha = fechas.getOrNull(index) ?: ""
+
+                    val xDp = with(density) { animatedX.toDp() }
+                    val yDp = with(density) { animatedY.toDp() }
+
+                    Card(
+                        modifier = Modifier
+                            .offset(
+                                x = xDp - 40.dp,
+                                y = yDp - 70.dp
+                            ),
+                        elevation = CardDefaults.cardElevation(6.dp)
+                    ) {
+                        Column(Modifier.padding(8.dp)) {
+                            Text("📅 $fecha")
+                            Text("📊 ${valor.toInt()} $unidad")
+                        }
+                    }
+                }
+
+                // =========================
+                // FLECHAS
                 // =========================
                 if (scrollState.value > 0) {
                     IconButton(
@@ -311,13 +413,10 @@ fun EjercicioDetailScreen(
                         },
                         modifier = Modifier.align(Alignment.CenterStart)
                     ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Anterior")
+                        Icon(Icons.Default.ArrowBack, contentDescription = null)
                     }
                 }
 
-                // =========================
-                // FLECHA DERECHA
-                // =========================
                 if (scrollState.value < scrollState.maxValue) {
                     IconButton(
                         onClick = {
@@ -327,7 +426,7 @@ fun EjercicioDetailScreen(
                         },
                         modifier = Modifier.align(Alignment.CenterEnd)
                     ) {
-                        Icon(Icons.Default.ArrowForward, contentDescription = "Siguiente")
+                        Icon(Icons.Default.ArrowForward, contentDescription = null)
                     }
                 }
             }

@@ -118,7 +118,7 @@ fun EntrenamientoDetailScreen(
                     ) {
 
                         Text(
-                            text = rutina.nombre,
+                            text = entrenamiento?.entrenamiento?.nombre ?: "",
                             style = MaterialTheme.typography.titleLarge
                         )
 
@@ -133,6 +133,15 @@ fun EntrenamientoDetailScreen(
                             Text("Repetir")
                         }
                     }
+
+                    Text(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        text = "Basado en: ${rutina.nombre}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
                 }
 
                 items(data.ejercicios) { ejercicioConSeries ->
@@ -159,7 +168,7 @@ fun EntrenamientoDetailScreen(
 
                             Text(
                                 text = ejercicioConSeries.ejercicio.nombre,
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleLarge
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -168,36 +177,63 @@ fun EntrenamientoDetailScreen(
 
                                 if (!esCardio) {
 
-                                    Text(
-                                        text = "Serie ${index + 1}: " +
-                                                "${serie.peso}kg × ${serie.repeticiones}"
-                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Serie ${index + 1}"
+                                        )
+
+                                        Text(
+                                            text = "${serie.peso}kg × ${serie.repeticiones} reps"
+                                        )
+                                    }
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
-                                    Text(
-                                        text = "Volumen total: $volumen kg",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
 
                                 } else {
 
-                                    Text(
-                                        text = "Serie ${index + 1}: " +
-                                                "${serie.tiempo}min"
-                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Serie ${index + 1}"
+                                        )
+
+                                        Text(
+                                            text = "${serie.tiempo}min × ${serie.intensidad} intensidad"
+                                        )
+                                    }
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
-                                    Text(
-                                        text = "Tiempo total: $tiempo min",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Text("Sin implementar - Intensidad")
 
                                 }
 
                             }
+
+                            if(!esCardio){
+
+                                Text(
+                                    text = "Volumen total: $volumen kg",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+
+                            } else{
+
+                                Text(
+                                    text = "Tiempo total: $tiempo min",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text("Sin implementar - Intensidad")
+
+                            }
+
                         }
                     }
                 }
