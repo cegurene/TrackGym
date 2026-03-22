@@ -48,7 +48,8 @@ private fun StatCard(
     title: String,
     value: String,
     modifier: Modifier = Modifier,
-    icon: String = ""
+    icon: String = "",
+    compactTitle: Boolean = false
 ) {
     Card(
         modifier = modifier
@@ -60,22 +61,42 @@ private fun StatCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (icon.isNotEmpty()) {
+            if (compactTitle) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (icon.isNotEmpty()) {
+                        Text(
+                            text = icon,
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = icon,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(end = 8.dp)
+                        text = title,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (icon.isNotEmpty()) {
+                        Text(
+                            text = icon,
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -83,7 +104,14 @@ private fun StatCard(
             Text(
                 text = value,
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                modifier = if (compactTitle) {
+                    Modifier
+                        .fillMaxWidth()
+                        .wrapContentWidth(Alignment.CenterHorizontally)
+                } else {
+                    Modifier
+                }
             )
         }
     }
@@ -202,9 +230,6 @@ fun EjercicioDetailScreen(
         onGraficaScrollChange(isScrollingGrafica)
     }
 
-    // ----------------------------
-    // GRAFICA
-    // ----------------------------
     @Composable
     fun GraficaProgresoScrollable(
         valores: List<Float>,
@@ -223,6 +248,7 @@ fun EjercicioDetailScreen(
         val max = valores.maxOrNull() ?: 1f
         val min = valores.minOrNull() ?: 0f
         val rango = (max - min).takeIf { it != 0f } ?: 1f
+        val promedio = valores.average().toFloat()
 
         val density = LocalDensity.current
 
@@ -253,264 +279,350 @@ fun EjercicioDetailScreen(
             label = "tooltipY"
         )
 
-        Row(
-            modifier = modifier
-                .height(260.dp)
-                .fillMaxWidth()
-        ) {
-
-            // =========================
-            // EJE Y
-            // =========================
-            Canvas(
+        Column(modifier = modifier) {
+            Row(
                 modifier = Modifier
-                    .width(22.dp)
-                    .fillMaxHeight()
+                    .height(260.dp)
+                    .fillMaxWidth()
             ) {
-                val divisiones = 4
-                val heightGrafica = size.height - 40f
-                val step = heightGrafica / divisiones
 
-                drawLine(
-                    color = Color.Gray,
-                    start = Offset(size.width, 0f),
-                    end = Offset(size.width, heightGrafica),
-                    strokeWidth = 4f
-                )
-
-                for (i in 0..divisiones) {
-                    val y = heightGrafica - i * step
-                    val valor = min + (rango / divisiones) * i
+                // =========================
+                // EJE Y
+                // =========================
+                Canvas(
+                    modifier = Modifier
+                        .width(22.dp)
+                        .fillMaxHeight()
+                ) {
+                    val divisiones = 4
+                    val heightGrafica = size.height - 40f
+                    val step = heightGrafica / divisiones
 
                     drawLine(
-                        color = Color.Gray.copy(alpha = 0.6f),
-                        start = Offset(size.width - 10f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = 3f
+                        color = Color.Gray,
+                        start = Offset(size.width, 0f),
+                        end = Offset(size.width, heightGrafica),
+                        strokeWidth = 4f
                     )
 
-                    drawContext.canvas.nativeCanvas.drawText(
-                        valor.toInt().toString(),
-                        0f,
-                        y + 10f,
-                        android.graphics.Paint().apply {
-                            textSize = 28f
-                            color = android.graphics.Color.DKGRAY
+                    for (i in 0..divisiones) {
+                        val y = heightGrafica - i * step
+                        val valor = min + (rango / divisiones) * i
+
+                        drawLine(
+                            color = Color.Gray.copy(alpha = 0.6f),
+                            start = Offset(size.width - 10f, y),
+                            end = Offset(size.width, y),
+                            strokeWidth = 3f
+                        )
+
+                        drawContext.canvas.nativeCanvas.drawText(
+                            valor.toInt().toString(),
+                            0f,
+                            y + 10f,
+                            android.graphics.Paint().apply {
+                                textSize = 28f
+                                color = android.graphics.Color.DKGRAY
+                            }
+                        )
+                    }
+                }
+
+                // =========================
+                // GRAFICA
+                // =========================
+                Box(modifier = Modifier.fillMaxSize()) {
+
+                    Row(
+                        modifier = Modifier
+                            .horizontalScroll(state = scrollState)
+                            .onSizeChanged {
+                                containerWidthPx = it.width
+                            }
+                    ) {
+
+                        Canvas(
+                            modifier = Modifier
+                                .width(graficaWidth)
+                                .fillMaxHeight()
+                                .pointerInput(valores) {
+                                    detectTapGestures { offset ->
+
+                                        val stepX = size.width / valores.size
+                                        val heightGrafica = size.height - 40f
+
+                                        val radioDeteccion = 40f // sensibilidad (ajustar)
+
+                                        var encontrado: Int? = null
+                                        var puntoOffset = Offset.Zero
+
+                                        valores.forEachIndexed { i, valor ->
+
+                                            val normalized = (valor - min) / rango
+
+                                            val x = stepX * (i + 0.5f)
+                                            val y = heightGrafica - normalized * heightGrafica
+
+                                            val distancia = kotlin.math.hypot(
+                                                offset.x - x,
+                                                offset.y - y
+                                            )
+
+                                            if (distancia < radioDeteccion) {
+                                                encontrado = i
+                                                puntoOffset = Offset(x, y)
+                                            }
+                                        }
+
+                                        if (encontrado != null) {
+                                            selectedIndex = encontrado
+                                            selectedOffset = puntoOffset
+                                        } else {
+                                            // 👇 AQUÍ está la clave
+                                            selectedIndex = null
+                                        }
+                                    }
+                                }
+                        ) {
+
+                            val stepX = size.width / valores.size
+                            val heightGrafica = size.height - 40f
+
+                            val divisiones = 4
+                            val stepY = heightGrafica / divisiones
+
+                            // GRID
+                            for (i in 0..divisiones) {
+                                val y = heightGrafica - i * stepY
+
+                                drawLine(
+                                    color = Color.Gray.copy(alpha = 0.5f),
+                                    start = Offset(0f, y),
+                                    end = Offset(size.width, y),
+                                    strokeWidth = 2.5f
+                                )
+                            }
+
+                            // LÍNEA DE PROMEDIO
+                            val normalizedPromedio = (promedio - min) / rango
+                            val yPromedio = heightGrafica - normalizedPromedio * heightGrafica
+                            drawLine(
+                                color = Color(0xFFFF9800).copy(alpha = 0.7f),
+                                start = Offset(0f, yPromedio),
+                                end = Offset(size.width, yPromedio),
+                                strokeWidth = 3f,
+                                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
+                                    floatArrayOf(10f, 5f)
+                                )
+                            )
+
+                            // EJE X
+                            drawLine(
+                                color = Color.Gray,
+                                start = Offset(0f, heightGrafica),
+                                end = Offset(size.width, heightGrafica),
+                                strokeWidth = 4f
+                            )
+
+                            // =========================
+                            // PUNTOS Y LÍNEAS
+                            // =========================
+                            val puntos = valores.mapIndexed { i, valor ->
+
+                                val normalized = (valor - min) / rango
+                                val x = stepX * (i + 0.5f)
+                                val y = heightGrafica - normalized * heightGrafica
+
+                                Offset(x, y)
+                            }
+
+                            // RELLENO BAJO LA LÍNEA
+                            val path = androidx.compose.ui.graphics.Path().apply {
+                                moveTo(puntos.first().x, heightGrafica)
+                                puntos.forEach { moveTo(it.x, it.y) }
+                                lineTo(puntos.last().x, heightGrafica)
+                                close()
+                            }
+
+                            drawPath(
+                                path = path,
+                                color = Color(0xFF4CAF50).copy(alpha = 0.15f)
+                            )
+
+                            // LÍNEAS ENTRE PUNTOS
+                            puntos.forEachIndexed { i, punto ->
+
+                                if (i > 0) {
+
+                                    val prev = puntos[i - 1]
+                                    val valor = valores[i]
+                                    val prevValor = valores[i - 1]
+
+                                    val colorLinea = when {
+                                        valor > prevValor -> Color(0xFF4CAF50)
+                                        valor < prevValor -> Color(0xFFE53935)
+                                        else -> Color(0xFF1976D2)
+                                    }
+
+                                    drawLine(
+                                        color = colorLinea,
+                                        start = prev,
+                                        end = punto,
+                                        strokeWidth = 5f
+                                    )
+                                }
+                            }
+
+                            // PUNTOS
+                            puntos.forEachIndexed { i, punto ->
+
+                                val isSelected = selectedIndex == i
+
+                                // círculo exterior
+                                drawCircle(
+                                    color = if (isSelected) Color.Yellow else Color.Black,
+                                    radius = if (isSelected) 15f else 10f,
+                                    center = punto
+                                )
+
+                                // círculo interior
+                                drawCircle(
+                                    color = Color.Black,
+                                    radius = 6f,
+                                    center = punto
+                                )
+
+                                // fecha
+                                if (i < fechas.size) {
+                                    drawContext.canvas.nativeCanvas.drawText(
+                                        fechas[i],
+                                        punto.x - 25f,
+                                        size.height - 5f,
+                                        android.graphics.Paint().apply {
+                                            textSize = 26f
+                                            color = android.graphics.Color.DKGRAY
+                                        }
+                                    )
+                                }
+                            }
+
                         }
-                    )
+                    }
+
+                    // =========================
+                    // TOOLTIP MEJORADO
+                    // =========================
+                    selectedIndex?.let { index ->
+
+                        val valor = valores[index]
+                        val fecha = fechas.getOrNull(index) ?: ""
+                        val diferencia = if (index > 0) valor - valores[index - 1] else 0f
+                        val colorDiferencia = when {
+                            diferencia > 0 -> Color(0xFF4CAF50)
+                            diferencia < 0 -> Color(0xFFE53935)
+                            else -> Color.Gray
+                        }
+
+                        val xDp = with(density) { animatedX.toDp() }
+                        val yDp = with(density) { animatedY.toDp() }
+
+                        Card(
+                            modifier = Modifier
+                                .offset(
+                                    x = xDp - 60.dp,
+                                    y = yDp - 100.dp
+                                ),
+                            elevation = CardDefaults.cardElevation(6.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(
+                                    "📅 $fecha",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Text(
+                                    "📊 ${valor.toInt()} $unidad",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (diferencia != 0f) {
+                                    Text(
+                                        "${if (diferencia > 0) "▲" else "▼"} ${diferencia.toInt()} $unidad",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = colorDiferencia
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // =========================
+                    // FLECHAS
+                    // =========================
+                    if (scrollState.value > 0) {
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    scrollState.animateScrollBy(-containerWidthPx.toFloat())
+                                }
+                            },
+                            modifier = Modifier.align(Alignment.CenterStart)
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = null)
+                        }
+                    }
+
+                    if (scrollState.value < scrollState.maxValue) {
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    scrollState.animateScrollBy(containerWidthPx.toFloat())
+                                }
+                            },
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                        ) {
+                            Icon(Icons.Default.ArrowForward, contentDescription = null)
+                        }
+                    }
                 }
             }
 
             // =========================
-            // GRAFICA
+            // ESTADÍSTICAS DEBAJO
             // =========================
-            Box(modifier = Modifier.fillMaxSize()) {
+            Spacer(Modifier.height(12.dp))
 
-                Row(
-                    modifier = Modifier
-                        .horizontalScroll(state = scrollState)
-                        .onSizeChanged {
-                            containerWidthPx = it.width
-                        }
-                ) {
-
-                    Canvas(
-                        modifier = Modifier
-                            .width(graficaWidth)
-                            .fillMaxHeight()
-                            .pointerInput(valores) {
-                                detectTapGestures { offset ->
-
-                                    val stepX = size.width / valores.size
-                                    val heightGrafica = size.height - 40f
-
-                                    val radioDeteccion = 40f // sensibilidad (ajustar)
-
-                                    var encontrado: Int? = null
-                                    var puntoOffset = Offset.Zero
-
-                                    valores.forEachIndexed { i, valor ->
-
-                                        val normalized = (valor - min) / rango
-
-                                        val x = stepX * (i + 0.5f)
-                                        val y = heightGrafica - normalized * heightGrafica
-
-                                        val distancia = kotlin.math.hypot(
-                                            offset.x - x,
-                                            offset.y - y
-                                        )
-
-                                        if (distancia < radioDeteccion) {
-                                            encontrado = i
-                                            puntoOffset = Offset(x, y)
-                                        }
-                                    }
-
-                                    if (encontrado != null) {
-                                        selectedIndex = encontrado
-                                        selectedOffset = puntoOffset
-                                    } else {
-                                        // 👇 AQUÍ está la clave
-                                        selectedIndex = null
-                                    }
-                                }
-                            }
-                    ) {
-
-                        val stepX = size.width / valores.size
-                        val heightGrafica = size.height - 40f
-
-                        val divisiones = 4
-                        val stepY = heightGrafica / divisiones
-
-                        // GRID
-                        for (i in 0..divisiones) {
-                            val y = heightGrafica - i * stepY
-
-                            drawLine(
-                                color = Color.Gray.copy(alpha = 0.5f),
-                                start = Offset(0f, y),
-                                end = Offset(size.width, y),
-                                strokeWidth = 2.5f
-                            )
-                        }
-
-                        // EJE X
-                        drawLine(
-                            color = Color.Gray,
-                            start = Offset(0f, heightGrafica),
-                            end = Offset(size.width, heightGrafica),
-                            strokeWidth = 4f
-                        )
-
-                        // =========================
-                        // 1. LINEAS
-                        // =========================
-                        val puntos = valores.mapIndexed { i, valor ->
-
-                            val normalized = (valor - min) / rango
-                            val x = stepX * (i + 0.5f)
-                            val y = heightGrafica - normalized * heightGrafica
-
-                            Offset(x, y)
-                        }
-
-                        puntos.forEachIndexed { i, punto ->
-
-                            if (i > 0) {
-
-                                val prev = puntos[i - 1]
-                                val valor = valores[i]
-                                val prevValor = valores[i - 1]
-
-                                val colorLinea = when {
-                                    valor > prevValor -> Color(0xFF4CAF50)
-                                    valor < prevValor -> Color.Red
-                                    else -> Color.Blue
-                                }
-
-                                drawLine(
-                                    color = colorLinea,
-                                    start = prev,
-                                    end = punto,
-                                    strokeWidth = 6f
-                                )
-                            }
-                        }
-
-                        // =========================
-                        // 2. PUNTOS
-                        // =========================
-                        puntos.forEachIndexed { i, punto ->
-
-                            val isSelected = selectedIndex == i
-
-                            // círculo exterior
-                            drawCircle(
-                                color = if (isSelected) Color.Yellow else Color.Black,
-                                radius = if (isSelected) 15f else 10f,
-                                center = punto
-                            )
-
-                            // círculo interior
-                            drawCircle(
-                                color = Color.Black,
-                                radius = 6f,
-                                center = punto
-                            )
-
-                            // fecha
-                            if (i < fechas.size) {
-                                drawContext.canvas.nativeCanvas.drawText(
-                                    fechas[i],
-                                    punto.x - 25f,
-                                    size.height - 5f,
-                                    android.graphics.Paint().apply {
-                                        textSize = 26f
-                                        color = android.graphics.Color.DKGRAY
-                                    }
-                                )
-                            }
-                        }
-
-                    }
-                }
-
-                // =========================
-                // TOOLTIP SOBRE EL PUNTO
-                // =========================
-                selectedIndex?.let { index ->
-
-                    val valor = valores[index]
-                    val fecha = fechas.getOrNull(index) ?: ""
-
-                    val xDp = with(density) { animatedX.toDp() }
-                    val yDp = with(density) { animatedY.toDp() }
-
-                    Card(
-                        modifier = Modifier
-                            .offset(
-                                x = xDp - 40.dp,
-                                y = yDp - 70.dp
-                            ),
-                        elevation = CardDefaults.cardElevation(6.dp)
-                    ) {
-                        Column(Modifier.padding(8.dp)) {
-                            Text("📅 $fecha")
-                            Text("📊 ${valor.toInt()} $unidad")
-                        }
-                    }
-                }
-
-                // =========================
-                // FLECHAS
-                // =========================
-                if (scrollState.value > 0) {
-                    IconButton(
-                        onClick = {
-                            scope.launch {
-                                scrollState.animateScrollBy(-containerWidthPx.toFloat())
-                            }
-                        },
-                        modifier = Modifier.align(Alignment.CenterStart)
-                    ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = null)
-                    }
-                }
-
-                if (scrollState.value < scrollState.maxValue) {
-                    IconButton(
-                        onClick = {
-                            scope.launch {
-                                scrollState.animateScrollBy(containerWidthPx.toFloat())
-                            }
-                        },
-                        modifier = Modifier.align(Alignment.CenterEnd)
-                    ) {
-                        Icon(Icons.Default.ArrowForward, contentDescription = null)
-                    }
-                }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                StatCard(
+                    title = "Máximo",
+                    value = "${max.toInt()}",
+                    icon = "📈",
+                    compactTitle = true,
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "Mínimo",
+                    value = "${min.toInt()}",
+                    icon = "📉",
+                    compactTitle = true,
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "Promedio",
+                    value = "${promedio.toInt()}",
+                    icon = "📊",
+                    compactTitle = true,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -639,80 +751,85 @@ fun EjercicioDetailScreen(
                                             Column(
                                                 modifier = Modifier.padding(12.dp)
                                             ) {
-                                                Text(
-                                                    "Serie ${index + 1}",
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        "Serie ${index + 1}",
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
 
-                                                Spacer(Modifier.height(10.dp))
+                                                    Spacer(Modifier.width(32.dp))
 
-                                                if (!esCardio) {
-                                                    Row(
-                                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
-                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                            Text(
-                                                                "${serie.peso ?: 0}",
-                                                                style = MaterialTheme.typography.headlineSmall,
-                                                                color = MaterialTheme.colorScheme.primary
-                                                            )
-                                                            Text(
-                                                                "kg",
-                                                                style = MaterialTheme.typography.labelSmall,
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                            )
+                                                    if (!esCardio) {
+                                                        Row(
+                                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                                Text(
+                                                                    "${serie.peso ?: 0}",
+                                                                    style = MaterialTheme.typography.headlineSmall,
+                                                                    color = MaterialTheme.colorScheme.primary
+                                                                )
+                                                                Text(
+                                                                    "kg",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
+
+                                                            Text("x", style = MaterialTheme.typography.titleLarge)
+
+                                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                                Text(
+                                                                    "${serie.repeticiones ?: 0}",
+                                                                    style = MaterialTheme.typography.headlineSmall,
+                                                                    color = MaterialTheme.colorScheme.primary
+                                                                )
+                                                                Text(
+                                                                    "reps",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
                                                         }
+                                                    } else {
+                                                        Row(
+                                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                                Text(
+                                                                    "${serie.tiempo ?: 0}",
+                                                                    style = MaterialTheme.typography.headlineSmall,
+                                                                    color = MaterialTheme.colorScheme.primary
+                                                                )
+                                                                Text(
+                                                                    "min",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
 
-                                                        Text("×", style = MaterialTheme.typography.titleLarge)
+                                                            Text("@", style = MaterialTheme.typography.titleLarge)
 
-                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                            Text(
-                                                                "${serie.repeticiones ?: 0}",
-                                                                style = MaterialTheme.typography.headlineSmall,
-                                                                color = MaterialTheme.colorScheme.primary
-                                                            )
-                                                            Text(
-                                                                "reps",
-                                                                style = MaterialTheme.typography.labelSmall,
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                            )
-                                                        }
-                                                    }
-                                                } else {
-                                                    Row(
-                                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
-                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                            Text(
-                                                                "${serie.tiempo ?: 0}",
-                                                                style = MaterialTheme.typography.headlineSmall,
-                                                                color = MaterialTheme.colorScheme.primary
-                                                            )
-                                                            Text(
-                                                                "min",
-                                                                style = MaterialTheme.typography.labelSmall,
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                            )
-                                                        }
-
-                                                        Text("@", style = MaterialTheme.typography.titleLarge)
-
-                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                            Text(
-                                                                "${serie.intensidad ?: 1}",
-                                                                style = MaterialTheme.typography.headlineSmall,
-                                                                color = MaterialTheme.colorScheme.primary
-                                                            )
-                                                            Text(
-                                                                "int",
-                                                                style = MaterialTheme.typography.labelSmall,
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                            )
+                                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                                Text(
+                                                                    "${serie.intensidad ?: 1}",
+                                                                    style = MaterialTheme.typography.headlineSmall,
+                                                                    color = MaterialTheme.colorScheme.primary
+                                                                )
+                                                                Text(
+                                                                    "intensidad",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
