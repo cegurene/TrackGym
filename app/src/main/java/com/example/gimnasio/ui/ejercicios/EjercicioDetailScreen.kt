@@ -5,17 +5,23 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -32,9 +38,67 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.ZoneId
 
+@Composable
+private fun StatCard(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    icon: String = ""
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (icon.isNotEmpty()) {
+                    Text(
+                        text = icon,
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+private fun sectionToIndex(section: String): Int {
+    return when (section) {
+        "Músculo" -> 0
+        "Última sesión" -> 1
+        "Comentarios" -> 2
+        "Actividad" -> 3
+        "Records" -> 4
+        else -> 0
+    }
+}
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +122,27 @@ fun EjercicioDetailScreen(
 
     var nuevoNombre by remember { mutableStateOf("") }
     var musculosSeleccionados by remember { mutableStateOf(setOf<Musculo>()) }
+
+    // ========== MENÚ DE SECCIONES ==========
+    val sections = listOf("Músculo", "Última sesión", "Comentarios", "Actividad", "Records")
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    var showSectionsMenu by remember { mutableStateOf(false) }
+    var currentSection by remember { mutableStateOf("Músculo") }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .map { index ->
+                when {
+                    index == 0 -> "Músculo"
+                    index == 1 -> "Última sesión"
+                    index == 2 -> "Comentarios"
+                    index == 3 -> "Actividad"
+                    else -> "Records"
+                }
+            }
+            .collectLatest { currentSection = it }
+    }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -223,10 +308,7 @@ fun EjercicioDetailScreen(
 
                 Row(
                     modifier = Modifier
-                        .horizontalScroll(
-                            state = scrollState,
-                            overscrollEffect = null
-                        )
+                        .horizontalScroll(state = scrollState)
                         .onSizeChanged {
                             containerWidthPx = it.width
                         }
@@ -449,12 +531,14 @@ fun EjercicioDetailScreen(
 
             ejercicio?.let { ejercicioLocal ->
 
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
 
                     // -------------------
                     //       MÚSCULO
@@ -462,8 +546,13 @@ fun EjercicioDetailScreen(
 
                     item {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(4.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp)),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
                             Column(Modifier.padding(16.dp)) {
 
@@ -488,12 +577,22 @@ fun EjercicioDetailScreen(
 
                     item {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(4.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp)),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
                             Column(Modifier.padding(16.dp)) {
 
-                                Text("Última sesión", style = MaterialTheme.typography.titleLarge)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("⏱️ Última sesión", style = MaterialTheme.typography.titleLarge)
+                                }
 
                                 Spacer(Modifier.height(12.dp))
 
@@ -503,35 +602,125 @@ fun EjercicioDetailScreen(
 
                                 } else {
 
-                                    Card(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp)
-                                    ) {
-                                        Column(Modifier.padding(12.dp)) {
+                                    val fecha = Instant
+                                        .ofEpochMilli(ultimaSesion!!.fecha)
+                                        .atZone(ZoneId.systemDefault())
+                                        .toLocalDate()
 
-                                            val fecha = Instant
-                                                .ofEpochMilli(ultimaSesion!!.fecha)
-                                                .atZone(ZoneId.systemDefault())
-                                                .toLocalDate()
+                                    // Mostrar fecha en un card destacado
+                                    StatCard(
+                                        title = "Fecha",
+                                        value = "$fecha",
+                                        icon = "📅"
+                                    )
 
-                                            Text("Fecha: $fecha")
+                                    Spacer(Modifier.height(12.dp))
 
-                                            Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "Series realizadas",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
 
-                                            ultimaSesion!!.series.forEachIndexed { index, serie ->
+                                    Spacer(Modifier.height(8.dp))
+
+                                    // Mostrar cada serie con mejor formato
+                                    ultimaSesion!!.series.forEachIndexed { index, serie ->
+
+                                        Card(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(12.dp)),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surface
+                                            ),
+                                            elevation = CardDefaults.cardElevation(1.dp)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(12.dp)
+                                            ) {
+                                                Text(
+                                                    "Serie ${index + 1}",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+
+                                                Spacer(Modifier.height(10.dp))
 
                                                 if (!esCardio) {
-                                                    Text(
-                                                        "Serie ${index + 1}: ${serie.peso ?: 0} kg × ${serie.repeticiones ?: 0} reps"
-                                                    )
-                                                } else {
-                                                    Text(
-                                                        "Serie ${index + 1}: ${serie.tiempo ?: 0} min × ${serie.intensidad ?: 1} intensidad"
-                                                    )
-                                                }
+                                                    Row(
+                                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                            Text(
+                                                                "${serie.peso ?: 0}",
+                                                                style = MaterialTheme.typography.headlineSmall,
+                                                                color = MaterialTheme.colorScheme.primary
+                                                            )
+                                                            Text(
+                                                                "kg",
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
 
+                                                        Text("×", style = MaterialTheme.typography.titleLarge)
+
+                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                            Text(
+                                                                "${serie.repeticiones ?: 0}",
+                                                                style = MaterialTheme.typography.headlineSmall,
+                                                                color = MaterialTheme.colorScheme.primary
+                                                            )
+                                                            Text(
+                                                                "reps",
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                    }
+                                                } else {
+                                                    Row(
+                                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                            Text(
+                                                                "${serie.tiempo ?: 0}",
+                                                                style = MaterialTheme.typography.headlineSmall,
+                                                                color = MaterialTheme.colorScheme.primary
+                                                            )
+                                                            Text(
+                                                                "min",
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+
+                                                        Text("@", style = MaterialTheme.typography.titleLarge)
+
+                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                            Text(
+                                                                "${serie.intensidad ?: 1}",
+                                                                style = MaterialTheme.typography.headlineSmall,
+                                                                color = MaterialTheme.colorScheme.primary
+                                                            )
+                                                            Text(
+                                                                "int",
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                    }
+                                                }
                                             }
+                                        }
+
+                                        if (index < ultimaSesion!!.series.size - 1) {
+                                            Spacer(Modifier.height(8.dp))
                                         }
                                     }
 
@@ -545,8 +734,13 @@ fun EjercicioDetailScreen(
                     // -------------------
                     item {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(4.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp)),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
                             Column(Modifier.padding(16.dp)) {
 
@@ -617,8 +811,13 @@ fun EjercicioDetailScreen(
 
                     item {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(4.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp)),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
 
                             Column(Modifier.padding(16.dp)) {
@@ -767,8 +966,13 @@ fun EjercicioDetailScreen(
 
                     item {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(4.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp)),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
                             Column(Modifier.padding(16.dp)) {
 
@@ -874,13 +1078,58 @@ fun EjercicioDetailScreen(
 
                 }
 
-            } ?: Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
             }
 
+            // ========== MENÚ FLOTANTE ==========
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 10.dp, end = 10.dp)
+            ) {
+                FloatingActionButton(
+                    onClick = { showSectionsMenu = !showSectionsMenu }
+                ) {
+                    Icon(Icons.Default.Menu, contentDescription = "Abrir índice")
+                }
+
+                DropdownMenu(
+                    expanded = showSectionsMenu,
+                    onDismissRequest = { showSectionsMenu = false }
+                ) {
+                    sections.forEach { section ->
+                        val isSelected = section == currentSection
+                        val sectionLabel = when (section) {
+                            "Músculo" -> "💪 Músculo"
+                            "Última sesión" -> "⏱️ Última sesión"
+                            "Comentarios" -> "💬 Comentarios"
+                            "Actividad" -> "📈 Actividad"
+                            "Records" -> "🏆 Records"
+                            else -> section
+                        }
+
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = sectionLabel,
+                                    color = if (isSelected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    }
+                                )
+                            },
+                            onClick = {
+                                coroutineScope.launch {
+                                    val index = sectionToIndex(section)
+                                    listState.animateScrollToItem(index)
+                                    showSectionsMenu = false
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
 
         }
     }
