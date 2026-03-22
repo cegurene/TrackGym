@@ -18,19 +18,40 @@ import androidx.compose.ui.text.input.KeyboardType
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
 import androidx.compose.material3.Icon
+import kotlinx.coroutines.delay
+import androidx.compose.ui.text.input.TextFieldValue
 
 @Composable
 private fun SerieInputField(
-    value: String,
-    onValueChange: (String) -> Unit,
+    initialValue: String,
+    onValueCommit: (Int) -> Unit,
     label: String,
-    enabled: Boolean
+    enabled: Boolean,
+    modifier: Modifier = Modifier
 ) {
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(initialValue))
+    }
+
+    LaunchedEffect(initialValue) {
+        if (textFieldValue.text != initialValue) {
+            textFieldValue = TextFieldValue(initialValue)
+        }
+    }
+
     OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = textFieldValue,
+        onValueChange = { newValue: TextFieldValue ->
+
+            if (newValue.text.isEmpty() || newValue.text.all { it.isDigit() }) {
+                textFieldValue = newValue
+
+                val value = newValue.text.toIntOrNull() ?: 0
+                onValueCommit(value)
+            }
+        },
         label = { Text(label) },
-        modifier = Modifier.width(90.dp),
+        modifier = modifier.width(90.dp),
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         enabled = enabled
@@ -63,7 +84,7 @@ fun EntrenamientoScreen(
 
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(1000)
+            delay(1000)
             tiempoActual = System.currentTimeMillis()
         }
     }
@@ -204,12 +225,9 @@ fun EntrenamientoScreen(
 
                                     if (!esCardio) {
                                         SerieInputField(
-                                            value = if ((serie.peso ?: 0f) == 0f) "" else (serie.peso?.toInt() ?: 0).toString(),
-                                            onValueChange = {
-                                                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
-                                                    val peso = it.toIntOrNull()?.toFloat() ?: 0f
-                                                    viewModel.actualizarPesoSerie(serie.id, peso)
-                                                }
+                                            initialValue = if ((serie.peso ?: 0f) == 0f) "" else (serie.peso?.toInt() ?: 0).toString(),
+                                            onValueCommit = { peso ->
+                                                viewModel.actualizarPesoSerie(serie.id, peso.toFloat())
                                             },
                                             label = "Kg",
                                             enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
@@ -218,24 +236,18 @@ fun EntrenamientoScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
 
                                         SerieInputField(
-                                            value = if ((serie.repeticiones ?: 0) == 0) "" else (serie.repeticiones ?: 0).toString(),
-                                            onValueChange = {
-                                                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
-                                                    val reps = it.toIntOrNull() ?: 0
-                                                    viewModel.actualizarRepsSerie(serie.id, reps)
-                                                }
+                                            initialValue = if ((serie.repeticiones ?: 0) == 0) "" else serie.repeticiones.toString(),
+                                            onValueCommit = { reps ->
+                                                viewModel.actualizarRepsSerie(serie.id, reps)
                                             },
                                             label = "Reps",
                                             enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
                                         )
                                     } else {
                                         SerieInputField(
-                                            value = if ((serie.tiempo ?: 0) == 0) "" else (serie.tiempo ?: 0).toString(),
-                                            onValueChange = {
-                                                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
-                                                    val tiempo = it.toIntOrNull() ?: 0
-                                                    viewModel.actualizarTiempoSerie(serie.id, tiempo)
-                                                }
+                                            initialValue = if ((serie.tiempo ?: 0) == 0) "" else serie.tiempo.toString(),
+                                            onValueCommit = { tiempo ->
+                                                viewModel.actualizarTiempoSerie(serie.id, tiempo)
                                             },
                                             label = "Min",
                                             enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
@@ -244,12 +256,9 @@ fun EntrenamientoScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
 
                                         SerieInputField(
-                                            value = if ((serie.intensidad ?: 0) == 0) "" else (serie.intensidad ?: 0).toString(),
-                                            onValueChange = {
-                                                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
-                                                    val intensidad = it.toIntOrNull() ?: 0
-                                                    viewModel.actualizarIntensidadSerie(serie.id, intensidad)
-                                                }
+                                            initialValue = if ((serie.intensidad ?: 0) == 0) "" else serie.intensidad.toString(),
+                                            onValueCommit = { intensidad ->
+                                                viewModel.actualizarIntensidadSerie(serie.id, intensidad)
                                             },
                                             label = "Intens",
                                             enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
