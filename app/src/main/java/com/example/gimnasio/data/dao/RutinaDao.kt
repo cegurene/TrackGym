@@ -40,4 +40,12 @@ interface RutinaDao {
 
     @Query("SELECT COUNT(*) FROM rutinas")
     fun getTotalRutinasFlow(): Flow<Int>
+
+    @Transaction
+    @Query("""
+        SELECT DISTINCT r.* FROM rutinas r
+        WHERE r.nombre LIKE '%' || :searchQuery || '%'
+        ORDER BY r.nombre ASC
+    """)
+    fun searchRutinas(searchQuery: String): Flow<List<RutinaConEjercicios>>
 }

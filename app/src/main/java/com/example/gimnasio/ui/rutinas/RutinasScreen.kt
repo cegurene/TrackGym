@@ -1,17 +1,27 @@
 package com.example.gimnasio.ui.rutinas
 
 import android.app.Application
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.gimnasio.data.entity.Musculo
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun RutinasScreen(
     onRutinaClick: (Long) -> Unit,
@@ -26,6 +36,14 @@ fun RutinasScreen(
 
     var showDialog by remember { mutableStateOf(false) }
     var nombreRutina by remember { mutableStateOf("") }
+
+    // Para la búsqueda y filtros
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val selectedMusculos by viewModel.selectedMusculos.collectAsState()
+    var showFilterSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = false
+    )
 
     Scaffold(
         modifier = modifier,
@@ -42,18 +60,111 @@ fun RutinasScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            items(rutinas) { rutinaConEjercicios ->
-                RutinaItem(
-                    rutinaConEjercicios = rutinaConEjercicios,
-                    onClick = {
-                        onRutinaClick(rutinaConEjercicios.rutina.id)
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.onSearchQueryChange(it) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                singleLine = true,
+                label = { Text("Buscar rutina") }
+            )
+
+            Button(
+                onClick = { showFilterSheet = true },
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+            ) {
+                if (selectedMusculos.isEmpty()) {
+                    Text("Filtrar por músculo")
+                } else {
+                    Text("Filtrar (${selectedMusculos.size})")
+                }
+            }
+
+            AnimatedVisibility(
+                visible = selectedMusculos.isNotEmpty(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+
+                Surface(
+                    tonalElevation = 3.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+
+                            selectedMusculos.forEach { musculo ->
+
+                                AssistChip(
+                                    onClick = { viewModel.toggleMusculo(musculo) },
+                                    label = {
+                                        Text(
+                                            musculo.name
+                                                .lowercase()
+                                                .replaceFirstChar { it.uppercase() }
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Quitar filtro"
+                                        )
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        AssistChip(
+                            onClick = { viewModel.clearMusculos() },
+                            label = { Text("Limpiar todo") }
+                        )
                     }
-                )
+                }
+            }
+
+            if (rutinas.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No hay rutinas",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(rutinas) { rutinaConEjercicios ->
+                        RutinaItem(
+                            rutinaConEjercicios = rutinaConEjercicios,
+                            onClick = {
+                                onRutinaClick(rutinaConEjercicios.rutina.id)
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -108,5 +219,46 @@ fun RutinasScreen(
                 }
             }
         )
+    }
+
+    // Ventana de filtros de músculos
+    if (showFilterSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showFilterSheet = false },
+            sheetState = sheetState
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = "Filtrar por músculo",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Musculo.values().forEach { musculo ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.toggleMusculo(musculo) }
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Checkbox(
+                            checked = selectedMusculos.contains(musculo),
+                            onCheckedChange = { viewModel.toggleMusculo(musculo) }
+                        )
+
+                        Text(
+                            musculo.name
+                                .lowercase()
+                                .replaceFirstChar { it.uppercase() }
+                        )
+                    }
+                }
+            }
+        }
     }
 }

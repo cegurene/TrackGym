@@ -15,6 +15,9 @@ import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.EjercicioConOrden
 import com.example.gimnasio.data.model.RutinaConEjercicios
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 
@@ -25,11 +28,34 @@ class RutinaViewModel(application: Application) : ViewModel() {
     private val ejercicioDao = database.ejercicioDao()
     private val rutinaEjercicioDao = database.rutinaEjercicioDao()
     private val entrenamientoDao = database.entrenamientoDao()
+    private val entrenamientoEjercicioDao = database.entrenamientoEjercicioDao()
     private val serieDao = database.serieDao()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
 
-    val rutinas: Flow<List<RutinaConEjercicios>> =
+    private val _selectedMusculos = MutableStateFlow<Set<Musculo>>(emptySet())
+    val selectedMusculos = _selectedMusculos.asStateFlow()
+
+    val rutinas: Flow<List<RutinaConEjercicios>> = combine(
+        _searchQuery,
+        _selectedMusculos,
         rutinaDao.getRutinasConEjercicios()
+    ) { query, musculos, todasRutinas ->
+        todasRutinas
+            .filter { rutina ->
+                rutina.rutina.nombre.contains(query, ignoreCase = true)
+            }
+            .filter { rutina ->
+                if (musculos.isEmpty()) {
+                    true
+                } else {
+                    rutina.ejercicios.any { ejercicio ->
+                        ejercicio.musculos.any { musculos.contains(it) }
+                    }
+                }
+            }
+    }
 
     val entrenamientoActivo =
         entrenamientoDao.getEntrenamientoActivoFlow()
@@ -176,5 +202,21 @@ class RutinaViewModel(application: Application) : ViewModel() {
         }
     }
 
-}
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+    }
 
+    fun toggleMusculo(musculo: Musculo) {
+        val current = _selectedMusculos.value.toMutableSet()
+        if (current.contains(musculo)) {
+            current.remove(musculo)
+        } else {
+            current.add(musculo)
+        }
+        _selectedMusculos.value = current
+    }
+
+    fun clearMusculos() {
+        _selectedMusculos.value = emptySet()
+    }
+}
