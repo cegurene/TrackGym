@@ -81,6 +81,19 @@ interface EntrenamientoDao {
     @Query("DELETE FROM series WHERE id = :serieId")
     suspend fun deleteSerie(serieId: Long)
 
+    @Query("SELECT entrenamientoEjercicioId FROM series WHERE id = :serieId")
+    suspend fun getEntrenamientoEjercicioIdBySerieId(serieId: Long): Long?
+
+    @Query("SELECT COUNT(*) FROM series WHERE entrenamientoEjercicioId = :entrenamientoEjercicioId")
+    suspend fun countSeriesByEntrenamientoEjercicioId(entrenamientoEjercicioId: Long): Int
+
+    @Query("""
+    SELECT COUNT(*) FROM series
+    WHERE entrenamientoEjercicioId = :entrenamientoEjercicioId
+      AND completada = 0
+""")
+    suspend fun countSeriesSinCompletar(entrenamientoEjercicioId: Long): Int
+
     @Query("DELETE FROM entrenamiento_ejercicio WHERE id = :entrenamientoEjercicioId")
     suspend fun deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId: Long)
 
@@ -101,7 +114,7 @@ interface EntrenamientoDao {
     @Insert
     suspend fun insertEjercicioDeEntrenamiento(
         ejercicio: EntrenamientoEjercicioEntity
-    )
+    ): Long
 
     @Query("""
     UPDATE entrenamientos

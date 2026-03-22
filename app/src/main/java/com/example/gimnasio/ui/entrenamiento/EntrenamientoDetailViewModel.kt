@@ -4,13 +4,17 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.GymDatabase
+import com.example.gimnasio.data.entity.EntrenamientoEjercicioEntity
 import com.example.gimnasio.data.entity.EntrenamientoEntity
+import com.example.gimnasio.data.entity.Musculo
+import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.EntrenamientoConEjerciciosYSeries
 import kotlinx.coroutines.launch
 
 class EntrenamientoDetailViewModel (context: Context) : ViewModel(){
-    private val dao =
-        GymDatabase.getDatabase(context).entrenamientoDao()
+    private val database = GymDatabase.getDatabase(context)
+    private val dao = database.entrenamientoDao()
+    private val serieDao = database.serieDao()
 
     fun getEntrenamiento(id: Long) =
         dao.getEntrenamientoConRutinaById(id)
@@ -39,6 +43,35 @@ class EntrenamientoDetailViewModel (context: Context) : ViewModel(){
                     completado = false
                 )
             )
+
+            entrenamiento.ejercicios
+                .sortedBy { it.entrenamientoEjercicio.orden }
+                .forEach { item ->
+                    val entrenamientoEjercicioId = dao.insertEjercicioDeEntrenamiento(
+                        EntrenamientoEjercicioEntity(
+                            entrenamientoId = nuevoId,
+                            ejercicioId = item.entrenamientoEjercicio.ejercicioId,
+                            orden = item.entrenamientoEjercicio.orden
+                        )
+                    )
+
+                    val esCardio = item.ejercicio.musculos.contains(Musculo.CARDIO)
+                    val serieInicial = if (esCardio) {
+                        SerieEntity(
+                            entrenamientoEjercicioId = entrenamientoEjercicioId,
+                            tiempo = 0,
+                            intensidad = 0
+                        )
+                    } else {
+                        SerieEntity(
+                            entrenamientoEjercicioId = entrenamientoEjercicioId,
+                            peso = 0f,
+                            repeticiones = 0
+                        )
+                    }
+
+                    serieDao.insert(serieInicial)
+                }
 
             onNavigate(nuevoId)
         }

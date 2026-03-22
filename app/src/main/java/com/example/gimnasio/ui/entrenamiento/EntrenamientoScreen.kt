@@ -81,11 +81,26 @@ fun EntrenamientoScreen(
     val entrenamiento by viewModel.entrenamiento.collectAsState(initial = null)
 
     var tiempoActual by remember { mutableStateOf(System.currentTimeMillis()) }
+    var erroresValidacion by remember { mutableStateOf<Map<Long, String>>(emptyMap()) }
+    var checksboxEnError by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(Unit) {
         while (true) {
             delay(1000)
             tiempoActual = System.currentTimeMillis()
+        }
+    }
+
+    LaunchedEffect(viewModel.validationErrorFlow) {
+        viewModel.validationErrorFlow.collect { (ejercicioId, mensaje) ->
+            erroresValidacion = erroresValidacion.toMutableMap().apply {
+                put(ejercicioId, mensaje)
+            }
+            checksboxEnError = null
+            delay(2000)
+            erroresValidacion = erroresValidacion.toMutableMap().apply {
+                remove(ejercicioId)
+            }
         }
     }
 
@@ -116,11 +131,13 @@ fun EntrenamientoScreen(
 
     var showAddExerciseDialog by remember { mutableStateOf(false) }
     var showCancelDialog by remember { mutableStateOf(false) }
-    var showErrorDialog by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
-    var showValidationDialog by remember { mutableStateOf(false) }
-    var validationMessage by remember { mutableStateOf("") }
     var showFinishConfirmDialog by remember { mutableStateOf(false) }
+
+    val ejerciciosYaAgregados = ejercicios.map { it.entrenamientoEjercicio.ejercicioId }.toSet()
+    val ejerciciosNoAgregados = ejerciciosDisponibles.filter { ejercicio ->
+        !ejerciciosYaAgregados.contains(ejercicio.id)
+    }
 
     Scaffold(
         topBar = {
@@ -163,6 +180,9 @@ fun EntrenamientoScreen(
                 items(ejercicios) { ejercicioConSeries ->
 
                     val esCardio = ejercicioConSeries.ejercicio.musculos.contains(Musculo.CARDIO)
+                    val ejercicioCompletado =
+                        ejercicioConSeries.series.isNotEmpty() &&
+                            ejercicioConSeries.series.all { it.completada }
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -179,23 +199,20 @@ fun EntrenamientoScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Checkbox(
-                                    checked = ejercicioConSeries.entrenamientoEjercicio.completado,
-                                    onCheckedChange = { checked ->
-                                        viewModel.marcarEjercicioCompletado(
-                                            ejercicioConSeries.entrenamientoEjercicio.id,
-                                            checked
-                                        )
-                                    }
+                                    checked = ejercicioCompletado,
+                                    onCheckedChange = null
                                 )
+
+                                Spacer(modifier = Modifier.width(15.dp))
 
                                 Text(
                                     text = ejercicioConSeries.ejercicio.nombre,
-                                    style = MaterialTheme.typography.titleMedium,
+                                    style = MaterialTheme.typography.titleLarge,
                                     modifier = Modifier.weight(1f)
                                 )
 
                                 IconButton(
-                                    enabled = !ejercicioConSeries.entrenamientoEjercicio.completado,
+                                    enabled = !ejercicioCompletado,
                                     onClick = {
                                         viewModel.eliminarEjercicio(
                                             ejercicioConSeries.entrenamientoEjercicio.id
@@ -230,7 +247,7 @@ fun EntrenamientoScreen(
                                                 viewModel.actualizarPesoSerie(serie.id, peso.toFloat())
                                             },
                                             label = "Kg",
-                                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                            enabled = !serie.completada
                                         )
 
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -241,7 +258,7 @@ fun EntrenamientoScreen(
                                                 viewModel.actualizarRepsSerie(serie.id, reps)
                                             },
                                             label = "Reps",
-                                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                            enabled = !serie.completada
                                         )
                                     } else {
                                         SerieInputField(
@@ -250,7 +267,7 @@ fun EntrenamientoScreen(
                                                 viewModel.actualizarTiempoSerie(serie.id, tiempo)
                                             },
                                             label = "Min",
-                                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                            enabled = !serie.completada
                                         )
 
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -261,14 +278,41 @@ fun EntrenamientoScreen(
                                                 viewModel.actualizarIntensidadSerie(serie.id, intensidad)
                                             },
                                             label = "Intens",
-                                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                            enabled = !serie.completada
                                         )
                                     }
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    val checkboxColors = if (erroresValidacion.containsKey(ejercicioConSeries.entrenamientoEjercicio.id)) {
+                                        CheckboxDefaults.colors(
+                                            checkedColor = MaterialTheme.colorScheme.error,
+                                            uncheckedColor = MaterialTheme.colorScheme.error
+                                        )
+                                    } else {
+                                        CheckboxDefaults.colors()
+                                    }
+
+                                    Checkbox(
+                                        checked = serie.completada,
+                                        onCheckedChange = { checked ->
+                                            viewModel.marcarSerieCompletada(
+                                                serie.id,
+                                                checked,
+                                                esCardio,
+                                                serie.peso,
+                                                serie.repeticiones,
+                                                serie.tiempo,
+                                                serie.intensidad
+                                            )
+                                        },
+                                        colors = checkboxColors
+                                    )
 
                                     if (index == ejercicioConSeries.series.size - 1) {
                                         IconButton(
                                             onClick = { viewModel.eliminarSerie(serie.id) },
-                                            enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                                            enabled = !serie.completada
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Delete,
@@ -280,18 +324,31 @@ fun EntrenamientoScreen(
                             }
 
                             // 🔹 BOTÓN AÑADIR SERIE
-                            Button(
-                                onClick = {
-                                    viewModel.añadirSerie(
-                                        ejercicioConSeries.entrenamientoEjercicio.id,
-                                        esCardio
-                                    )
-                                },
-                                modifier = Modifier
-                                    .padding(top = 8.dp),
-                                enabled = !ejercicioConSeries.entrenamientoEjercicio.completado
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("+ Añadir serie")
+                                Button(
+                                    onClick = {
+                                        viewModel.añadirSerie(
+                                            ejercicioConSeries.entrenamientoEjercicio.id,
+                                            esCardio
+                                        )
+                                    },
+                                    modifier = Modifier.padding(top = 8.dp)
+                                ) {
+                                    Text("+ Añadir serie")
+                                }
+
+                                if (erroresValidacion.containsKey(ejercicioConSeries.entrenamientoEjercicio.id)) {
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = erroresValidacion[ejercicioConSeries.entrenamientoEjercicio.id] ?: "",
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
                             }
                         }
                     }
@@ -311,6 +368,10 @@ fun EntrenamientoScreen(
             }
 
             // 🔹 BOTONES INFERIORES
+            val todasLasSeriesCompletadas = ejercicios.all { ejercicio ->
+                ejercicio.series.isNotEmpty() && ejercicio.series.all { it.completada }
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -327,41 +388,9 @@ fun EntrenamientoScreen(
 
                 Button(
                     onClick = {
-
-                        val haySinCompletar = ejercicios.any {
-                            !it.entrenamientoEjercicio.completado
-                        }
-
-                        if (haySinCompletar) {
-                            showErrorDialog = true
-                            return@Button
-                        }
-
-                        val hayEjercicioSinSeries = ejercicios.any {
-                            it.series.isEmpty()
-                        }
-
-                        if (hayEjercicioSinSeries) {
-                            validationMessage = "Hay ejercicios sin ninguna serie registrada."
-                            showValidationDialog = true
-                            return@Button
-                        }
-
-                        val haySeriesInvalidas = ejercicios.any { ejercicio ->
-                            ejercicio.series.any { serie ->
-                                serie.peso == 0f || serie.repeticiones == 0
-                            }
-                        }
-
-                        if (haySeriesInvalidas) {
-                            validationMessage = "Hay series con 0 en alguno de sus campos."
-                            showValidationDialog = true
-                            return@Button
-                        }
-
-                        // 👇 Si todo está correcto mostramos confirmación
                         showFinishConfirmDialog = true
                     },
+                    enabled = todasLasSeriesCompletadas,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Finalizar")
@@ -377,14 +406,31 @@ fun EntrenamientoScreen(
             title = { Text("Añadir ejercicio") },
             text = {
                 LazyColumn {
-                    items(ejerciciosDisponibles) { ejercicio ->
+                    items(ejerciciosNoAgregados) { ejercicio ->
                         TextButton(
                             onClick = {
                                 viewModel.añadirEjercicioAlEntrenamiento(ejercicio.id)
                                 showAddExerciseDialog = false
-                            }
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(ejercicio.nombre)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = ejercicio.nombre,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = ejercicio.musculos.joinToString(", ") { it.name },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -413,16 +459,6 @@ fun EntrenamientoScreen(
         )
     }
 
-    if (showErrorDialog) {
-        AlertDialog(
-            onDismissRequest = { showErrorDialog = false },
-            title = { Text("Ejercicios sin completar") },
-            text = { Text("Debes completar o eliminar todos los ejercicios antes de finalizar.") },
-            confirmButton = {
-                TextButton(onClick = { showErrorDialog = false }) { Text("Entendido") }
-            }
-        )
-    }
 
     if (showSuccessDialog) {
         AlertDialog(
@@ -435,18 +471,6 @@ fun EntrenamientoScreen(
         )
     }
 
-    if (showValidationDialog) {
-        AlertDialog(
-            onDismissRequest = { showValidationDialog = false },
-            title = { Text("Datos incompletos") },
-            text = { Text(validationMessage) },
-            confirmButton = {
-                TextButton(onClick = { showValidationDialog = false }) {
-                    Text("Entendido")
-                }
-            }
-        )
-    }
 
     if (showFinishConfirmDialog) {
         AlertDialog(

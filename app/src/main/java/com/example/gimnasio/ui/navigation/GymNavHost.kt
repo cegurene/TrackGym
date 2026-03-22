@@ -44,7 +44,7 @@ fun GymNavHost(
         .getEntrenamientoActivoFlow()
         .collectAsState(initial = null)
 
-    var autoNavegacionInicialHecha by rememberSaveable { mutableStateOf(false) }
+    var ultimoEntrenamientoAutoNavegadoId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     fun navigateToEntrenamiento(entrenamientoId: Long) {
         navController.navigate("entrenamiento/$entrenamientoId") {
@@ -53,12 +53,21 @@ fun GymNavHost(
     }
 
     LaunchedEffect(entrenamientoActivo) {
-        entrenamientoActivo?.let { activo ->
-            val currentRoute = navController.currentBackStackEntry?.destination?.route
-            if (!autoNavegacionInicialHecha && currentRoute == homeRoute) {
-                autoNavegacionInicialHecha = true
-                navigateToEntrenamiento(activo.id)
-            }
+        val activoId = entrenamientoActivo?.id
+
+        if (activoId == null) {
+            // Reinicia el control para permitir auto-navegación en el próximo entrenamiento nuevo.
+            ultimoEntrenamientoAutoNavegadoId = null
+            return@LaunchedEffect
+        }
+
+        val routeActual = navController.currentBackStackEntry?.destination?.route
+        val yaAutoNavegadoEsteEntrenamiento =
+            ultimoEntrenamientoAutoNavegadoId == activoId
+
+        if (routeActual == homeRoute && !yaAutoNavegadoEsteEntrenamiento) {
+            ultimoEntrenamientoAutoNavegadoId = activoId
+            navigateToEntrenamiento(activoId)
         }
     }
 

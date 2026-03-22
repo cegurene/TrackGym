@@ -8,8 +8,10 @@ import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.EjercicioEntity
 import com.example.gimnasio.data.entity.EntrenamientoEjercicioEntity
 import com.example.gimnasio.data.entity.EntrenamientoEntity
+import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.entity.RutinaEjercicioEntity
 import com.example.gimnasio.data.entity.RutinaEntity
+import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.EjercicioConOrden
 import com.example.gimnasio.data.model.RutinaConEjercicios
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +25,7 @@ class RutinaViewModel(application: Application) : ViewModel() {
     private val ejercicioDao = database.ejercicioDao()
     private val rutinaEjercicioDao = database.rutinaEjercicioDao()
     private val entrenamientoDao = database.entrenamientoDao()
-    private val entrenamientoEjercicioDao = database.entrenamientoEjercicioDao()
+    private val serieDao = database.serieDao()
 
 
     val rutinas: Flow<List<RutinaConEjercicios>> =
@@ -137,16 +139,37 @@ class RutinaViewModel(application: Application) : ViewModel() {
             val ejerciciosRutina =
                 rutinaEjercicioDao.getEjerciciosDeRutinaOnce(rutinaId)
 
-            // 4️⃣ Copiar a EntrenamientoEjercicio
-            val lista = ejerciciosRutina.map {
-                EntrenamientoEjercicioEntity(
-                    entrenamientoId = nuevoId,
-                    ejercicioId = it.ejercicioId,
-                    orden = it.orden
+            // 4️⃣ Copiar ejercicios y crear 1 serie inicial por cada uno
+            ejerciciosRutina.forEach { ejercicioRutina ->
+                val entrenamientoEjercicioId = entrenamientoDao.insertEjercicioDeEntrenamiento(
+                    EntrenamientoEjercicioEntity(
+                        entrenamientoId = nuevoId,
+                        ejercicioId = ejercicioRutina.ejercicioId,
+                        orden = ejercicioRutina.orden
+                    )
                 )
-            }
 
-            entrenamientoEjercicioDao.insertAll(lista)
+                val esCardio = ejercicioDao
+                    .getById(ejercicioRutina.ejercicioId)
+                    ?.musculos
+                    ?.contains(Musculo.CARDIO) == true
+
+                val serieInicial = if (esCardio) {
+                    SerieEntity(
+                        entrenamientoEjercicioId = entrenamientoEjercicioId,
+                        tiempo = 0,
+                        intensidad = 0
+                    )
+                } else {
+                    SerieEntity(
+                        entrenamientoEjercicioId = entrenamientoEjercicioId,
+                        peso = 0f,
+                        repeticiones = 0
+                    )
+                }
+
+                serieDao.insert(serieInicial)
+            }
 
             // 5️⃣ Navegar
             onNavigate(nuevoId)
