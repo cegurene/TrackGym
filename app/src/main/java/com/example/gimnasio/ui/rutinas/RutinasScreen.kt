@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,14 +51,14 @@ fun RutinasScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Rutinas") }
+                title = { Text("🗂️ Rutinas") }
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showDialog = true }
             ) {
-                Text("+")
+                Icon(Icons.Default.Add, contentDescription = "Crear rutina")
             }
         }
     ) { padding ->
@@ -64,6 +66,7 @@ fun RutinasScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
+                .padding(horizontal = 16.dp)
         ) {
 
             OutlinedTextField(
@@ -71,17 +74,20 @@ fun RutinasScreen(
                 onValueChange = { viewModel.onSearchQueryChange(it) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(vertical = 8.dp),
                 singleLine = true,
-                label = { Text("Buscar rutina") }
+                label = { Text("Buscar rutina") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                }
             )
 
-            Button(
+            FilledTonalButton(
                 onClick = { showFilterSheet = true },
                 modifier = Modifier
-                    .padding(horizontal = 16.dp)
                     .fillMaxWidth()
             ) {
+                Text("🧩", modifier = Modifier.padding(end = 8.dp))
                 if (selectedMusculos.isEmpty()) {
                     Text("Filtrar por músculo")
                 } else {
@@ -96,10 +102,11 @@ fun RutinasScreen(
             ) {
 
                 Surface(
-                    tonalElevation = 3.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = MaterialTheme.shapes.large,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(vertical = 8.dp)
                 ) {
 
                     Column(
@@ -143,18 +150,25 @@ fun RutinasScreen(
             }
 
             if (rutinas.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 ) {
                     Text(
-                        text = "No hay rutinas",
-                        style = MaterialTheme.typography.bodyLarge
+                        text = "Aún no hay rutinas. Crea tu primera rutina con el botón +",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(rutinas) { rutinaConEjercicios ->
                         RutinaItem(

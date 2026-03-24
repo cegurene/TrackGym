@@ -1,4 +1,4 @@
-package com.example.gimnasio.ui.entrenamiento
+package com.example.gimnasio.ui.historico
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -11,7 +11,7 @@ import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.EntrenamientoConEjerciciosYSeries
 import kotlinx.coroutines.launch
 
-class EntrenamientoDetailViewModel (context: Context) : ViewModel(){
+class HistoricoDetailViewModel(context: Context) : ViewModel() {
     private val database = GymDatabase.getDatabase(context)
     private val dao = database.entrenamientoDao()
     private val serieDao = database.serieDao()

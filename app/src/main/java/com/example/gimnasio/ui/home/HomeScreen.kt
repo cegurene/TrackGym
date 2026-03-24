@@ -10,7 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.example.gimnasio.ui.ejercicios.EjercicioDetailScreen
-import com.example.gimnasio.ui.entrenamiento.EntrenamientoDetailScreen
+import com.example.gimnasio.ui.historico.HistoricoDetailScreen
 import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
 import kotlinx.coroutines.launch
 
@@ -78,7 +78,7 @@ fun HomeScreen() {
                 2 -> if (selectedEntrenamientoId == null) {
                     HistoricoTab { selectedEntrenamientoId = it }
                 } else {
-                    EntrenamientoDetailScreen(
+                    HistoricoDetailScreen(
                         entrenamientoId = selectedEntrenamientoId!!,
                         onBack = { selectedEntrenamientoId = null },
                         onNavigateToEntrenamiento = { entrenamientoId ->

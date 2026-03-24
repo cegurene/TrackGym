@@ -9,10 +9,11 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,14 +55,14 @@ fun EjerciciosScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ejercicios") }
+                title = { Text("💪 Ejercicios") }
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showDialog = true }
             ) {
-                Text("+")
+                Icon(Icons.Default.Add, contentDescription = "Crear ejercicio")
             }
         }
     ) { padding ->
@@ -70,6 +71,7 @@ fun EjerciciosScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
+                .padding(horizontal = 16.dp)
         ) {
 
             OutlinedTextField(
@@ -77,17 +79,20 @@ fun EjerciciosScreen(
                 onValueChange = { viewModel.onSearchQueryChange(it) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(vertical = 8.dp),
                 singleLine = true,
-                label = { Text("Buscar ejercicio") }
+                label = { Text("Buscar ejercicio") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                }
             )
 
-            Button(
+            FilledTonalButton(
                 onClick = { showFilterSheet = true },
                 modifier = Modifier
-                    .padding(horizontal = 16.dp)
                     .fillMaxWidth()
             ) {
+                Text("🧩", modifier = Modifier.padding(end = 8.dp))
                 if (selectedMusculos.isEmpty()) {
                     Text("Filtrar por músculo")
                 } else {
@@ -102,10 +107,11 @@ fun EjerciciosScreen(
             ) {
 
                 Surface(
-                    tonalElevation = 3.dp,   // sombra ligera
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = MaterialTheme.shapes.large,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(vertical = 8.dp)
                 ) {
 
                     Column(
@@ -149,18 +155,25 @@ fun EjerciciosScreen(
             }
 
             if (ejercicios.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 ) {
                     Text(
-                        text = "No hay ejercicios",
-                        style = MaterialTheme.typography.bodyLarge
+                        text = "Aún no hay ejercicios. Añade el primero con el botón +",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(ejercicios) { ejercicio ->
                         EjercicioItem(

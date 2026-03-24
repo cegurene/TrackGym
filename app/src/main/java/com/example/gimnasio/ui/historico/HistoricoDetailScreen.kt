@@ -1,8 +1,10 @@
-package com.example.gimnasio.ui.entrenamiento
+package com.example.gimnasio.ui.historico
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -10,6 +12,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -18,7 +21,7 @@ import com.example.gimnasio.data.entity.SerieEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EntrenamientoDetailScreen(
+fun HistoricoDetailScreen(
     entrenamientoId: Long,
     onBack: () -> Unit,
     onNavigateToEntrenamiento: (Long) -> Unit,
@@ -27,8 +30,8 @@ fun EntrenamientoDetailScreen(
 
     val context = LocalContext.current
 
-    val viewModel: EntrenamientoDetailViewModel = viewModel(
-        factory = EntrenamientoDetailViewModelFactory(context)
+    val viewModel: HistoricoDetailViewModel = viewModel(
+        factory = HistoricoDetailViewModelFactory(context)
     )
 
     val entrenamiento by viewModel
@@ -55,10 +58,13 @@ fun EntrenamientoDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Detalle entrenamiento") },
+                title = { Text("🏋️ Detalle entrenamiento") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text("←")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
                     }
                 },
                 actions = {
@@ -105,42 +111,52 @@ fun EntrenamientoDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
                 item {
-
-                    Row(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Text(
-                            text = entrenamiento?.entrenamiento?.nombre ?: "",
-                            style = MaterialTheme.typography.titleLarge
+                            .clip(RoundedCornerShape(16.dp)),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = entrenamiento?.entrenamiento?.nombre ?: "",
+                                    style = MaterialTheme.typography.titleLarge
+                                )
 
-                        Button(
-                            onClick = {
-                                viewModel.repetirEntrenamiento(data) { nuevoId ->
-                                    onNavigateToEntrenamiento(nuevoId)
+                                FilledTonalButton(
+                                    onClick = {
+                                        viewModel.repetirEntrenamiento(data) { nuevoId ->
+                                            onNavigateToEntrenamiento(nuevoId)
+                                        }
+                                    },
+                                    enabled = entrenamientoActivo == null
+                                ) {
+                                    Text("Repetir")
                                 }
-                            },
-                            enabled = entrenamientoActivo == null
-                        ) {
-                            Text("Repetir")
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Basado en: ${rutina.nombre}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
-
-                    Text(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        text = "Basado en: ${rutina.nombre}",
-                        style = MaterialTheme.typography.titleMedium
-                    )
 
                 }
 
@@ -155,11 +171,14 @@ fun EntrenamientoDetailScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                            .clip(RoundedCornerShape(16.dp)),
                         onClick = {
                             onNavigateToEjercicio(ejercicioConSeries.ejercicio.id)
                         },
-                        elevation = CardDefaults.cardElevation(4.dp)
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        elevation = CardDefaults.cardElevation(2.dp)
                     ) {
 
                         Column(
@@ -168,7 +187,7 @@ fun EntrenamientoDetailScreen(
 
                             Text(
                                 text = ejercicioConSeries.ejercicio.nombre,
-                                style = MaterialTheme.typography.titleLarge
+                                style = MaterialTheme.typography.titleMedium
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -178,12 +197,12 @@ fun EntrenamientoDetailScreen(
                                 if (!esCardio) {
 
                                     Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth(),
+                                        modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = "Serie ${index + 1}"
+                                            text = "Serie ${index + 1}",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
 
                                         Text(
@@ -197,12 +216,12 @@ fun EntrenamientoDetailScreen(
                                 } else {
 
                                     Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth(),
+                                        modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = "Serie ${index + 1}"
+                                            text = "Serie ${index + 1}",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
 
                                         Text(
@@ -221,14 +240,16 @@ fun EntrenamientoDetailScreen(
 
                                 Text(
                                     text = "Volumen total: $volumen kg",
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
 
                             } else{
 
                                 Text(
                                     text = "Tiempo total: $tiempo min",
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Text("Sin implementar - Intensidad")
 
@@ -246,7 +267,7 @@ fun EntrenamientoDetailScreen(
             onDismissRequest = { showSettings = false },
             sheetState = sheetState
         ) {
-            EntrenamientoSettingsSheet(
+            HistoricoDetailSettingsSheet(
                 onRename = {
                     showSettings = false
                     nuevoNombre = entrenamiento?.entrenamiento?.nombre ?: ""
@@ -324,3 +345,5 @@ fun EntrenamientoDetailScreen(
     }
 
 }
+
+
