@@ -6,16 +6,25 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.example.gimnasio.data.entity.Musculo
+import com.example.gimnasio.ui.components.emoji
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EjercicioItem(
     nombre: String,
+    musculos: List<Musculo>,
     onClick: () -> Unit
 ) {
+    val iconosMusculo = musculos
+        .toSet()
+        .joinToString(" ") { it.emoji() }
+        .ifBlank { "🏋️" }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -30,17 +39,22 @@ fun EjercicioItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = nombre,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+                maxLines = 4
             )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "💪",
-                style = MaterialTheme.typography.titleMedium
+                text = iconosMusculo,
+                style = MaterialTheme.typography.headlineSmall
             )
         }
     }
 }
+
 

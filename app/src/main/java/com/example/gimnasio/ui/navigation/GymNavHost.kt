@@ -27,12 +27,15 @@ import com.example.gimnasio.ui.entrenamiento.EntrenamientoScreen
 import com.example.gimnasio.ui.historico.HistoricoDetailScreen
 import com.example.gimnasio.ui.home.HomeScreen
 import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
+import com.example.gimnasio.ui.theme.ThemeMode
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun GymNavHost(
     navController: NavHostController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedThemeMode: ThemeMode,
+    onThemeModeSelected: (ThemeMode) -> Unit
 ) {
     val homeRoute = "home"
     val context = LocalContext.current
@@ -88,7 +91,10 @@ fun GymNavHost(
             ) {
 
                 composable(homeRoute) {
-                    HomeScreen()
+                    HomeScreen(
+                        selectedThemeMode = selectedThemeMode,
+                        onThemeModeSelected = onThemeModeSelected
+                    )
                 }
 
                 composable("ejercicios") {

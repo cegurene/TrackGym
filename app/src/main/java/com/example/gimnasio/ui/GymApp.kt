@@ -10,10 +10,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.example.gimnasio.ui.navigation.GymNavHost
+import com.example.gimnasio.ui.theme.ThemeMode
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun GymApp() {
+fun GymApp(
+    selectedThemeMode: ThemeMode,
+    onThemeModeSelected: (ThemeMode) -> Unit
+) {
     val navController = rememberNavController()
 
     // Surface principal con safeDrawingPadding para respetar el notch y la barra inferior
@@ -24,7 +28,9 @@ fun GymApp() {
         color = MaterialTheme.colorScheme.background
     ) {
         GymNavHost(
-            navController = navController
+            navController = navController,
+            selectedThemeMode = selectedThemeMode,
+            onThemeModeSelected = onThemeModeSelected
         )
     }
 }

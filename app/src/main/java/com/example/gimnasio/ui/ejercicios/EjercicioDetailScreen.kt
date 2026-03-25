@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
+import com.example.gimnasio.ui.components.labelWithEmoji
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
@@ -1312,16 +1314,24 @@ fun EjercicioDetailScreen(
             onDismissRequest = { showEditMusculosDialog = false },
             title = { Text("Selecciona músculos") },
             text = {
-                Column {
-                    Musculo.values().forEach { musculo ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    Musculo.entries.forEach { musculo ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Checkbox(
                                 checked = musculosSeleccionados.contains(musculo),
                                 onCheckedChange = { checked ->
                                     musculosSeleccionados = if (checked) musculosSeleccionados + musculo else musculosSeleccionados - musculo
                                 }
                             )
-                            Text(musculo.name)
+                            Text(
+                                text = musculo.labelWithEmoji(),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }

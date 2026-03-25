@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.model.RutinaConEjercicios
 
 @Composable
@@ -20,6 +21,17 @@ fun RutinaItem(
     onClick: () -> Unit
 ) {
     val totalEjercicios = rutinaConEjercicios.ejercicios.size
+    val hasCardio = rutinaConEjercicios.ejercicios.any { Musculo.CARDIO in it.musculos }
+    val hasFuerza = rutinaConEjercicios.ejercicios.any { ejercicio ->
+        ejercicio.musculos.any { it != Musculo.CARDIO }
+    }
+    val iconosRutina = buildString {
+        if (hasFuerza) append("🏋️")
+        if (hasCardio) {
+            if (isNotEmpty()) append(" ")
+            append("🏃")
+        }
+    }.ifBlank { "🗂️" }
 
     Card(
         modifier = Modifier
@@ -39,11 +51,14 @@ fun RutinaItem(
             ) {
                 Text(
                     text = rutinaConEjercicios.rutina.nombre,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 4
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "🗂️",
-                    style = MaterialTheme.typography.titleMedium
+                    text = iconosRutina,
+                    style = MaterialTheme.typography.headlineSmall
                 )
             }
 

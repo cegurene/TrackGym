@@ -6,22 +6,22 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.entity.Musculo
+import com.example.gimnasio.ui.components.labelWithEmoji
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -123,11 +123,7 @@ fun RutinasScreen(
                                 AssistChip(
                                     onClick = { viewModel.toggleMusculo(musculo) },
                                     label = {
-                                        Text(
-                                            musculo.name
-                                                .lowercase()
-                                                .replaceFirstChar { it.uppercase() }
-                                        )
+                                        Text(musculo.labelWithEmoji())
                                     },
                                     trailingIcon = {
                                         Icon(
@@ -252,23 +248,26 @@ fun RutinasScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Musculo.values().forEach { musculo ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { viewModel.toggleMusculo(musculo) }
-                            .padding(vertical = 8.dp)
-                    ) {
-                        Checkbox(
-                            checked = selectedMusculos.contains(musculo),
-                            onCheckedChange = { viewModel.toggleMusculo(musculo) }
-                        )
-
-                        Text(
-                            musculo.name
-                                .lowercase()
-                                .replaceFirstChar { it.uppercase() }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Musculo.entries.forEach { musculo ->
+                        FilterChip(
+                            selected = selectedMusculos.contains(musculo),
+                            onClick = { viewModel.toggleMusculo(musculo) },
+                            label = { Text(musculo.labelWithEmoji()) },
+                            leadingIcon = if (selectedMusculos.contains(musculo)) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                    )
+                                }
+                            } else {
+                                null
+                            }
                         )
                     }
                 }

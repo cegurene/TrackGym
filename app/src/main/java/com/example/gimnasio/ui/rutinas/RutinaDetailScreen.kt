@@ -1,6 +1,8 @@
 package com.example.gimnasio.ui.rutinas
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.entity.EjercicioEntity
+import com.example.gimnasio.ui.components.emoji
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -338,27 +341,64 @@ fun RutinaDetailScreen(
     }
 
     if (showAddDialog) {
+        val ejerciciosNoEnRutina = todosLosEjercicios.filter { ejercicio ->
+            ejercicio.id !in ejercicios.map { it.ejercicio.id }
+        }
+
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
             title = { Text("Añadir ejercicio") },
             text = {
-                Column {
-                    todosLosEjercicios.forEach { ejercicio ->
-                        TextButton(
-                            onClick = {
-                                viewModel.añadirEjercicioARutina(
-                                    rutinaId,
-                                    ejercicio.id
+                if (ejerciciosNoEnRutina.isEmpty()) {
+                    Text("Todos los ejercicios ya están en esta rutina.")
+                } else {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState())
+                    ) {
+                        ejerciciosNoEnRutina.forEach { ejercicio ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .clickable {
+                                        viewModel.añadirEjercicioARutina(
+                                            rutinaId,
+                                            ejercicio.id
+                                        )
+                                        showAddDialog = false
+                                    },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
-                                showAddDialog = false
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = ejercicio.nombre,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = ejercicio.musculos.joinToString(" ") { it.emoji() },
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                }
                             }
-                        ) {
-                            Text(ejercicio.nombre)
                         }
                     }
                 }
             },
-            confirmButton = {},
+            confirmButton = {
+                if (ejerciciosNoEnRutina.isNotEmpty()) {
+                    TextButton(onClick = { showAddDialog = false }) {
+                        Text("Cerrar")
+                    }
+                }
+            },
             dismissButton = {
                 TextButton(onClick = { showAddDialog = false }) {
                     Text("Cancelar")
