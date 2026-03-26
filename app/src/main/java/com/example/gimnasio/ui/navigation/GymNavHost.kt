@@ -27,6 +27,7 @@ import com.example.gimnasio.ui.entrenamiento.EntrenamientoScreen
 import com.example.gimnasio.ui.historico.HistoricoDetailScreen
 import com.example.gimnasio.ui.home.HomeScreen
 import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
+import com.example.gimnasio.ui.settings.SettingsScreen
 import com.example.gimnasio.ui.theme.ThemeMode
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -38,6 +39,7 @@ fun GymNavHost(
     onThemeModeSelected: (ThemeMode) -> Unit
 ) {
     val homeRoute = "home"
+    val settingsRoute = "settings"
     val context = LocalContext.current
     val database = remember { GymDatabase.getDatabase(context) }
     val entrenamientoDao = remember { database.entrenamientoDao() }
@@ -92,8 +94,17 @@ fun GymNavHost(
 
                 composable(homeRoute) {
                     HomeScreen(
+                        onOpenSettings = {
+                            navController.navigate(settingsRoute)
+                        }
+                    )
+                }
+
+                composable(settingsRoute) {
+                    SettingsScreen(
                         selectedThemeMode = selectedThemeMode,
-                        onThemeModeSelected = onThemeModeSelected
+                        onThemeModeSelected = onThemeModeSelected,
+                        onBack = { navController.popBackStack() }
                     )
                 }
 
