@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "667861694298",
+    "project_id": "gymtracker-e4054",
+    "storage_bucket": "gymtracker-e4054.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:667861694298:android:8822dfc49978bdf7e26563",
+        "android_client_info": {
+          "package_name": "com.example.gimnasio"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJJHhBDpYbbKWmuaK1Y1x7UzjJ4ytlzL4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

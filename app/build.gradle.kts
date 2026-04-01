@@ -5,6 +5,14 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+val hasGoogleServicesJson = file("google-services.json").exists()
+
+if (hasGoogleServicesJson) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
+val googleWebClientId = providers.gradleProperty("GOOGLE_WEB_CLIENT_ID").orNull ?: ""
+
 android {
     namespace = "com.example.gimnasio"
     compileSdk = 35
@@ -15,6 +23,8 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+        buildConfigField("boolean", "HAS_GOOGLE_SERVICES_JSON", hasGoogleServicesJson.toString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -39,6 +49,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -55,7 +66,13 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.material)
     implementation(libs.androidx.datastore.preferences)
-    
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.play.services.auth)
+
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
