@@ -74,9 +74,6 @@ class MainActivity : ComponentActivity() {
                     providerIds.contains("google.com") -> {
                         accountPreferencesRepository.loginWithGoogle(firebaseUser.email ?: "")
                     }
-                    providerIds.contains("apple.com") -> {
-                        accountPreferencesRepository.loginWithApple(firebaseUser.email ?: "")
-                    }
                     else -> {
                         accountPreferencesRepository.loginWithEmail(firebaseUser.email ?: "")
                     }

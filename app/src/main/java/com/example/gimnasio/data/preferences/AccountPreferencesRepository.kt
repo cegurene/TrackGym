@@ -23,7 +23,6 @@ class AccountPreferencesRepository(private val context: Context) {
                 val email = preferences[sessionEmailKey]
                 val provider = when (preferences[sessionProviderKey]) {
                     "google" -> AuthProvider.GOOGLE
-                    "apple" -> AuthProvider.APPLE
                     else -> AuthProvider.EMAIL
                 }
                 val needsSync = preferences[sessionNeedsSyncKey] ?: false
@@ -113,12 +112,6 @@ class AccountPreferencesRepository(private val context: Context) {
         )
     }
 
-    suspend fun loginWithApple(email: String): AccountActionResult {
-        return loginWithSocialProvider(
-            suggestedEmail = email,
-            provider = "apple"
-        )
-    }
 
     suspend fun markInitialSyncCompleted() {
         context.accountDataStore.edit { preferences ->

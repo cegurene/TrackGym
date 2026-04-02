@@ -37,7 +37,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.gimnasio.R
-import com.example.gimnasio.data.auth.AppleSocialAuthProvider
 import com.example.gimnasio.data.auth.FirebaseEmailAuthProvider
 import com.example.gimnasio.data.auth.GoogleSocialAuthProvider
 import com.example.gimnasio.data.auth.SocialAuthAvailability
@@ -56,7 +55,6 @@ fun InitialAccessScreen() {
     val accountPreferencesRepository = remember { AccountPreferencesRepository(context) }
     val emailAuthProvider = remember { FirebaseEmailAuthProvider() }
     val googleAuthProvider = remember { GoogleSocialAuthProvider() }
-    val appleAuthProvider = remember { AppleSocialAuthProvider() }
     val scope = rememberCoroutineScope()
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -69,7 +67,6 @@ fun InitialAccessScreen() {
     val isPasswordValid = password.isNotBlank()
     val canSubmitCredentials = isEmailValid && isPasswordValid && SocialAuthAvailability.email().isAvailable
     val googleAvailability = SocialAuthAvailability.google(hasActivity = activity != null)
-    val appleAvailability = SocialAuthAvailability.apple(hasActivity = activity != null)
 
     suspend fun finishOnboarding(withSession: Boolean) {
         onboardingRepository.markOnboardingCompleted()
@@ -119,12 +116,12 @@ fun InitialAccessScreen() {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        painter = painterResource(id = R.drawable.app_logo),
                         contentDescription = null,
                         modifier = Modifier.size(96.dp)
                     )
                     Text(
-                        text = "Gimnasio",
+                        text = "GymTracker",
                         style = MaterialTheme.typography.headlineMedium
                     )
                     Text(
@@ -261,9 +258,7 @@ fun InitialAccessScreen() {
 
                         SocialAuthButtonsRow(
                             googleEnabled = socialAuthEnabled(googleAvailability.isAvailable, loadingProvider),
-                            appleEnabled = socialAuthEnabled(appleAvailability.isAvailable, loadingProvider),
                             googleLoading = loadingProvider == "google",
-                            appleLoading = loadingProvider == "apple",
                             onGoogleClick = {
                                 if (activity == null) {
                                     accountInfo = null
@@ -286,42 +281,6 @@ fun InitialAccessScreen() {
                                             SocialAuthResult.Cancelled -> {
                                                 accountInfo = null
                                                 accountError = "Inicio con Google cancelado"
-                                            }
-                                            is SocialAuthResult.ExternalFlowOpened -> {
-                                                accountError = null
-                                                accountInfo = socialResult.message
-                                            }
-                                            is SocialAuthResult.Error -> {
-                                                accountInfo = null
-                                                accountError = socialResult.message
-                                            }
-                                        }
-                                        loadingProvider = null
-                                    }
-                                }
-                            },
-                            onAppleClick = {
-                                if (activity == null) {
-                                    accountInfo = null
-                                    accountError = "No se pudo abrir el flujo de Apple ID en este contexto"
-                                } else {
-                                    loadingProvider = "apple"
-                                    scope.launch {
-                                        when (val socialResult = appleAuthProvider.signIn(activity)) {
-                                            is SocialAuthResult.Success -> {
-                                                val result = accountPreferencesRepository.loginWithApple(socialResult.user.email)
-                                                if (result == AccountActionResult.SUCCESS) {
-                                                    accountError = null
-                                                    accountInfo = "Sesión iniciada con Apple ID"
-                                                    password = ""
-                                                    finishOnboarding(withSession = true)
-                                                } else {
-                                                    applyAuthResult(result)
-                                                }
-                                            }
-                                            SocialAuthResult.Cancelled -> {
-                                                accountInfo = null
-                                                accountError = "Inicio con Apple ID cancelado"
                                             }
                                             is SocialAuthResult.ExternalFlowOpened -> {
                                                 accountError = null

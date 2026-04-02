@@ -25,7 +25,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -45,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.example.gimnasio.data.auth.AppleSocialAuthProvider
 import com.example.gimnasio.data.auth.FirebaseEmailAuthProvider
 import com.example.gimnasio.data.auth.GoogleSocialAuthProvider
 import com.example.gimnasio.data.auth.SocialAuthAvailability
@@ -72,7 +70,6 @@ fun SettingsScreen(
     val accountPreferencesRepository = remember { AccountPreferencesRepository(context) }
     val emailAuthProvider = remember { FirebaseEmailAuthProvider() }
     val googleSocialAuthProvider = remember { GoogleSocialAuthProvider() }
-    val appleSocialAuthProvider = remember { AppleSocialAuthProvider() }
     val accountSession by accountPreferencesRepository.accountSessionFlow.collectAsState(initial = AccountSession.LoggedOut)
     val scope = rememberCoroutineScope()
     var email by rememberSaveable { mutableStateOf("") }
@@ -87,15 +84,14 @@ fun SettingsScreen(
     val emailAvailability = SocialAuthAvailability.email()
     val canSubmitCredentials = isEmailValid && isPasswordValid && emailAvailability.isAvailable
     val googleAvailability = SocialAuthAvailability.google(hasActivity = activity != null)
-    val appleAvailability = SocialAuthAvailability.apple(hasActivity = activity != null)
 
     val accountStatusText = when (val session = accountSession) {
         AccountSession.LoggedOut -> "No has iniciado sesión"
         is AccountSession.LoggedIn -> {
-            val providerLabel = when (session.provider) {
-                AuthProvider.EMAIL -> "Email"
-                AuthProvider.GOOGLE -> "Google"
-                AuthProvider.APPLE -> "Apple ID"
+            val providerLabel = if (session.provider == AuthProvider.GOOGLE) {
+                "Google"
+            } else {
+                "Email"
             }
             "Sesión activa: ${session.email} ($providerLabel)"
         }
@@ -372,9 +368,7 @@ fun SettingsScreen(
 
                             SocialAuthButtonsRow(
                                 googleEnabled = socialAuthEnabled(googleAvailability.isAvailable, socialLoadingProvider),
-                                appleEnabled = socialAuthEnabled(appleAvailability.isAvailable, socialLoadingProvider),
                                 googleLoading = socialLoadingProvider == "google",
-                                appleLoading = socialLoadingProvider == "apple",
                                 onGoogleClick = {
                                     if (activity == null) {
                                         accountInfo = null
@@ -396,41 +390,6 @@ fun SettingsScreen(
                                                 SocialAuthResult.Cancelled -> {
                                                     accountInfo = null
                                                     accountError = "Inicio con Google cancelado"
-                                                }
-                                                is SocialAuthResult.ExternalFlowOpened -> {
-                                                    accountError = null
-                                                    accountInfo = socialResult.message
-                                                }
-                                                is SocialAuthResult.Error -> {
-                                                    accountInfo = null
-                                                    accountError = socialResult.message
-                                                }
-                                            }
-                                            socialLoadingProvider = null
-                                        }
-                                    }
-                                },
-                                onAppleClick = {
-                                    if (activity == null) {
-                                        accountInfo = null
-                                        accountError = "No se pudo abrir el flujo de Apple ID en este contexto"
-                                    } else {
-                                        socialLoadingProvider = "apple"
-                                        scope.launch {
-                                            when (val socialResult = appleSocialAuthProvider.signIn(activity)) {
-                                                is SocialAuthResult.Success -> {
-                                                    val result = accountPreferencesRepository.loginWithApple(socialResult.user.email)
-                                                    if (result == AccountActionResult.SUCCESS) {
-                                                        accountError = null
-                                                        accountInfo = "Sesión iniciada con Apple ID"
-                                                        password = ""
-                                                    } else {
-                                                        applyAuthResult(result)
-                                                    }
-                                                }
-                                                SocialAuthResult.Cancelled -> {
-                                                    accountInfo = null
-                                                    accountError = "Inicio con Apple ID cancelado"
                                                 }
                                                 is SocialAuthResult.ExternalFlowOpened -> {
                                                     accountError = null

@@ -39,20 +39,4 @@ object SocialAuthAvailability {
         }
         return ProviderAvailability(isAvailable = true)
     }
-
-    fun apple(hasActivity: Boolean): ProviderAvailability {
-        if (!hasActivity) {
-            return ProviderAvailability(
-                isAvailable = false,
-                blockedReason = "Apple ID solo esta disponible desde una pantalla activa."
-            )
-        }
-        if (!BuildConfig.HAS_GOOGLE_SERVICES_JSON) {
-            return ProviderAvailability(
-                isAvailable = false,
-                blockedReason = "Falta app/google-services.json para inicializar Firebase."
-            )
-        }
-        return ProviderAvailability(isAvailable = true)
-    }
 }

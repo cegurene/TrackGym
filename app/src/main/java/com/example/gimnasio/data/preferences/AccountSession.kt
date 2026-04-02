@@ -2,8 +2,7 @@ package com.example.gimnasio.data.preferences
 
 enum class AuthProvider {
     EMAIL,
-    GOOGLE,
-    APPLE
+    GOOGLE
 }
 
 sealed interface AccountSession {

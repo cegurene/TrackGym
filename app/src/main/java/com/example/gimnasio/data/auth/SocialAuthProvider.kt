@@ -3,8 +3,7 @@ package com.example.gimnasio.data.auth
 import android.app.Activity
 
 enum class SocialAuthProviderType {
-    GOOGLE,
-    APPLE
+    GOOGLE
 }
 
 data class SocialAuthUser(
