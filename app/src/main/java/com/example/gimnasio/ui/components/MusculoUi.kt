@@ -9,7 +9,7 @@ fun Musculo.emoji(): String = when (this) {
     Musculo.BICEPS, Musculo.TRICEPS, Musculo.ANTEBRAZOS -> "💪"
     Musculo.PECHO -> "🏋️"
     Musculo.ESPALDA -> "🔙"
-    Musculo.CUÁDRICEPS, Musculo.FEMORAL, Musculo.GEMELOS -> "🦵"
+    Musculo.CUÁDRICEPS, Musculo.FEMORAL, Musculo.ADUCTOR, Musculo.ABDUCTOR, Musculo.GEMELOS -> "🦵"
     Musculo.HOMBROS -> "🤸"
     Musculo.ABDOMINALES -> "🧱"
     Musculo.CARDIO -> "🏃"

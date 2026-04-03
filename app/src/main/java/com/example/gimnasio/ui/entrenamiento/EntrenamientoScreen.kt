@@ -9,10 +9,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.app.Application
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import com.example.gimnasio.data.GymDatabase
@@ -177,7 +180,7 @@ fun EntrenamientoScreen(
                 contentPadding = PaddingValues(8.dp), // padding general
                 verticalArrangement = Arrangement.spacedBy(15.dp) // separación entre cards
             ) {
-                items(ejercicios) { ejercicioConSeries ->
+                itemsIndexed(ejercicios) { index, ejercicioConSeries ->
 
                     val esCardio = ejercicioConSeries.ejercicio.musculos.contains(Musculo.CARDIO)
                     val ejercicioCompletado =
@@ -210,6 +213,36 @@ fun EntrenamientoScreen(
                                     style = MaterialTheme.typography.titleLarge,
                                     modifier = Modifier.weight(1f)
                                 )
+
+                                IconButton(
+                                    enabled = index > 0,
+                                    onClick = {
+                                        viewModel.moverEjercicio(
+                                            ejercicioConSeries,
+                                            ejercicios[index - 1]
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowUp,
+                                        contentDescription = "Subir ejercicio"
+                                    )
+                                }
+
+                                IconButton(
+                                    enabled = index < ejercicios.lastIndex,
+                                    onClick = {
+                                        viewModel.moverEjercicio(
+                                            ejercicioConSeries,
+                                            ejercicios[index + 1]
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Bajar ejercicio"
+                                    )
+                                }
 
                                 IconButton(
                                     enabled = !ejercicioCompletado,

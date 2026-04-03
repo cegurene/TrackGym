@@ -41,9 +41,10 @@ class MainActivity : ComponentActivity() {
                 .collectAsState(initial = AccountSession.LoggedOut)
             val onboardingCompleted by onboardingPreferencesRepository
                 .onboardingCompletedFlow
-                .collectAsState(initial = false)
-            val initialCloudSyncService = remember(onboardingCompleted) {
-                if (onboardingCompleted) {
+                .collectAsState(initial = null as Boolean?)
+            val isOnboardingCompleted = onboardingCompleted == true
+            val initialCloudSyncService = remember(isOnboardingCompleted) {
+                if (isOnboardingCompleted) {
                     InitialCloudSyncService(
                         context = applicationContext,
                         accountPreferencesRepository = accountPreferencesRepository
@@ -54,14 +55,14 @@ class MainActivity : ComponentActivity() {
             }
             val scope = rememberCoroutineScope()
 
-            LaunchedEffect(onboardingCompleted, accountSession, initialCloudSyncService) {
-                if (onboardingCompleted) {
+            LaunchedEffect(isOnboardingCompleted, accountSession, initialCloudSyncService) {
+                if (isOnboardingCompleted) {
                     initialCloudSyncService?.syncIfNeeded(accountSession)
                 }
             }
 
-            LaunchedEffect(onboardingCompleted) {
-                if (!onboardingCompleted) return@LaunchedEffect
+            LaunchedEffect(isOnboardingCompleted) {
+                if (!isOnboardingCompleted) return@LaunchedEffect
                 if (FirebaseApp.getApps(applicationContext).isEmpty()) return@LaunchedEffect
 
                 val firebaseUser = runCatching { FirebaseAuth.getInstance().currentUser }
@@ -85,9 +86,7 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = false
             ) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    if (!onboardingCompleted) {
-                        InitialAccessScreen()
-                    } else {
+                    if (isOnboardingCompleted) {
                         GymApp(
                             selectedThemeMode = selectedThemeMode,
                             onThemeModeSelected = { themeMode ->
@@ -96,6 +95,8 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         )
+                    } else if (onboardingCompleted == false) {
+                        InitialAccessScreen()
                     }
                 }
             }

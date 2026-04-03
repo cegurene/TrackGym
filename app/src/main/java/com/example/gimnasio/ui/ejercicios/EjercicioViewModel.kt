@@ -75,11 +75,13 @@ class EjercicioViewModel(
     fun crearEjercicio(nombre: String, musculos: List<Musculo>) {
         if (nombre.isBlank()) return
 
+        val musculoPrincipal = musculos.firstOrNull() ?: return
+
         viewModelScope.launch {
             ejercicioDao.insert(
                 EjercicioEntity(
                     nombre = nombre.trim(),
-                    musculos = musculos
+                    musculos = listOf(musculoPrincipal)
                 )
             )
         }
@@ -103,9 +105,10 @@ class EjercicioViewModel(
     }
 
     fun actualizarMusculos(id: Long, musculos: List<Musculo>) {
+        val musculoPrincipal = musculos.firstOrNull() ?: return
+
         viewModelScope.launch {
-            val musculosStr = musculos.joinToString(",") { it.name }
-            ejercicioDao.updateMusculos(id, musculosStr)
+            ejercicioDao.updateMusculos(id, musculoPrincipal.name)
         }
     }
 

@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -151,7 +152,8 @@ fun EjercicioDetailScreen(
     var showEditMusculosDialog by remember { mutableStateOf(false) }
 
     var nuevoNombre by remember { mutableStateOf("") }
-    var musculosSeleccionados by remember { mutableStateOf(setOf<Musculo>()) }
+    var musculoSeleccionado by remember { mutableStateOf<Musculo?>(null) }
+    var mostrarErrorMusculo by remember { mutableStateOf(false) }
 
     // ========== MENÚ DE SECCIONES ==========
     val sections = listOf("Músculo", "Última sesión", "Comentarios", "Actividad", "Records")
@@ -1273,7 +1275,8 @@ fun EjercicioDetailScreen(
                 },
                 onEditMusculos = {
                     showSettings = false
-                    musculosSeleccionados = ejercicio?.musculos?.toSet() ?: emptySet()
+                    musculoSeleccionado = ejercicio?.musculos?.firstOrNull()
+                    mostrarErrorMusculo = false
                     showEditMusculosDialog = true
                 }
             )
@@ -1312,31 +1315,62 @@ fun EjercicioDetailScreen(
     if (showEditMusculosDialog) {
         AlertDialog(
             onDismissRequest = { showEditMusculosDialog = false },
-            title = { Text("Selecciona músculos") },
+            title = { Text("Selecciona un músculo") },
             text = {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState())
                 ) {
-                    Musculo.entries.forEach { musculo ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Checkbox(
-                                checked = musculosSeleccionados.contains(musculo),
-                                onCheckedChange = { checked ->
-                                    musculosSeleccionados = if (checked) musculosSeleccionados + musculo else musculosSeleccionados - musculo
+                    if (mostrarErrorMusculo) {
+                        Text(
+                            text = "Debes seleccionar un músculo",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Musculo.entries.forEach { musculo ->
+                            FilterChip(
+                                selected = musculoSeleccionado == musculo,
+                                onClick = {
+                                    musculoSeleccionado = musculo
+                                    mostrarErrorMusculo = false
+                                },
+                                label = { Text(musculo.labelWithEmoji()) },
+                                leadingIcon = if (musculoSeleccionado == musculo) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                        )
+                                    }
+                                } else {
+                                    null
                                 }
-                            )
-                            Text(
-                                text = musculo.labelWithEmoji(),
-                                style = MaterialTheme.typography.bodyMedium
                             )
                         }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { viewModel.actualizarMusculos(ejercicioId, musculosSeleccionados.toList()); showEditMusculosDialog = false }) { Text("Guardar") } },
+            confirmButton = {
+                TextButton(onClick = {
+                    val seleccionado = musculoSeleccionado
+                    if (seleccionado == null) {
+                        mostrarErrorMusculo = true
+                    } else {
+                        viewModel.actualizarMusculos(ejercicioId, listOf(seleccionado))
+                        showEditMusculosDialog = false
+                    }
+                }) {
+                    Text("Guardar")
+                }
+            },
             dismissButton = { TextButton(onClick = { showEditMusculosDialog = false }) { Text("Cancelar") } }
         )
     }

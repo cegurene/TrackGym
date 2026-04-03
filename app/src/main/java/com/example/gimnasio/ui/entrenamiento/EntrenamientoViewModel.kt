@@ -7,6 +7,7 @@ import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.EntrenamientoEjercicioEntity
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.entity.SerieEntity
+import com.example.gimnasio.data.model.EntrenamientoEjercicioConSeries
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
@@ -105,8 +106,7 @@ class EntrenamientoViewModel(
 
     fun añadirEjercicioAlEntrenamiento(ejercicioId: Long) {
         viewModelScope.launch {
-            val ejerciciosActuales = ejerciciosDelEntrenamiento.first()
-            val nuevoOrden = ejerciciosActuales.size
+            val nuevoOrden = (entrenamientoDao.getMaxOrden(entrenamientoId) ?: -1) + 1
 
             val esCardio = ejercicioDao
                 .getById(ejercicioId)
@@ -137,6 +137,16 @@ class EntrenamientoViewModel(
 
             serieDao.insert(serieInicial)
             sincronizarEstadoEjercicio(entrenamientoEjercicioId)
+        }
+    }
+
+    fun moverEjercicio(
+        actual: EntrenamientoEjercicioConSeries,
+        otro: EntrenamientoEjercicioConSeries
+    ) {
+        viewModelScope.launch {
+            entrenamientoDao.updateOrden(actual.entrenamientoEjercicio.id, otro.entrenamientoEjercicio.orden)
+            entrenamientoDao.updateOrden(otro.entrenamientoEjercicio.id, actual.entrenamientoEjercicio.orden)
         }
     }
 

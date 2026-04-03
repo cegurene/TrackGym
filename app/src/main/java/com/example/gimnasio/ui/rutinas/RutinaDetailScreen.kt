@@ -152,10 +152,19 @@ fun RutinaDetailScreen(
                                         onStartEntrenamiento(entrenamientoId)
                                     }
                                 },
-                                enabled = entrenamientoActivo == null,
+                                enabled = entrenamientoActivo == null && ejercicios.isNotEmpty(),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text("Iniciar entrenamiento")
+                            }
+
+                            if (ejercicios.isEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Añade al menos un ejercicio para poder empezar.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }

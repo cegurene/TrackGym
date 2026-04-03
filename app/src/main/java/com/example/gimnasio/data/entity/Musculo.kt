@@ -1,15 +1,17 @@
 package com.example.gimnasio.data.entity
 
 enum class Musculo {
-    BICEPS,
-    TRICEPS,
     PECHO,
     ESPALDA,
+    HOMBROS,
+    BICEPS,
+    TRICEPS,
+    ANTEBRAZOS,
     CUÁDRICEPS,
     FEMORAL,
-    HOMBROS,
-    ABDOMINALES,
-    ANTEBRAZOS,
+    ADUCTOR,
+    ABDUCTOR,
     GEMELOS,
+    ABDOMINALES,
     CARDIO
 }

@@ -142,6 +142,12 @@ class RutinaViewModel(application: Application) : ViewModel() {
     ) {
         viewModelScope.launch {
 
+            val ejerciciosRutina = rutinaEjercicioDao.getEjerciciosDeRutinaOnce(rutinaId)
+
+            if (ejerciciosRutina.isEmpty()) {
+                return@launch
+            }
+
             // 1️⃣ Comprobar si ya existe entrenamiento activo
             val activo = entrenamientoDao.getEntrenamientoActivo()
 
@@ -160,12 +166,7 @@ class RutinaViewModel(application: Application) : ViewModel() {
                     completado = false
                 )
             )
-
-            // 3️⃣ Obtener ejercicios de la rutina
-            val ejerciciosRutina =
-                rutinaEjercicioDao.getEjerciciosDeRutinaOnce(rutinaId)
-
-            // 4️⃣ Copiar ejercicios y crear 1 serie inicial por cada uno
+            // 3️⃣ Copiar ejercicios y crear 1 serie inicial por cada uno
             ejerciciosRutina.forEach { ejercicioRutina ->
                 val entrenamientoEjercicioId = entrenamientoDao.insertEjercicioDeEntrenamiento(
                     EntrenamientoEjercicioEntity(
@@ -197,7 +198,7 @@ class RutinaViewModel(application: Application) : ViewModel() {
                 serieDao.insert(serieInicial)
             }
 
-            // 5️⃣ Navegar
+            // 4️⃣ Navegar
             onNavigate(nuevoId)
         }
     }

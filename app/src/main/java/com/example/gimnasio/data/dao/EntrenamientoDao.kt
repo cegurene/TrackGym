@@ -51,6 +51,9 @@ interface EntrenamientoDao {
         entrenamientoId: Long
     ): Flow<List<EntrenamientoEjercicioConSeries>>
 
+    @Query("SELECT MAX(orden) FROM entrenamiento_ejercicio WHERE entrenamientoId = :entrenamientoId")
+    suspend fun getMaxOrden(entrenamientoId: Long): Int?
+
     @Insert
     suspend fun insertSerie(serie: SerieEntity)
 
@@ -96,6 +99,9 @@ interface EntrenamientoDao {
 
     @Query("DELETE FROM entrenamiento_ejercicio WHERE id = :entrenamientoEjercicioId")
     suspend fun deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId: Long)
+
+    @Query("UPDATE entrenamiento_ejercicio SET orden = :nuevoOrden WHERE id = :entrenamientoEjercicioId")
+    suspend fun updateOrden(entrenamientoEjercicioId: Long, nuevoOrden: Int)
 
     @Query("""
     UPDATE entrenamientos
