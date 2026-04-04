@@ -1,12 +1,14 @@
 package com.example.gimnasio.ui.ejercicios
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.dao.EjercicioDao
 import com.example.gimnasio.data.dao.SerieDao
 import com.example.gimnasio.data.entity.EjercicioEntity
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.model.UltimaSesionEjercicio
+import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -16,9 +18,12 @@ import kotlinx.coroutines.launch
 import kotlin.collections.emptyMap
 
 class EjercicioViewModel(
+    application: Application,
     private val ejercicioDao: EjercicioDao,
     private val serieDao: SerieDao
-) : ViewModel() {
+) : AndroidViewModel(application) {
+
+    private val cloudSyncCoordinator = CloudSyncCoordinator(application)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery
@@ -84,6 +89,7 @@ class EjercicioViewModel(
                     musculos = listOf(musculoPrincipal)
                 )
             )
+            cloudSyncCoordinator.syncNow()
         }
     }
 

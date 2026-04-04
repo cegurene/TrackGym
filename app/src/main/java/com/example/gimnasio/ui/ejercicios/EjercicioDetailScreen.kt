@@ -1,6 +1,7 @@
 package com.example.gimnasio.ui.ejercicios
 
 import android.os.Build
+import android.app.Application
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
@@ -143,7 +144,7 @@ fun EjercicioDetailScreen(
     val database = remember { GymDatabase.getDatabase(context) }
 
     val viewModel: EjercicioViewModel = viewModel(
-        factory = EjercicioViewModelFactory(database)
+        factory = EjercicioViewModelFactory(context.applicationContext as Application, database)
     )
 
     var showSettings by remember { mutableStateOf(false) }
@@ -1315,7 +1316,7 @@ fun EjercicioDetailScreen(
     if (showEditMusculosDialog) {
         AlertDialog(
             onDismissRequest = { showEditMusculosDialog = false },
-            title = { Text("Selecciona un músculo") },
+            title = { Text("Cambiar músculo") },
             text = {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState())
@@ -1338,7 +1339,7 @@ fun EjercicioDetailScreen(
                             FilterChip(
                                 selected = musculoSeleccionado == musculo,
                                 onClick = {
-                                    musculoSeleccionado = musculo
+                                    musculoSeleccionado = if (musculoSeleccionado == musculo) null else musculo
                                     mostrarErrorMusculo = false
                                 },
                                 label = { Text(musculo.labelWithEmoji()) },

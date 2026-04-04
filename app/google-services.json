@@ -12,7 +12,20 @@
           "package_name": "com.example.gimnasio"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "667861694298-gpngmmd1hapkqa2o0hrnu366qlashjg9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.gimnasio",
+            "certificate_hash": "98747fe78f9d59ac32ac4dace0b08df98e5e1c38"
+          }
+        },
+        {
+          "client_id": "667861694298-p4tja11t6qippbcqea0m4p09ufa2m7ge.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAJJHhBDpYbbKWmuaK1Y1x7UzjJ4ytlzL4"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "667861694298-p4tja11t6qippbcqea0m4p09ufa2m7ge.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

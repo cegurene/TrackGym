@@ -14,6 +14,7 @@ import com.example.gimnasio.data.entity.RutinaEntity
 import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.EjercicioConOrden
 import com.example.gimnasio.data.model.RutinaConEjercicios
+import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,7 @@ import kotlinx.coroutines.launch
 class RutinaViewModel(application: Application) : ViewModel() {
 
     private val database = GymDatabase.getDatabase(application)
+    private val cloudSyncCoordinator = CloudSyncCoordinator(application)
     private val rutinaDao = database.rutinaDao()
     private val ejercicioDao = database.ejercicioDao()
     private val rutinaEjercicioDao = database.rutinaEjercicioDao()
@@ -63,6 +65,7 @@ class RutinaViewModel(application: Application) : ViewModel() {
     fun insertar(nombre: String) {
         viewModelScope.launch {
             rutinaDao.insert(RutinaEntity(nombre = nombre))
+            cloudSyncCoordinator.syncNow()
         }
     }
 

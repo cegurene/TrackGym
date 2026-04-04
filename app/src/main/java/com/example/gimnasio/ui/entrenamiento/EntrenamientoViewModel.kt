@@ -8,6 +8,7 @@ import com.example.gimnasio.data.entity.EntrenamientoEjercicioEntity
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.EntrenamientoEjercicioConSeries
+import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
@@ -19,6 +20,7 @@ class EntrenamientoViewModel(
 ) : AndroidViewModel(application) {
 
     private val database = GymDatabase.getDatabase(application)
+    private val cloudSyncCoordinator = CloudSyncCoordinator(application)
     private val entrenamientoDao = database.entrenamientoDao()
     private val ejercicioDao = database.ejercicioDao()
     private val serieDao = database.serieDao()
@@ -195,6 +197,7 @@ class EntrenamientoViewModel(
     fun finalizarEntrenamiento(onFinalizado: () -> Unit) {
         viewModelScope.launch {
             entrenamientoDao.marcarComoCompletado(entrenamientoId, System.currentTimeMillis())
+            cloudSyncCoordinator.syncNow()
             onFinalizado()
         }
     }

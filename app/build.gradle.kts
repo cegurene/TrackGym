@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.googleid)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+    implementation("com.google.firebase:firebase-firestore")
     implementation(libs.play.services.auth)
 
     // Room

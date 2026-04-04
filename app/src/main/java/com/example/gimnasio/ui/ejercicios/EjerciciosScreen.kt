@@ -1,5 +1,6 @@
 package com.example.gimnasio.ui.ejercicios
 
+import android.app.Application
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -36,7 +37,7 @@ fun EjerciciosScreen(
     val database = remember { GymDatabase.getDatabase(context) }
 
     val viewModel: EjercicioViewModel = viewModel(
-        factory = EjercicioViewModelFactory(database)
+        factory = EjercicioViewModelFactory(context.applicationContext as Application, database)
     )
 
     val ejercicios by viewModel.ejercicios.collectAsState()
