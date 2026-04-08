@@ -76,6 +76,7 @@ class RutinaViewModel(application: Application) : ViewModel() {
     fun borrarRutina(id: Long) {
         viewModelScope.launch {
             rutinaDao.deleteById(id)
+            cloudSyncCoordinator.syncNow()
         }
     }
 
@@ -83,6 +84,7 @@ class RutinaViewModel(application: Application) : ViewModel() {
         if (nuevoNombre.isBlank()) return
         viewModelScope.launch {
             rutinaDao.updateNombre(id, nuevoNombre.trim())
+            cloudSyncCoordinator.syncNow()
         }
     }
 
@@ -106,12 +108,14 @@ class RutinaViewModel(application: Application) : ViewModel() {
                     orden = maxOrden + 1
                 )
             )
+            cloudSyncCoordinator.syncNow()
         }
     }
 
     fun quitarEjercicioDeRutina(rutinaId: Long, ejercicioId: Long) {
         viewModelScope.launch {
             rutinaEjercicioDao.delete(rutinaId, ejercicioId)
+            cloudSyncCoordinator.syncNow()
         }
     }
 
@@ -136,6 +140,7 @@ class RutinaViewModel(application: Application) : ViewModel() {
                 otro.ejercicio.id,
                 actual.orden
             )
+            cloudSyncCoordinator.syncNow()
         }
     }
 

@@ -96,6 +96,7 @@ class EjercicioViewModel(
     fun borrarEjercicio(id: Long) {
         viewModelScope.launch {
             ejercicioDao.delete(id)
+            cloudSyncCoordinator.syncNow()
         }
     }
 
@@ -107,6 +108,7 @@ class EjercicioViewModel(
                 id = id,
                 nuevoNombre = nuevoNombre.trim()
             )
+            cloudSyncCoordinator.syncNow()
         }
     }
 
@@ -115,6 +117,7 @@ class EjercicioViewModel(
 
         viewModelScope.launch {
             ejercicioDao.updateMusculos(id, musculoPrincipal.name)
+            cloudSyncCoordinator.syncNow()
         }
     }
 
@@ -200,6 +203,7 @@ class EjercicioViewModel(
     fun actualizarComentario(ejercicioId: Long, comentario: String?) {
         viewModelScope.launch {
             ejercicioDao.actualizarComentario(ejercicioId, comentario ?: "")
+            cloudSyncCoordinator.syncNow()
         }
     }
 

@@ -5,16 +5,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import com.example.gimnasio.data.preferences.AccountPreferencesRepository
 import com.example.gimnasio.data.preferences.AccountSession
 import com.example.gimnasio.data.preferences.OnboardingPreferencesRepository
 import com.example.gimnasio.data.preferences.ThemePreferencesRepository
 import com.example.gimnasio.data.sync.InitialCloudSyncService
+import com.example.gimnasio.ui.components.DismissKeyboardOnTap
 import com.example.gimnasio.ui.GymApp
 import com.example.gimnasio.ui.onboarding.InitialAccessScreen
 import com.example.gimnasio.ui.theme.GimnasioTheme
@@ -85,18 +91,41 @@ class MainActivity : ComponentActivity() {
                 themeMode = selectedThemeMode,
                 dynamicColor = false
             ) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    if (isOnboardingCompleted) {
-                        GymApp(
-                            selectedThemeMode = selectedThemeMode,
-                            onThemeModeSelected = { themeMode ->
-                                scope.launch {
-                                    themePreferencesRepository.setThemeMode(themeMode)
+                val view = LocalView.current
+                val isDarkTheme = when (selectedThemeMode) {
+                    ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                    ThemeMode.LIGHT -> false
+                    ThemeMode.DARK -> true
+                }
+                val barColor = androidx.compose.material3.MaterialTheme.colorScheme.background.toArgb()
+
+                SideEffect {
+                    window.statusBarColor = barColor
+                    window.navigationBarColor = barColor
+
+                    val insetsController = WindowCompat.getInsetsController(window, view)
+                    insetsController.isAppearanceLightStatusBars = !isDarkTheme
+                    insetsController.isAppearanceLightNavigationBars = !isDarkTheme
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        window.isNavigationBarContrastEnforced = false
+                    }
+                }
+
+                DismissKeyboardOnTap {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        if (isOnboardingCompleted) {
+                            GymApp(
+                                selectedThemeMode = selectedThemeMode,
+                                onThemeModeSelected = { themeMode ->
+                                    scope.launch {
+                                        themePreferencesRepository.setThemeMode(themeMode)
+                                    }
                                 }
-                            }
-                        )
-                    } else if (onboardingCompleted == false) {
-                        InitialAccessScreen()
+                            )
+                        } else if (onboardingCompleted == false) {
+                            InitialAccessScreen()
+                        }
                     }
                 }
             }

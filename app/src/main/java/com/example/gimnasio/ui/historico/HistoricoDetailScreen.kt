@@ -13,11 +13,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.entity.SerieEntity
+import com.example.gimnasio.ui.components.emojiSummary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -150,11 +152,31 @@ fun HistoricoDetailScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            Text(
-                                text = "Basado en: ${rutina.nombre}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            val ejerciciosEmoji = data.ejercicios
+                                .map { it.ejercicio.musculos }
+                                .flatten()
+                                .emojiSummary()
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Basado en: ${rutina.nombre}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Text(
+                                    text = ejerciciosEmoji,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
                         }
                     }
 

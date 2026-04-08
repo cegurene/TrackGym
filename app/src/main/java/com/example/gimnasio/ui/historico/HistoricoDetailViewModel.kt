@@ -9,10 +9,12 @@ import com.example.gimnasio.data.entity.EntrenamientoEntity
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.EntrenamientoConEjerciciosYSeries
+import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.launch
 
 class HistoricoDetailViewModel(context: Context) : ViewModel() {
     private val database = GymDatabase.getDatabase(context)
+    private val cloudSyncCoordinator = CloudSyncCoordinator(context)
     private val dao = database.entrenamientoDao()
     private val serieDao = database.serieDao()
 
@@ -80,12 +82,14 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
     fun renombrarEntrenamiento(id: Long, nuevoNombre: String) {
         viewModelScope.launch {
             dao.renombrarEntrenamiento(id, nuevoNombre)
+            cloudSyncCoordinator.syncNow()
         }
     }
 
     fun borrarEntrenamiento(id: Long) {
         viewModelScope.launch {
             dao.deleteEntrenamiento(id)
+            cloudSyncCoordinator.syncNow()
         }
     }
 }

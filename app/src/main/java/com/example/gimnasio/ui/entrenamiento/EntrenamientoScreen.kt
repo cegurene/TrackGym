@@ -18,11 +18,14 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
 import androidx.compose.material3.Icon
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.input.TextFieldValue
+import com.example.gimnasio.ui.components.EjercicioSelectionCard
+import com.example.gimnasio.ui.components.emojiSummary
 
 @Composable
 private fun SerieInputField(
@@ -85,7 +88,6 @@ fun EntrenamientoScreen(
 
     var tiempoActual by remember { mutableStateOf(System.currentTimeMillis()) }
     var erroresValidacion by remember { mutableStateOf<Map<Long, String>>(emptyMap()) }
-    var checksboxEnError by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -99,7 +101,6 @@ fun EntrenamientoScreen(
             erroresValidacion = erroresValidacion.toMutableMap().apply {
                 put(ejercicioId, mensaje)
             }
-            checksboxEnError = null
             delay(2000)
             erroresValidacion = erroresValidacion.toMutableMap().apply {
                 remove(ejercicioId)
@@ -192,57 +193,76 @@ fun EntrenamientoScreen(
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
                         Column(
-                            modifier = Modifier
-                                .padding(16.dp) // padding interno de la card
+                            modifier = Modifier.padding(16.dp)
                         ) {
+                            val musculosEmoji = ejercicioConSeries.ejercicio.musculos.emojiSummary()
 
-                            // 🔹 Cabecera ejercicio
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Checkbox(
                                     checked = ejercicioCompletado,
                                     onCheckedChange = null
                                 )
 
-                                Spacer(modifier = Modifier.width(15.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
 
                                 Text(
                                     text = ejercicioConSeries.ejercicio.nombre,
                                     style = MaterialTheme.typography.titleLarge,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
 
-                                IconButton(
-                                    enabled = index > 0,
-                                    onClick = {
-                                        viewModel.moverEjercicio(
-                                            ejercicioConSeries,
-                                            ejercicios[index - 1]
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Text(
+                                    text = musculosEmoji,
+                                    style = MaterialTheme.typography.headlineSmall
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row {
+                                    IconButton(
+                                        enabled = index > 0,
+                                        onClick = {
+                                            viewModel.moverEjercicio(
+                                                ejercicioConSeries,
+                                                ejercicios[index - 1]
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowUp,
+                                            contentDescription = "Subir ejercicio"
                                         )
                                     }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowUp,
-                                        contentDescription = "Subir ejercicio"
-                                    )
+
+                                    IconButton(
+                                        enabled = index < ejercicios.lastIndex,
+                                        onClick = {
+                                            viewModel.moverEjercicio(
+                                                ejercicioConSeries,
+                                                ejercicios[index + 1]
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowDown,
+                                            contentDescription = "Bajar ejercicio"
+                                        )
+                                    }
                                 }
 
-                                IconButton(
-                                    enabled = index < ejercicios.lastIndex,
-                                    onClick = {
-                                        viewModel.moverEjercicio(
-                                            ejercicioConSeries,
-                                            ejercicios[index + 1]
-                                        )
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
-                                        contentDescription = "Bajar ejercicio"
-                                    )
-                                }
+                                Spacer(modifier = Modifier.weight(1f))
 
                                 IconButton(
                                     enabled = !ejercicioCompletado,
@@ -440,31 +460,15 @@ fun EntrenamientoScreen(
             text = {
                 LazyColumn {
                     items(ejerciciosNoAgregados) { ejercicio ->
-                        TextButton(
+                        EjercicioSelectionCard(
+                            nombre = ejercicio.nombre,
+                            musculos = ejercicio.musculos,
                             onClick = {
                                 viewModel.añadirEjercicioAlEntrenamiento(ejercicio.id)
                                 showAddExerciseDialog = false
                             },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = ejercicio.nombre,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = ejercicio.musculos.joinToString(", ") { it.name },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
                     }
                 }
             },

@@ -2,6 +2,7 @@ package com.example.gimnasio.ui.home
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -31,6 +32,35 @@ fun HomeScreen(
     val pagerState = rememberPagerState(pageCount = { 4 })
     val scope = rememberCoroutineScope()
     val tabs = listOf("Rutinas", "Ejercicios", "Histórico", "Estadísticas")
+
+    val shouldHandleBack =
+        (pagerState.currentPage == 0 && selectedRutinaId != null) ||
+            (pagerState.currentPage == 1 && selectedEjercicioId != null) ||
+            (pagerState.currentPage == 2 && selectedEntrenamientoId != null) ||
+            pagerState.currentPage != 0
+
+    BackHandler(enabled = shouldHandleBack) {
+        when (pagerState.currentPage) {
+            0 -> selectedRutinaId = null
+            1 -> {
+                if (selectedEjercicioId != null) {
+                    selectedEjercicioId = null
+                } else {
+                    scope.launch { pagerState.animateScrollToPage(0) }
+                }
+            }
+            2 -> {
+                if (selectedEntrenamientoId != null) {
+                    selectedEntrenamientoId = null
+                } else {
+                    scope.launch { pagerState.animateScrollToPage(0) }
+                }
+            }
+            3 -> scope.launch { pagerState.animateScrollToPage(0) }
+            else -> Unit
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxWidth()) {
             ScrollableTabRow(

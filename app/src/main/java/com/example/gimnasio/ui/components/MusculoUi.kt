@@ -15,5 +15,8 @@ fun Musculo.emoji(): String = when (this) {
     Musculo.CARDIO -> "🏃"
 }
 
+fun Iterable<Musculo>.emojiSummary(): String =
+    distinct().joinToString(" ") { it.emoji() }.ifBlank { "🏋️" }
+
 fun Musculo.labelWithEmoji(): String = "${emoji()} ${displayLabel()}"
 

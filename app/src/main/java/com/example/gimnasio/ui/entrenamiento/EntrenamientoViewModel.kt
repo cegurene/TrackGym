@@ -103,7 +103,10 @@ class EntrenamientoViewModel(
     }
 
     fun eliminarEjercicio(entrenamientoEjercicioId: Long) {
-        viewModelScope.launch { entrenamientoDao.deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId) }
+        viewModelScope.launch {
+            entrenamientoDao.deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId)
+            cloudSyncCoordinator.syncNow()
+        }
     }
 
     fun añadirEjercicioAlEntrenamiento(ejercicioId: Long) {
@@ -139,6 +142,7 @@ class EntrenamientoViewModel(
 
             serieDao.insert(serieInicial)
             sincronizarEstadoEjercicio(entrenamientoEjercicioId)
+            cloudSyncCoordinator.syncNow()
         }
     }
 
@@ -149,6 +153,7 @@ class EntrenamientoViewModel(
         viewModelScope.launch {
             entrenamientoDao.updateOrden(actual.entrenamientoEjercicio.id, otro.entrenamientoEjercicio.orden)
             entrenamientoDao.updateOrden(otro.entrenamientoEjercicio.id, actual.entrenamientoEjercicio.orden)
+            cloudSyncCoordinator.syncNow()
         }
     }
 
@@ -190,6 +195,7 @@ class EntrenamientoViewModel(
     fun cancelarEntrenamiento(onCancelado: () -> Unit) {
         viewModelScope.launch {
             entrenamientoDao.deleteEntrenamiento(entrenamientoId)
+            cloudSyncCoordinator.syncNow()
             onCancelado()
         }
     }
