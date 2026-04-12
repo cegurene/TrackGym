@@ -163,7 +163,7 @@ fun RutinasScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 12.dp),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 112.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(rutinas) { rutinaConEjercicios ->
@@ -182,6 +182,7 @@ fun RutinasScreen(
     // 🔹 Diálogo crear rutina
     if (showDialog) {
         var mostrarErrorNombre by remember { mutableStateOf(false) }
+        var mostrarErrorDuplicado by remember { mutableStateOf(false) }
 
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -193,6 +194,7 @@ fun RutinasScreen(
                         onValueChange = {
                             nombreRutina = it
                             mostrarErrorNombre = false
+                            mostrarErrorDuplicado = false
                         },
                         label = { Text("Nombre de la rutina") },
                         singleLine = true
@@ -205,18 +207,36 @@ fun RutinasScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
+
+                    if (mostrarErrorDuplicado) {
+                        Text(
+                            text = "Ya existe una rutina con ese nombre. Cambialo.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (nombreRutina.isBlank()) {
-                            mostrarErrorNombre = true
-                        } else {
-                            viewModel.insertar(nombreRutina.trim())
-                            nombreRutina = ""
-                            showDialog = false
-                            mostrarErrorNombre = false
+                        viewModel.insertar(nombreRutina) { resultado ->
+                            when (resultado) {
+                                RutinaViewModel.NombreOperacionResultado.OK -> {
+                                    nombreRutina = ""
+                                    showDialog = false
+                                    mostrarErrorNombre = false
+                                    mostrarErrorDuplicado = false
+                                }
+                                RutinaViewModel.NombreOperacionResultado.VACIO -> {
+                                    mostrarErrorNombre = true
+                                    mostrarErrorDuplicado = false
+                                }
+                                RutinaViewModel.NombreOperacionResultado.DUPLICADO -> {
+                                    mostrarErrorDuplicado = true
+                                    mostrarErrorNombre = false
+                                }
+                            }
                         }
                     }
                 ) {

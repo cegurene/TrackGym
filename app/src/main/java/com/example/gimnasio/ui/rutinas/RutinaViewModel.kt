@@ -1,6 +1,7 @@
 package com.example.gimnasio.ui.rutinas
 
 import android.app.Application
+import android.database.sqlite.SQLiteConstraintException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -23,6 +24,12 @@ import kotlinx.coroutines.launch
 
 
 class RutinaViewModel(application: Application) : ViewModel() {
+
+    enum class NombreOperacionResultado {
+        OK,
+        VACIO,
+        DUPLICADO
+    }
 
     private val database = GymDatabase.getDatabase(application)
     private val cloudSyncCoordinator = CloudSyncCoordinator(application)
@@ -62,10 +69,29 @@ class RutinaViewModel(application: Application) : ViewModel() {
     val entrenamientoActivo =
         entrenamientoDao.getEntrenamientoActivoFlow()
 
-    fun insertar(nombre: String) {
+    fun insertar(
+        nombre: String,
+        onResult: (NombreOperacionResultado) -> Unit = {}
+    ) {
+        val nombreNormalizado = nombre.trim()
+        if (nombreNormalizado.isBlank()) {
+            onResult(NombreOperacionResultado.VACIO)
+            return
+        }
+
         viewModelScope.launch {
-            rutinaDao.insert(RutinaEntity(nombre = nombre))
-            cloudSyncCoordinator.syncNow()
+            try {
+                if (rutinaDao.existsByNombre(nombreNormalizado)) {
+                    onResult(NombreOperacionResultado.DUPLICADO)
+                    return@launch
+                }
+
+                rutinaDao.insert(RutinaEntity(nombre = nombreNormalizado))
+                cloudSyncCoordinator.syncNow()
+                onResult(NombreOperacionResultado.OK)
+            } catch (_: SQLiteConstraintException) {
+                onResult(NombreOperacionResultado.DUPLICADO)
+            }
         }
     }
 
@@ -80,11 +106,30 @@ class RutinaViewModel(application: Application) : ViewModel() {
         }
     }
 
-    fun renombrarRutina(id: Long, nuevoNombre: String) {
-        if (nuevoNombre.isBlank()) return
+    fun renombrarRutina(
+        id: Long,
+        nuevoNombre: String,
+        onResult: (NombreOperacionResultado) -> Unit = {}
+    ) {
+        val nombreNormalizado = nuevoNombre.trim()
+        if (nombreNormalizado.isBlank()) {
+            onResult(NombreOperacionResultado.VACIO)
+            return
+        }
+
         viewModelScope.launch {
-            rutinaDao.updateNombre(id, nuevoNombre.trim())
-            cloudSyncCoordinator.syncNow()
+            try {
+                if (rutinaDao.existsByNombreExcludingId(nombreNormalizado, id)) {
+                    onResult(NombreOperacionResultado.DUPLICADO)
+                    return@launch
+                }
+
+                rutinaDao.updateNombre(id, nombreNormalizado)
+                cloudSyncCoordinator.syncNow()
+                onResult(NombreOperacionResultado.OK)
+            } catch (_: SQLiteConstraintException) {
+                onResult(NombreOperacionResultado.DUPLICADO)
+            }
         }
     }
 
@@ -164,11 +209,19 @@ class RutinaViewModel(application: Application) : ViewModel() {
                 return@launch
             }
 
+            val nombreRutina = entrenamientoDao.getNombreRutinaById(rutinaId)?.trim().orEmpty()
+            val completadosRutina = entrenamientoDao.countCompletadosByRutinaId(rutinaId)
+            val nombreEntrenamiento = if (nombreRutina.isNotBlank()) {
+                "$nombreRutina -> ${completadosRutina + 1}"
+            } else {
+                "Entrenamiento"
+            }
+
             // 2️⃣ Crear nuevo entrenamiento
             val nuevoId = entrenamientoDao.insert(
                 EntrenamientoEntity(
                     rutinaId = rutinaId,
-                    nombre = "Entrenamiento",
+                    nombre = nombreEntrenamiento,
                     fechaInicio = System.currentTimeMillis(),
                     fechaFin = null,
                     completado = false

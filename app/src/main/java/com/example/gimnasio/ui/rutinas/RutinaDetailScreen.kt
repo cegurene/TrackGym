@@ -1,8 +1,9 @@
 package com.example.gimnasio.ui.rutinas
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -28,8 +29,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.entity.EjercicioEntity
+import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.ui.components.EjercicioSelectionCard
 import com.example.gimnasio.ui.components.emojiSummary
+import com.example.gimnasio.ui.components.labelWithEmoji
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,12 +64,14 @@ fun RutinaDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var nuevoNombre by remember { mutableStateOf("") }
+    var mostrarErrorNombreRutinaDuplicado by remember { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
 
     var showAddDialog by remember { mutableStateOf(false) }
+    var musculoFiltro by remember { mutableStateOf<Musculo?>(null) }
     val todosLosEjercicios by viewModel
         .getAllEjercicios()
         .collectAsState(initial = emptyList())
@@ -123,170 +128,167 @@ fun RutinaDetailScreen(
                 )
             } else {
 
-                Column(
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp)),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "🗂️ Detalle de rutina",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "${ejercicios.size} ejercicios",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            FilledTonalButton(
-                                onClick = {
-                                    viewModel.iniciarEntrenamiento(rutinaId) { entrenamientoId ->
-                                        onStartEntrenamiento(entrenamientoId)
-                                    }
-                                },
-                                enabled = entrenamientoActivo == null && ejercicios.isNotEmpty(),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Iniciar entrenamiento")
-                            }
-
-                            if (ejercicios.isEmpty()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Añade al menos un ejercicio para poder empezar.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "💪 Ejercicios",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    if (ejercicios.isEmpty()) {
+                    item {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp)),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         ) {
-                            Text(
-                                text = "Esta rutina aún no tiene ejercicios.",
-                                modifier = Modifier.padding(16.dp)
-                            )
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "🗂️ Detalle de rutina",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "${ejercicios.size} ejercicios",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                FilledTonalButton(
+                                    onClick = {
+                                        viewModel.iniciarEntrenamiento(rutinaId) { entrenamientoId ->
+                                            onStartEntrenamiento(entrenamientoId)
+                                        }
+                                    },
+                                    enabled = entrenamientoActivo == null && ejercicios.isNotEmpty(),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Iniciar entrenamiento")
+                                }
+
+                                if (ejercicios.isEmpty()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Añade al menos un ejercicio para poder empezar.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        Text(
+                            text = "💪 Ejercicios",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+
+                    if (ejercicios.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Text(
+                                    text = "Esta rutina aún no tiene ejercicios.",
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
                         }
                     } else {
-                        ejercicios.forEachIndexed { index, item ->
+                        itemsIndexed(ejercicios) { index, item ->
                             val musculosEmoji = item.ejercicio.musculos.emojiSummary()
 
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 10.dp)
                                     .clip(RoundedCornerShape(16.dp)),
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                                 ),
                                 elevation = CardDefaults.cardElevation(2.dp)
                             ) {
-                                    Column(
-                                        modifier = Modifier.padding(12.dp)
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = item.ejercicio.nombre,
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .clickable {
-                                                        onNavigateToEjercicio(item.ejercicio.id)
-                                                    },
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
+                                        Text(
+                                            text = item.ejercicio.nombre,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable { onNavigateToEjercicio(item.ejercicio.id) },
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
 
-                                            Spacer(modifier = Modifier.width(12.dp))
+                                        Spacer(modifier = Modifier.width(12.dp))
 
-                                            Text(
-                                                text = musculosEmoji,
-                                                style = MaterialTheme.typography.headlineSmall
-                                            )
-                                        }
+                                        Text(
+                                            text = musculosEmoji,
+                                            style = MaterialTheme.typography.headlineSmall
+                                        )
+                                    }
 
-                                        Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
 
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Row {
-                                                IconButton(
-                                                    onClick = {
-                                                        viewModel.moverEjercicio(
-                                                            rutinaId,
-                                                            item,
-                                                            ejercicios[index - 1]
-                                                        )
-                                                    },
-                                                    enabled = index > 0
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.KeyboardArrowUp,
-                                                        contentDescription = "Subir"
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row {
+                                            IconButton(
+                                                onClick = {
+                                                    viewModel.moverEjercicio(
+                                                        rutinaId,
+                                                        item,
+                                                        ejercicios[index - 1]
                                                     )
-                                                }
-
-                                                IconButton(
-                                                    onClick = {
-                                                        viewModel.moverEjercicio(
-                                                            rutinaId,
-                                                            item,
-                                                            ejercicios[index + 1]
-                                                        )
-                                                    },
-                                                    enabled = index < ejercicios.lastIndex
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.KeyboardArrowDown,
-                                                        contentDescription = "Bajar"
-                                                    )
-                                                }
+                                                },
+                                                enabled = index > 0
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                                    contentDescription = "Subir"
+                                                )
                                             }
-
-                                            Spacer(modifier = Modifier.weight(1f))
 
                                             IconButton(
                                                 onClick = {
-                                                    ejercicioAEliminar = item.ejercicio
-                                                }
+                                                    viewModel.moverEjercicio(
+                                                        rutinaId,
+                                                        item,
+                                                        ejercicios[index + 1]
+                                                    )
+                                                },
+                                                enabled = index < ejercicios.lastIndex
                                             ) {
                                                 Icon(
-                                                    imageVector = Icons.Default.Delete,
-                                                    contentDescription = "Eliminar ejercicio"
+                                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                                    contentDescription = "Bajar"
                                                 )
                                             }
                                         }
+
+                                        Spacer(modifier = Modifier.weight(1f))
+
+                                        IconButton(
+                                            onClick = { ejercicioAEliminar = item.ejercicio }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Eliminar ejercicio"
+                                            )
+                                        }
                                     }
+                                }
                             }
 
                         }
@@ -306,6 +308,7 @@ fun RutinaDetailScreen(
                 onRename = {
                     showSettings = false
                     nuevoNombre = rutina?.nombre ?: ""
+                    mostrarErrorNombreRutinaDuplicado = false
                     showRenameDialog = true
                 },
                 onDelete = {
@@ -353,16 +356,40 @@ fun RutinaDetailScreen(
             text = {
                 OutlinedTextField(
                     value = nuevoNombre,
-                    onValueChange = { nuevoNombre = it },
+                    onValueChange = {
+                        nuevoNombre = it
+                        mostrarErrorNombreRutinaDuplicado = false
+                    },
                     label = { Text("Nombre de la rutina") },
                     singleLine = true
                 )
+
+                if (mostrarErrorNombreRutinaDuplicado) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Ya existe una rutina con ese nombre. Cambialo.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.renombrarRutina(rutinaId, nuevoNombre)
-                        showRenameDialog = false
+                        viewModel.renombrarRutina(rutinaId, nuevoNombre) { resultado ->
+                            when (resultado) {
+                                RutinaViewModel.NombreOperacionResultado.OK -> {
+                                    showRenameDialog = false
+                                    mostrarErrorNombreRutinaDuplicado = false
+                                }
+                                RutinaViewModel.NombreOperacionResultado.DUPLICADO -> {
+                                    mostrarErrorNombreRutinaDuplicado = true
+                                }
+                                RutinaViewModel.NombreOperacionResultado.VACIO -> {
+                                    mostrarErrorNombreRutinaDuplicado = false
+                                }
+                            }
+                        }
                     }
                 ) {
                     Text("Guardar")
@@ -380,6 +407,21 @@ fun RutinaDetailScreen(
         val ejerciciosNoEnRutina = todosLosEjercicios.filter { ejercicio ->
             ejercicio.id !in ejercicios.map { it.ejercicio.id }
         }
+        val ejerciciosNoEnRutinaFiltrados = remember(ejerciciosNoEnRutina, musculoFiltro) {
+            ejerciciosNoEnRutina.filter { ejercicio ->
+                musculoFiltro == null || ejercicio.musculos.contains(musculoFiltro)
+            }
+        }
+        val conteoEjerciciosPorMusculo = remember(ejerciciosNoEnRutina) {
+            Musculo.entries.associateWith { musculo ->
+                ejerciciosNoEnRutina.count { ejercicio -> ejercicio.musculos.contains(musculo) }
+            }
+        }
+        val musculosConEjercicios = remember(conteoEjerciciosPorMusculo) {
+            Musculo.entries.filter { musculo ->
+                (conteoEjerciciosPorMusculo[musculo] ?: 0) > 0
+            }
+        }
 
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
@@ -388,22 +430,87 @@ fun RutinaDetailScreen(
                 if (ejerciciosNoEnRutina.isEmpty()) {
                     Text("Todos los ejercicios ya están en esta rutina.")
                 } else {
-                    Column(
-                        modifier = Modifier.verticalScroll(rememberScrollState())
-                    ) {
-                        ejerciciosNoEnRutina.forEach { ejercicio ->
-                            EjercicioSelectionCard(
-                                nombre = ejercicio.nombre,
-                                musculos = ejercicio.musculos,
-                                onClick = {
-                                    viewModel.añadirEjercicioARutina(
-                                        rutinaId,
-                                        ejercicio.id
-                                    )
-                                    showAddDialog = false
+                    var filtroExpanded by remember { mutableStateOf(false) }
+                    val filtroLabel = musculoFiltro?.labelWithEmoji() ?: "Todos"
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ExposedDropdownMenuBox(
+                            expanded = filtroExpanded,
+                            onExpandedChange = { filtroExpanded = !filtroExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = filtroLabel,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Filtrar por músculo") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = filtroExpanded)
                                 },
-                                modifier = Modifier.padding(vertical = 4.dp)
+                                modifier = Modifier
+                                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
+                                    .fillMaxWidth()
                             )
+
+                            ExposedDropdownMenu(
+                                expanded = filtroExpanded,
+                                onDismissRequest = { filtroExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("Todos")
+                                            Spacer(modifier = Modifier.weight(1f))
+                                            Text(ejerciciosNoEnRutina.size.toString())
+                                        }
+                                    },
+                                    onClick = {
+                                        musculoFiltro = null
+                                        filtroExpanded = false
+                                    }
+                                )
+
+                                musculosConEjercicios.forEach { musculo ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(musculo.labelWithEmoji())
+                                                Spacer(modifier = Modifier.weight(1f))
+                                                Text((conteoEjerciciosPorMusculo[musculo] ?: 0).toString())
+                                            }
+                                        },
+                                        onClick = {
+                                            musculoFiltro = musculo
+                                            filtroExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 340.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(ejerciciosNoEnRutinaFiltrados) { ejercicio ->
+                                EjercicioSelectionCard(
+                                    nombre = ejercicio.nombre,
+                                    musculos = ejercicio.musculos,
+                                    onClick = {
+                                        viewModel.añadirEjercicioARutina(
+                                            rutinaId,
+                                            ejercicio.id
+                                        )
+                                        showAddDialog = false
+                                    },
+                                    modifier = Modifier.padding(vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                 }

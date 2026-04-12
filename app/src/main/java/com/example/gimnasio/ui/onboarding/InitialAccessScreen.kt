@@ -44,6 +44,7 @@ import com.example.gimnasio.data.auth.SocialAuthResult
 import com.example.gimnasio.data.preferences.AccountActionResult
 import com.example.gimnasio.data.preferences.AccountPreferencesRepository
 import com.example.gimnasio.data.preferences.OnboardingPreferencesRepository
+import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import com.example.gimnasio.ui.auth.SocialAuthButtonsRow
 import kotlinx.coroutines.launch
 
@@ -53,6 +54,7 @@ fun InitialAccessScreen() {
     val activity = context as? Activity
     val onboardingRepository = remember { OnboardingPreferencesRepository(context) }
     val accountPreferencesRepository = remember { AccountPreferencesRepository(context) }
+    val cloudSyncCoordinator = remember { CloudSyncCoordinator(context) }
     val emailAuthProvider = remember { FirebaseEmailAuthProvider() }
     val googleAuthProvider = remember { GoogleSocialAuthProvider() }
     val scope = rememberCoroutineScope()
@@ -69,6 +71,9 @@ fun InitialAccessScreen() {
     val googleAvailability = SocialAuthAvailability.google(hasActivity = activity != null)
 
     suspend fun finishOnboarding(withSession: Boolean) {
+        if (withSession) {
+            runCatching { cloudSyncCoordinator.syncNow() }
+        }
         onboardingRepository.markOnboardingCompleted()
         if (!withSession) {
             accountPreferencesRepository.logout()

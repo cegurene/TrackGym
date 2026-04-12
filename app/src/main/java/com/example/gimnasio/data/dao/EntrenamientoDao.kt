@@ -172,6 +172,21 @@ interface EntrenamientoDao {
     @Query("UPDATE entrenamientos SET nombre = :nuevoNombre WHERE id = :id")
     suspend fun renombrarEntrenamiento(id: Long, nuevoNombre: String)
 
+    @Query("SELECT COUNT(*) > 0 FROM entrenamientos WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre))")
+    suspend fun existsByNombre(nombre: String): Boolean
+
+    @Query("SELECT COUNT(*) > 0 FROM entrenamientos WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre)) AND id != :id")
+    suspend fun existsByNombreExcludingId(nombre: String, id: Long): Boolean
+
+    @Query("SELECT rutinaId FROM entrenamientos WHERE id = :entrenamientoId")
+    suspend fun getRutinaIdByEntrenamientoId(entrenamientoId: Long): Long?
+
+    @Query("SELECT nombre FROM rutinas WHERE id = :rutinaId")
+    suspend fun getNombreRutinaById(rutinaId: Long): String?
+
+    @Query("SELECT COUNT(*) FROM entrenamientos WHERE rutinaId = :rutinaId AND completado = 1")
+    suspend fun countCompletadosByRutinaId(rutinaId: Long): Int
+
     @Query("SELECT COUNT(*) FROM entrenamientos")
     fun getTotalEntrenamientosFlow(): Flow<Int>
 

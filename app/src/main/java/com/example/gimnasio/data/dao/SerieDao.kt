@@ -112,6 +112,7 @@ interface SerieDao {
     JOIN entrenamientos e
         ON e.id = ee.entrenamientoId
     WHERE ee.ejercicioId = :ejercicioId
+      AND e.completado = 1
     GROUP BY e.id
     ORDER BY e.fechaInicio ASC
     """
@@ -130,6 +131,7 @@ interface SerieDao {
     JOIN entrenamientos e
         ON e.id = ee.entrenamientoId
     WHERE ee.ejercicioId = :ejercicioId
+      AND e.completado = 1
     GROUP BY e.id
     ORDER BY e.fechaInicio ASC
     """
@@ -146,7 +148,10 @@ interface SerieDao {
     FROM series s
     JOIN entrenamiento_ejercicio ee
         ON ee.id = s.entrenamientoEjercicioId
+    JOIN entrenamientos en
+        ON en.id = ee.entrenamientoId
     WHERE ee.ejercicioId = :ejercicioId
+      AND en.completado = 1
     """
     )
     fun getRecordsEjercicio(ejercicioId: Long): Flow<EjercicioRecords>
@@ -160,7 +165,10 @@ interface SerieDao {
     FROM series s
     JOIN entrenamiento_ejercicio ee
         ON ee.id = s.entrenamientoEjercicioId
+    JOIN entrenamientos en
+        ON en.id = ee.entrenamientoId
     WHERE ee.ejercicioId = :ejercicioId
+      AND en.completado = 1
     """
     )
     fun getRecordsEjercicioCardio(ejercicioId: Long): Flow<EjercicioRecordsCardio>
@@ -172,6 +180,7 @@ interface SerieDao {
     JOIN entrenamientos e
     ON e.id = ee.entrenamientoId
     WHERE ee.ejercicioId = :ejercicioId
+      AND e.completado = 1
     ORDER BY e.fechaInicio DESC
     LIMIT 1
     """
@@ -205,7 +214,10 @@ interface SerieDao {
     FROM series s
     JOIN entrenamiento_ejercicio ee 
         ON ee.id = s.entrenamientoEjercicioId
+    JOIN entrenamientos en
+        ON en.id = ee.entrenamientoId
     WHERE ee.ejercicioId = :ejercicioId
+      AND en.completado = 1
     """
     )
     fun getPR(ejercicioId: Long): Flow<PRRecord?>
@@ -219,7 +231,10 @@ interface SerieDao {
         FROM series s
         JOIN entrenamiento_ejercicio ee 
             ON ee.id = s.entrenamientoEjercicioId
+        JOIN entrenamientos en
+            ON en.id = ee.entrenamientoId
         WHERE ee.ejercicioId = :ejercicioId
+          AND en.completado = 1
         GROUP BY ee.entrenamientoId
     )
     """
@@ -235,7 +250,10 @@ interface SerieDao {
         FROM series s
         JOIN entrenamiento_ejercicio ee 
             ON ee.id = s.entrenamientoEjercicioId
+        JOIN entrenamientos en
+            ON en.id = ee.entrenamientoId
         WHERE ee.ejercicioId = :ejercicioId
+          AND en.completado = 1
         GROUP BY ee.entrenamientoId
     )
     """
@@ -251,7 +269,10 @@ interface SerieDao {
     FROM series s
     JOIN entrenamiento_ejercicio ee 
         ON ee.id = s.entrenamientoEjercicioId
+    JOIN entrenamientos en
+        ON en.id = ee.entrenamientoId
     WHERE ee.ejercicioId = :ejercicioId
+      AND en.completado = 1
     ORDER BY carga DESC
     LIMIT 1
     """

@@ -1,5 +1,6 @@
 package com.example.gimnasio.ui.entrenamiento
 
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -25,14 +26,28 @@ import androidx.compose.material3.Icon
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.input.TextFieldValue
 import com.example.gimnasio.ui.components.EjercicioSelectionCard
+import com.example.gimnasio.ui.components.formatUiNumber
 import com.example.gimnasio.ui.components.emojiSummary
+import com.example.gimnasio.ui.components.labelWithEmoji
+import java.math.RoundingMode
+
+private fun parseDecimalInput(text: String): Float =
+    text.replace(',', '.')
+        .trimEnd('.')
+        .toBigDecimalOrNull()
+        ?.setScale(2, RoundingMode.HALF_UP)
+        ?.toFloat()
+        ?: 0f
+
+private fun parseIntInput(text: String): Int = text.toIntOrNull() ?: 0
 
 @Composable
 private fun SerieInputField(
     initialValue: String,
-    onValueCommit: (Int) -> Unit,
+    onValueCommit: (String) -> Unit,
     label: String,
     enabled: Boolean,
+    allowDecimal: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var textFieldValue by remember {
@@ -49,17 +64,25 @@ private fun SerieInputField(
         value = textFieldValue,
         onValueChange = { newValue: TextFieldValue ->
 
-            if (newValue.text.isEmpty() || newValue.text.all { it.isDigit() }) {
-                textFieldValue = newValue
+            val isValid = if (allowDecimal) {
+                newValue.text.isEmpty() ||
+                    newValue.text.matches(Regex("^\\d*(?:[.,]\\d*)?$"))
+            } else {
+                newValue.text.isEmpty() || newValue.text.all { it.isDigit() }
+            }
 
-                val value = newValue.text.toIntOrNull() ?: 0
-                onValueCommit(value)
+            if (isValid) {
+                val normalizedText = if (allowDecimal) newValue.text.replace(',', '.') else newValue.text
+                textFieldValue = newValue.copy(text = normalizedText)
+                onValueCommit(normalizedText)
             }
         },
         label = { Text(label) },
         modifier = modifier.width(90.dp),
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (allowDecimal) KeyboardType.Decimal else KeyboardType.Number
+        ),
         enabled = enabled
     )
 }
@@ -68,7 +91,8 @@ private fun SerieInputField(
 @Composable
 fun EntrenamientoScreen(
     entrenamientoId: Long,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToEjercicio: (Long) -> Unit
 ) {
 
     val context = LocalContext.current
@@ -143,6 +167,23 @@ fun EntrenamientoScreen(
         !ejerciciosYaAgregados.contains(ejercicio.id)
     }
 
+    var musculoFiltro by remember { mutableStateOf<Musculo?>(null) }
+    val ejerciciosNoAgregadosFiltrados = remember(ejerciciosNoAgregados, musculoFiltro) {
+        ejerciciosNoAgregados.filter { ejercicio ->
+            musculoFiltro == null || ejercicio.musculos.contains(musculoFiltro)
+        }
+    }
+    val conteoEjerciciosPorMusculo = remember(ejerciciosNoAgregados) {
+        Musculo.entries.associateWith { musculo ->
+            ejerciciosNoAgregados.count { ejercicio -> ejercicio.musculos.contains(musculo) }
+        }
+    }
+    val musculosConEjercicios = remember(conteoEjerciciosPorMusculo) {
+        Musculo.entries.filter { musculo ->
+            (conteoEjerciciosPorMusculo[musculo] ?: 0) > 0
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -211,8 +252,12 @@ fun EntrenamientoScreen(
                                 Text(
                                     text = ejercicioConSeries.ejercicio.nombre,
                                     style = MaterialTheme.typography.titleLarge,
-                                    modifier = Modifier.weight(1f),
-                                    maxLines = 1,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            onNavigateToEjercicio(ejercicioConSeries.ejercicio.id)
+                                        },
+                                    maxLines = 4,
                                     overflow = TextOverflow.Ellipsis
                                 )
 
@@ -295,12 +340,13 @@ fun EntrenamientoScreen(
 
                                     if (!esCardio) {
                                         SerieInputField(
-                                            initialValue = if ((serie.peso ?: 0f) == 0f) "" else (serie.peso?.toInt() ?: 0).toString(),
-                                            onValueCommit = { peso ->
-                                                viewModel.actualizarPesoSerie(serie.id, peso.toFloat())
+                                                    initialValue = if ((serie.peso ?: 0f) == 0f) "" else serie.peso!!.formatUiNumber(),
+                                                    onValueCommit = { peso ->
+                                                        viewModel.actualizarPesoSerie(serie.id, parseDecimalInput(peso))
                                             },
                                             label = "Kg",
-                                            enabled = !serie.completada
+                                                    enabled = !serie.completada,
+                                                    allowDecimal = true
                                         )
 
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -308,19 +354,20 @@ fun EntrenamientoScreen(
                                         SerieInputField(
                                             initialValue = if ((serie.repeticiones ?: 0) == 0) "" else serie.repeticiones.toString(),
                                             onValueCommit = { reps ->
-                                                viewModel.actualizarRepsSerie(serie.id, reps)
+                                                        viewModel.actualizarRepsSerie(serie.id, parseIntInput(reps))
                                             },
                                             label = "Reps",
                                             enabled = !serie.completada
                                         )
                                     } else {
                                         SerieInputField(
-                                            initialValue = if ((serie.tiempo ?: 0) == 0) "" else serie.tiempo.toString(),
+                                                    initialValue = if ((serie.tiempo ?: 0) == 0) "" else serie.tiempo.toString(),
                                             onValueCommit = { tiempo ->
-                                                viewModel.actualizarTiempoSerie(serie.id, tiempo)
+                                                        viewModel.actualizarTiempoSerie(serie.id, parseIntInput(tiempo))
                                             },
                                             label = "Min",
-                                            enabled = !serie.completada
+                                                    enabled = !serie.completada,
+                                                    allowDecimal = false
                                         )
 
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -328,7 +375,7 @@ fun EntrenamientoScreen(
                                         SerieInputField(
                                             initialValue = if ((serie.intensidad ?: 0) == 0) "" else serie.intensidad.toString(),
                                             onValueCommit = { intensidad ->
-                                                viewModel.actualizarIntensidadSerie(serie.id, intensidad)
+                                                        viewModel.actualizarIntensidadSerie(serie.id, parseIntInput(intensidad))
                                             },
                                             label = "Intens",
                                             enabled = !serie.completada
@@ -458,17 +505,84 @@ fun EntrenamientoScreen(
             onDismissRequest = { showAddExerciseDialog = false },
             title = { Text("Añadir ejercicio") },
             text = {
-                LazyColumn {
-                    items(ejerciciosNoAgregados) { ejercicio ->
-                        EjercicioSelectionCard(
-                            nombre = ejercicio.nombre,
-                            musculos = ejercicio.musculos,
-                            onClick = {
-                                viewModel.añadirEjercicioAlEntrenamiento(ejercicio.id)
-                                showAddExerciseDialog = false
+                var filtroExpanded by remember { mutableStateOf(false) }
+                val filtroLabel = musculoFiltro?.labelWithEmoji() ?: "Todos"
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ExposedDropdownMenuBox(
+                        expanded = filtroExpanded,
+                        onExpandedChange = { filtroExpanded = !filtroExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = filtroLabel,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Filtrar por músculo") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = filtroExpanded)
                             },
-                            modifier = Modifier.padding(vertical = 4.dp)
+                            modifier = Modifier
+                                .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
+                                .fillMaxWidth()
                         )
+
+                        ExposedDropdownMenu(
+                            expanded = filtroExpanded,
+                            onDismissRequest = { filtroExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("Todos")
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Text(ejerciciosNoAgregados.size.toString())
+                                    }
+                                },
+                                onClick = {
+                                    musculoFiltro = null
+                                    filtroExpanded = false
+                                }
+                            )
+
+                                musculosConEjercicios.forEach { musculo ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(musculo.labelWithEmoji())
+                                            Spacer(modifier = Modifier.weight(1f))
+                                            Text((conteoEjerciciosPorMusculo[musculo] ?: 0).toString())
+                                        }
+                                    },
+                                    onClick = {
+                                        musculoFiltro = musculo
+                                        filtroExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 340.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(ejerciciosNoAgregadosFiltrados) { ejercicio ->
+                            EjercicioSelectionCard(
+                                nombre = ejercicio.nombre,
+                                musculos = ejercicio.musculos,
+                                onClick = {
+                                    viewModel.añadirEjercicioAlEntrenamiento(ejercicio.id)
+                                    showAddExerciseDialog = false
+                                },
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            )
+                        }
                     }
                 }
             },

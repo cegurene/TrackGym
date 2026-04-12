@@ -11,7 +11,6 @@ import com.example.gimnasio.data.model.EntrenamientoEjercicioConSeries
 import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class EntrenamientoViewModel(
@@ -157,11 +156,11 @@ class EntrenamientoViewModel(
         }
     }
 
-     fun marcarSerieCompletada(serieId: Long, completada: Boolean, esCardio: Boolean, peso: Float?, reps: Int?, tiempo: Int?, intensidad: Int?) {
+      fun marcarSerieCompletada(serieId: Long, completada: Boolean, esCardio: Boolean, peso: Float?, reps: Int?, tiempo: Int?, intensidad: Int?) {
          viewModelScope.launch {
              if (completada) {
                  val esValida = if (esCardio) {
-                     (tiempo ?: 0) > 0 && (intensidad ?: 0) > 0
+                      (tiempo ?: 0) > 0 && (intensidad ?: 0) > 0
                  } else {
                      (peso ?: 0f) > 0f && (reps ?: 0) > 0
                  }
@@ -202,7 +201,18 @@ class EntrenamientoViewModel(
 
     fun finalizarEntrenamiento(onFinalizado: () -> Unit) {
         viewModelScope.launch {
+            val rutinaId = entrenamientoDao.getRutinaIdByEntrenamientoId(entrenamientoId)
             entrenamientoDao.marcarComoCompletado(entrenamientoId, System.currentTimeMillis())
+
+            if (rutinaId != null) {
+                val nombreRutina = entrenamientoDao.getNombreRutinaById(rutinaId) ?: "Entrenamiento"
+                val numeroEntrenamiento = entrenamientoDao.countCompletadosByRutinaId(rutinaId)
+                entrenamientoDao.renombrarEntrenamiento(
+                    entrenamientoId,
+                    "${nombreRutina.trim()} -> $numeroEntrenamiento"
+                )
+            }
+
             cloudSyncCoordinator.syncNow()
             onFinalizado()
         }

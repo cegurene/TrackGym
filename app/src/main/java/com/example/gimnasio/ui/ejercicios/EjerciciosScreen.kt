@@ -20,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -46,6 +47,7 @@ fun EjerciciosScreen(
     var nombreEjercicio by remember { mutableStateOf("") }
     var mostrarErrorMusculo by remember { mutableStateOf(false) }
     var mostrarErrorNombre by remember { mutableStateOf(false) }
+    var mostrarErrorNombreDuplicado by remember { mutableStateOf(false) }
 
     // Para la busqueda y filtros
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -171,7 +173,7 @@ fun EjerciciosScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 12.dp),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 112.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(ejercicios) { ejercicio ->
@@ -202,6 +204,7 @@ fun EjerciciosScreen(
                         onValueChange = {
                             nombreEjercicio = it
                             mostrarErrorNombre = false
+                            mostrarErrorNombreDuplicado = false
                         },
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Nombre del ejercicio") },
@@ -211,6 +214,14 @@ fun EjerciciosScreen(
                     if (mostrarErrorNombre) {
                         Text(
                             text = "El nombre del ejercicio no puede estar vacío",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (mostrarErrorNombreDuplicado) {
+                        Text(
+                            text = "Ya existe un ejercicio con ese nombre. Cambialo.",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -283,12 +294,25 @@ fun EjerciciosScreen(
 
                         if (!hayError) {
                             viewModel.crearEjercicio(
-                                nombreEjercicio.trim(),
+                                nombreEjercicio,
                                 listOf(musculoSeleccionado!!)
-                            )
-                            nombreEjercicio = ""
-                            musculoSeleccionado = null
-                            showDialog = false
+                            ) { resultado ->
+                                when (resultado) {
+                                    EjercicioViewModel.NombreOperacionResultado.OK -> {
+                                        nombreEjercicio = ""
+                                        musculoSeleccionado = null
+                                        mostrarErrorNombreDuplicado = false
+                                        showDialog = false
+                                    }
+                                    EjercicioViewModel.NombreOperacionResultado.DUPLICADO -> {
+                                        mostrarErrorNombreDuplicado = true
+                                    }
+                                    EjercicioViewModel.NombreOperacionResultado.VACIO -> {
+                                        mostrarErrorNombre = true
+                                        mostrarErrorNombreDuplicado = false
+                                    }
+                                }
+                            }
                         }
                     }
                 ) {
@@ -320,31 +344,53 @@ fun EjerciciosScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Musculo.entries.forEach { musculo ->
-                        FilterChip(
-                            selected = selectedMusculos.contains(musculo),
-                            onClick = { viewModel.toggleMusculo(musculo) },
-                            label = { Text(musculo.labelWithEmoji()) },
-                            leadingIcon = if (selectedMusculos.contains(musculo)) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(FilterChipDefaults.IconSize)
-                                    )
-                                }
-                            } else {
-                                null
+                Musculo.entries
+                    .toList()
+                    .chunked(3)
+                    .forEach { fila ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            fila.forEach { musculo ->
+                                FilterChip(
+                                    selected = selectedMusculos.contains(musculo),
+                                    onClick = { viewModel.toggleMusculo(musculo) },
+                                    label = {
+                                        Text(
+                                            musculo.labelWithEmoji(),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    leadingIcon = if (selectedMusculos.contains(musculo)) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                            )
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(36.dp)
+                                )
                             }
-                        )
-                    }
-                }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                            repeat(3 - fila.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                //Spacer(modifier = Modifier.height(14.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

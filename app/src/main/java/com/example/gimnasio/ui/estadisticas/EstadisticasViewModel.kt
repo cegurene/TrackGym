@@ -130,11 +130,7 @@ class EstadisticasViewModel(
             val media = entrenamientoDao.getDuracionMedia() ?: 0.0
 
             val tiempoCardioMin = serieDao.getTiempoTotalCardio() ?: 0
-
-            val h = tiempoCardioMin / 60
-            val m = tiempoCardioMin % 60
-
-            _tiempoCardioTotal.value = "${h}h ${m}m"
+            _tiempoCardioTotal.value = "$tiempoCardioMin min"
 
             fun format(ms: Long): String {
 

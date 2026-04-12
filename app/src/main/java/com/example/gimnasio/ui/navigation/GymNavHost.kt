@@ -170,6 +170,9 @@ fun GymNavHost(
                                     launchSingleTop = true
                                 }
                             }
+                        },
+                        onNavigateToEjercicio = { ejercicioId ->
+                            navController.navigate("ejercicioDetail/$ejercicioId")
                         }
                     )
                 }

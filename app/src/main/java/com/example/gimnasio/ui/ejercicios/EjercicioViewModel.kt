@@ -1,6 +1,7 @@
 package com.example.gimnasio.ui.ejercicios
 
 import android.app.Application
+import android.database.sqlite.SQLiteConstraintException
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.dao.EjercicioDao
@@ -22,6 +23,12 @@ class EjercicioViewModel(
     private val ejercicioDao: EjercicioDao,
     private val serieDao: SerieDao
 ) : AndroidViewModel(application) {
+
+    enum class NombreOperacionResultado {
+        OK,
+        VACIO,
+        DUPLICADO
+    }
 
     private val cloudSyncCoordinator = CloudSyncCoordinator(application)
 
@@ -77,19 +84,37 @@ class EjercicioViewModel(
 
     // ---------- TU CÓDIGO ORIGINAL ----------
 
-    fun crearEjercicio(nombre: String, musculos: List<Musculo>) {
-        if (nombre.isBlank()) return
+    fun crearEjercicio(
+        nombre: String,
+        musculos: List<Musculo>,
+        onResult: (NombreOperacionResultado) -> Unit = {}
+    ) {
+        val nombreNormalizado = nombre.trim()
+        if (nombreNormalizado.isBlank()) {
+            onResult(NombreOperacionResultado.VACIO)
+            return
+        }
 
         val musculoPrincipal = musculos.firstOrNull() ?: return
 
         viewModelScope.launch {
-            ejercicioDao.insert(
-                EjercicioEntity(
-                    nombre = nombre.trim(),
-                    musculos = listOf(musculoPrincipal)
+            try {
+                if (ejercicioDao.existsByNombre(nombreNormalizado)) {
+                    onResult(NombreOperacionResultado.DUPLICADO)
+                    return@launch
+                }
+
+                ejercicioDao.insert(
+                    EjercicioEntity(
+                        nombre = nombreNormalizado,
+                        musculos = listOf(musculoPrincipal)
+                    )
                 )
-            )
-            cloudSyncCoordinator.syncNow()
+                cloudSyncCoordinator.syncNow()
+                onResult(NombreOperacionResultado.OK)
+            } catch (_: SQLiteConstraintException) {
+                onResult(NombreOperacionResultado.DUPLICADO)
+            }
         }
     }
 
@@ -100,15 +125,33 @@ class EjercicioViewModel(
         }
     }
 
-    fun renombrarEjercicio(id: Long, nuevoNombre: String) {
-        if (nuevoNombre.isBlank()) return
+    fun renombrarEjercicio(
+        id: Long,
+        nuevoNombre: String,
+        onResult: (NombreOperacionResultado) -> Unit = {}
+    ) {
+        val nombreNormalizado = nuevoNombre.trim()
+        if (nombreNormalizado.isBlank()) {
+            onResult(NombreOperacionResultado.VACIO)
+            return
+        }
 
         viewModelScope.launch {
-            ejercicioDao.updateNombre(
-                id = id,
-                nuevoNombre = nuevoNombre.trim()
-            )
-            cloudSyncCoordinator.syncNow()
+            try {
+                if (ejercicioDao.existsByNombreExcludingId(nombreNormalizado, id)) {
+                    onResult(NombreOperacionResultado.DUPLICADO)
+                    return@launch
+                }
+
+                ejercicioDao.updateNombre(
+                    id = id,
+                    nuevoNombre = nombreNormalizado
+                )
+                cloudSyncCoordinator.syncNow()
+                onResult(NombreOperacionResultado.OK)
+            } catch (_: SQLiteConstraintException) {
+                onResult(NombreOperacionResultado.DUPLICADO)
+            }
         }
     }
 

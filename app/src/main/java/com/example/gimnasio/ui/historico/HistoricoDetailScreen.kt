@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.ui.components.emojiSummary
+import com.example.gimnasio.ui.components.formatUiNumber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +53,7 @@ fun HistoricoDetailScreen(
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var nuevoNombre by remember { mutableStateOf("") }
+    var mostrarErrorNombreEntrenamientoDuplicado by remember { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
@@ -102,10 +104,11 @@ fun HistoricoDetailScreen(
                 }
             }
 
-            fun calcularTiempo(series: List<SerieEntity>): Int {
+            fun calcularTiempo(series: List<SerieEntity>): Float {
                 return series.sumOf {
-                    (it.tiempo ?: 0)
+                    (it.tiempo ?: 0f).toDouble()
                 }
+                    .toFloat()
             }
 
 
@@ -130,12 +133,14 @@ fun HistoricoDetailScreen(
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.Top
                             ) {
                                 Text(
                                     text = entrenamiento?.entrenamiento?.nombre ?: "",
-                                    style = MaterialTheme.typography.titleLarge
+                                    style = MaterialTheme.typography.titleLarge,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 3
                                 )
 
                                 FilledTonalButton(
@@ -159,6 +164,7 @@ fun HistoricoDetailScreen(
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -174,7 +180,9 @@ fun HistoricoDetailScreen(
 
                                 Text(
                                     text = ejerciciosEmoji,
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
@@ -247,7 +255,7 @@ fun HistoricoDetailScreen(
                                         )
 
                                         Text(
-                                            text = "${serie.tiempo}min × ${serie.intensidad} intensidad"
+                                            text = "${serie.tiempo ?: 0}min × ${serie.intensidad} intensidad"
                                         )
                                     }
 
@@ -293,6 +301,7 @@ fun HistoricoDetailScreen(
                 onRename = {
                     showSettings = false
                     nuevoNombre = entrenamiento?.entrenamiento?.nombre ?: ""
+                    mostrarErrorNombreEntrenamientoDuplicado = false
                     showRenameDialog = true
                 },
                 onDelete = {
@@ -310,19 +319,40 @@ fun HistoricoDetailScreen(
             text = {
                 OutlinedTextField(
                     value = nuevoNombre,
-                    onValueChange = { nuevoNombre = it },
+                    onValueChange = {
+                        nuevoNombre = it
+                        mostrarErrorNombreEntrenamientoDuplicado = false
+                    },
                     label = { Text("Nombre del entrenamiento") },
                     singleLine = true
                 )
+
+                if (mostrarErrorNombreEntrenamientoDuplicado) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Ya existe un entrenamiento con ese nombre. Cambialo.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.renombrarEntrenamiento(
-                            entrenamientoId,
-                            nuevoNombre
-                        )
-                        showRenameDialog = false
+                        viewModel.renombrarEntrenamiento(entrenamientoId, nuevoNombre) { resultado ->
+                            when (resultado) {
+                                HistoricoDetailViewModel.NombreOperacionResultado.OK -> {
+                                    showRenameDialog = false
+                                    mostrarErrorNombreEntrenamientoDuplicado = false
+                                }
+                                HistoricoDetailViewModel.NombreOperacionResultado.DUPLICADO -> {
+                                    mostrarErrorNombreEntrenamientoDuplicado = true
+                                }
+                                HistoricoDetailViewModel.NombreOperacionResultado.VACIO -> {
+                                    mostrarErrorNombreEntrenamientoDuplicado = false
+                                }
+                            }
+                        }
                     }
                 ) {
                     Text("Guardar")

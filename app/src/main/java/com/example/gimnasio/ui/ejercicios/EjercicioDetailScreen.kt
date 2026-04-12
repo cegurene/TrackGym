@@ -13,7 +13,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,10 +35,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
+import com.example.gimnasio.ui.components.formatUiNumber
 import com.example.gimnasio.ui.components.labelWithEmoji
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
@@ -151,6 +152,7 @@ fun EjercicioDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showEditMusculosDialog by remember { mutableStateOf(false) }
+    var mostrarErrorNombreEjercicioDuplicado by remember { mutableStateOf(false) }
 
     var nuevoNombre by remember { mutableStateOf("") }
     var musculoSeleccionado by remember { mutableStateOf<Musculo?>(null) }
@@ -254,6 +256,14 @@ fun EjercicioDetailScreen(
         val min = valores.minOrNull() ?: 0f
         val rango = (max - min).takeIf { it != 0f } ?: 1f
         val promedio = valores.average().toFloat()
+        val divisiones = 4
+        val yAxisValores = remember(min, rango, divisiones) {
+            (divisiones downTo 0).map { i ->
+                min + (rango / divisiones) * i
+            }
+        }
+        val xAxisLabelSpaceDp = 40.dp
+        val xAxisLabelSpacePx = with(LocalDensity.current) { xAxisLabelSpaceDp.toPx() }
 
         val density = LocalDensity.current
 
@@ -294,41 +304,49 @@ fun EjercicioDetailScreen(
                 // =========================
                 // EJE Y
                 // =========================
-                Canvas(
+                Box(
                     modifier = Modifier
-                        .width(22.dp)
+                        .width(62.dp)
                         .fillMaxHeight()
                 ) {
-                    val divisiones = 4
-                    val heightGrafica = size.height - 40f
-                    val step = heightGrafica / divisiones
+                    val yAxisHeightPx = with(LocalDensity.current) { 260.dp.toPx() }
+                    val yAxisGraphHeightPx = (yAxisHeightPx - xAxisLabelSpacePx).coerceAtLeast(1f)
+                    val yAxisStepPx = yAxisGraphHeightPx / divisiones
 
-                    drawLine(
-                        color = Color.Gray,
-                        start = Offset(size.width, 0f),
-                        end = Offset(size.width, heightGrafica),
-                        strokeWidth = 4f
-                    )
-
-                    for (i in 0..divisiones) {
-                        val y = heightGrafica - i * step
-                        val valor = min + (rango / divisiones) * i
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val heightGrafica = size.height - xAxisLabelSpacePx
+                        val step = heightGrafica / divisiones
 
                         drawLine(
-                            color = Color.Gray.copy(alpha = 0.6f),
-                            start = Offset(size.width - 10f, y),
-                            end = Offset(size.width, y),
-                            strokeWidth = 3f
+                            color = Color.Gray,
+                            start = Offset(size.width, 0f),
+                            end = Offset(size.width, heightGrafica),
+                            strokeWidth = 4f
                         )
 
-                        drawContext.canvas.nativeCanvas.drawText(
-                            valor.toInt().toString(),
-                            0f,
-                            y + 10f,
-                            android.graphics.Paint().apply {
-                                textSize = 28f
-                                color = android.graphics.Color.DKGRAY
-                            }
+                        for (i in 0..divisiones) {
+                            val y = heightGrafica - i * step
+                            drawLine(
+                                color = Color.Gray.copy(alpha = 0.6f),
+                                start = Offset(size.width - 10f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = 3f
+                            )
+                        }
+                    }
+
+                    yAxisValores.forEachIndexed { index, valorTick ->
+                        val yOffsetPx = index * yAxisStepPx
+                        Text(
+                            text = valorTick.formatUiNumber(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(
+                                    x = (-14).dp,
+                                    y = with(LocalDensity.current) { yOffsetPx.toDp() } - 8.dp
+                                )
                         )
                     }
                 }
@@ -354,7 +372,7 @@ fun EjercicioDetailScreen(
                                     detectTapGestures { offset ->
 
                                         val stepX = size.width / valores.size
-                                        val heightGrafica = size.height - 40f
+                                        val heightGrafica = size.height - xAxisLabelSpacePx
 
                                         val radioDeteccion = 40f // sensibilidad (ajustar)
 
@@ -391,7 +409,7 @@ fun EjercicioDetailScreen(
                         ) {
 
                             val stepX = size.width / valores.size
-                            val heightGrafica = size.height - 40f
+                            val heightGrafica = size.height - xAxisLabelSpacePx
 
                             val divisiones = 4
                             val stepY = heightGrafica / divisiones
@@ -548,13 +566,13 @@ fun EjercicioDetailScreen(
                                     style = MaterialTheme.typography.labelSmall
                                 )
                                 Text(
-                                    "📊 ${valor.toInt()} $unidad",
+                                    "📊 ${valor.formatUiNumber()} $unidad",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 if (diferencia != 0f) {
                                     Text(
-                                        "${if (diferencia > 0) "▲" else "▼"} ${diferencia.toInt()} $unidad",
+                                        "${if (diferencia > 0) "▲" else "▼"} ${kotlin.math.abs(diferencia).formatUiNumber()} $unidad",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = colorDiferencia
                                     )
@@ -637,11 +655,30 @@ fun EjercicioDetailScreen(
     // ----------------------------
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(ejercicio?.nombre ?: "Ejercicio") },
-                navigationIcon = { IconButton(onClick = onBack) { Text("←") } },
-                actions = { IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, contentDescription = "Ajustes") } }
-            )
+            Surface(shadowElevation = 4.dp) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    IconButton(onClick = onBack) { Text("←") }
+
+                    Text(
+                        text = ejercicio?.nombre ?: "Ejercicio",
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(top = 8.dp, end = 8.dp),
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = Int.MAX_VALUE,
+                        overflow = TextOverflow.Clip
+                    )
+
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Ajustes")
+                    }
+                }
+            }
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
@@ -674,14 +711,14 @@ fun EjercicioDetailScreen(
                             Column(Modifier.padding(16.dp)) {
 
                                 if(esCardio) {
-                                    Text("🏃‍♂️ Cardio", style = MaterialTheme.typography.titleLarge)
+                                    Text("🏃 Cardio", style = MaterialTheme.typography.titleLarge)
                                 } else {
-                                    Text("💪 Músculo", style = MaterialTheme.typography.titleLarge)
+                                    Text("Músculo", style = MaterialTheme.typography.titleLarge)
 
                                     Spacer(Modifier.height(8.dp))
 
                                     Text(
-                                        ejercicioLocal.musculos.joinToString { it.name }
+                                        ejercicioLocal.musculos.joinToString(" • ") { it.labelWithEmoji() }
                                     )
                                 }
                             }
@@ -1109,27 +1146,27 @@ fun EjercicioDetailScreen(
                                     } else {
 
                                         pr?.let {
-                                            FilaDato("PR:", "${it.pr} kg")
+                                            FilaDato("PR:", "${it.pr.formatUiNumber()} kg")
                                         }
 
                                         Spacer(Modifier.height(6.dp))
 
                                         FilaDato(
                                             "Mayor volumen en 1 serie:",
-                                            "${records!!.volumenMaxSerie ?: 0f} kg"
+                                            "${(records!!.volumenMaxSerie ?: 0f).formatUiNumber()} kg"
                                         )
 
                                         Spacer(Modifier.height(6.dp))
 
                                         mejorSesionFuerza?.let {
-                                            FilaDato("Mejor sesión:", "${it.mejorSesion} kg")
+                                            FilaDato("Mejor sesión:", "${it.mejorSesion.formatUiNumber()} kg")
                                         }
 
                                         Spacer(Modifier.height(6.dp))
 
                                         FilaDato(
                                             "Volumen total:",
-                                            "${records!!.volumenTotal ?: 0f} kg"
+                                            "${(records!!.volumenTotal ?: 0f).formatUiNumber()} kg"
                                         )
 
                                         Spacer(Modifier.height(6.dp))
@@ -1156,7 +1193,7 @@ fun EjercicioDetailScreen(
                                         mejorCargaCardio?.let {
                                             FilaDato(
                                                 "Mejor carga:",
-                                                "${it.carga}"
+                                                it.carga.formatUiNumber()
                                             )
 
                                             FilaDato(
@@ -1168,21 +1205,21 @@ fun EjercicioDetailScreen(
                                         Spacer(Modifier.height(6.dp))
 
                                         mejorSesionCardio?.let {
-                                            FilaDato("Mejor sesión", "${it.mejorSesion}")
+                                            FilaDato("Mejor sesión", it.mejorSesion.formatUiNumber())
                                         }
 
                                         Spacer(Modifier.height(6.dp))
 
                                         FilaDato(
                                             "Mejor carga en 1 serie:",
-                                            "${recordsCardio!!.mejorTiempo?.toInt() ?: 0} pts"
+                                            "${recordsCardio!!.mejorTiempo ?: 0} pts"
                                         )
 
                                         Spacer(Modifier.height(6.dp))
 
                                         FilaDato(
                                             "Carga total:",
-                                            "${recordsCardio!!.tiempoTotal?.toInt() ?: 0} pts"
+                                            "${recordsCardio!!.tiempoTotal ?: 0} pts"
                                         )
 
                                         Spacer(Modifier.height(6.dp))
@@ -1268,6 +1305,7 @@ fun EjercicioDetailScreen(
                 onRename = {
                     showSettings = false
                     nuevoNombre = ejercicio?.nombre ?: ""
+                    mostrarErrorNombreEjercicioDuplicado = false
                     showRenameDialog = true
                 },
                 onDelete = {
@@ -1304,8 +1342,48 @@ fun EjercicioDetailScreen(
         AlertDialog(
             onDismissRequest = { showRenameDialog = false },
             title = { Text("Cambiar nombre") },
-            text = { OutlinedTextField(value = nuevoNombre, onValueChange = { nuevoNombre = it }, label = { Text("Nombre del ejercicio") }, singleLine = true) },
-            confirmButton = { TextButton(onClick = { viewModel.renombrarEjercicio(ejercicioId, nuevoNombre); showRenameDialog = false }) { Text("Guardar") } },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = nuevoNombre,
+                        onValueChange = {
+                            nuevoNombre = it
+                            mostrarErrorNombreEjercicioDuplicado = false
+                        },
+                        label = { Text("Nombre del ejercicio") },
+                        singleLine = true
+                    )
+
+                    if (mostrarErrorNombreEjercicioDuplicado) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Ya existe un ejercicio con ese nombre. Cambialo.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.renombrarEjercicio(ejercicioId, nuevoNombre) { resultado ->
+                            when (resultado) {
+                                EjercicioViewModel.NombreOperacionResultado.OK -> {
+                                    showRenameDialog = false
+                                    mostrarErrorNombreEjercicioDuplicado = false
+                                }
+                                EjercicioViewModel.NombreOperacionResultado.DUPLICADO -> {
+                                    mostrarErrorNombreEjercicioDuplicado = true
+                                }
+                                EjercicioViewModel.NombreOperacionResultado.VACIO -> {
+                                    mostrarErrorNombreEjercicioDuplicado = false
+                                }
+                            }
+                        }
+                    }
+                ) { Text("Guardar") }
+            },
             dismissButton = { TextButton(onClick = { showRenameDialog = false }) { Text("Cancelar") } }
         )
     }

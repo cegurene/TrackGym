@@ -1,6 +1,7 @@
 package com.example.gimnasio.ui.historico
 
 import android.content.Context
+import android.database.sqlite.SQLiteConstraintException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.GymDatabase
@@ -13,6 +14,12 @@ import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.launch
 
 class HistoricoDetailViewModel(context: Context) : ViewModel() {
+    enum class NombreOperacionResultado {
+        OK,
+        VACIO,
+        DUPLICADO
+    }
+
     private val database = GymDatabase.getDatabase(context)
     private val cloudSyncCoordinator = CloudSyncCoordinator(context)
     private val dao = database.entrenamientoDao()
@@ -79,10 +86,30 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
         }
     }
 
-    fun renombrarEntrenamiento(id: Long, nuevoNombre: String) {
+    fun renombrarEntrenamiento(
+        id: Long,
+        nuevoNombre: String,
+        onResult: (NombreOperacionResultado) -> Unit = {}
+    ) {
+        val nombreNormalizado = nuevoNombre.trim()
+        if (nombreNormalizado.isBlank()) {
+            onResult(NombreOperacionResultado.VACIO)
+            return
+        }
+
         viewModelScope.launch {
-            dao.renombrarEntrenamiento(id, nuevoNombre)
-            cloudSyncCoordinator.syncNow()
+            try {
+                if (dao.existsByNombreExcludingId(nombreNormalizado, id)) {
+                    onResult(NombreOperacionResultado.DUPLICADO)
+                    return@launch
+                }
+
+                dao.renombrarEntrenamiento(id, nombreNormalizado)
+                cloudSyncCoordinator.syncNow()
+                onResult(NombreOperacionResultado.OK)
+            } catch (_: SQLiteConstraintException) {
+                onResult(NombreOperacionResultado.DUPLICADO)
+            }
         }
     }
 

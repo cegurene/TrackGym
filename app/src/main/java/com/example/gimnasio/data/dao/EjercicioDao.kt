@@ -30,6 +30,12 @@ interface EjercicioDao {
     @Query("UPDATE ejercicios SET nombre = :nuevoNombre WHERE id = :id")
     suspend fun updateNombre(id: Long, nuevoNombre: String)
 
+    @Query("SELECT COUNT(*) > 0 FROM ejercicios WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre))")
+    suspend fun existsByNombre(nombre: String): Boolean
+
+    @Query("SELECT COUNT(*) > 0 FROM ejercicios WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre)) AND id != :id")
+    suspend fun existsByNombreExcludingId(nombre: String, id: Long): Boolean
+
     @Query("SELECT * FROM ejercicios WHERE id = :id")
     fun getByIdFlow(id: Long): Flow<EjercicioEntity?>
 
