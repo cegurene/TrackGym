@@ -69,7 +69,7 @@ fun HistoricoItem(
                 )
 
                 Text(
-                    text = "Total: $numero",
+                    text = "#$numero",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

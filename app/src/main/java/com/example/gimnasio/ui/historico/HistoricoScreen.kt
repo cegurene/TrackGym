@@ -2,7 +2,7 @@ package com.example.gimnasio.ui.historico
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -56,8 +56,6 @@ fun HistoricoScreen(
 
         } else {
 
-            val numeroEntrenamientos = entrenamientos.size
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -66,13 +64,13 @@ fun HistoricoScreen(
                 contentPadding = PaddingValues(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(entrenamientos) { item ->
+                itemsIndexed(entrenamientos) { index, item ->
                     HistoricoItem(
                         item = item,
                         onClick = {
                             onEntrenamientoClick(item.entrenamiento.id)
                         },
-                        numero = numeroEntrenamientos
+                        numero = entrenamientos.size - index
                     )
                 }
             }
