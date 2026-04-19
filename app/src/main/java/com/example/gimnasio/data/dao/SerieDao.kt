@@ -39,7 +39,10 @@ interface SerieDao {
         ON ee.id = s.entrenamientoEjercicioId
     INNER JOIN ejercicios e 
         ON e.id = ee.ejercicioId
+    INNER JOIN entrenamientos en
+        ON en.id = ee.entrenamientoId
     WHERE e.musculos != 'CARDIO'
+      AND en.completado = 1
     GROUP BY e.musculos
     """
     )
@@ -56,6 +59,9 @@ interface SerieDao {
         ON ee.id = s.entrenamientoEjercicioId
     INNER JOIN ejercicios e 
         ON e.id = ee.ejercicioId
+    INNER JOIN entrenamientos en
+        ON en.id = ee.entrenamientoId
+    WHERE en.completado = 1
     ORDER BY volumen DESC
     LIMIT 1
     """
@@ -69,6 +75,7 @@ interface SerieDao {
     FROM series s
     INNER JOIN entrenamiento_ejercicio ee ON ee.id = s.entrenamientoEjercicioId
     INNER JOIN entrenamientos e ON e.id = ee.entrenamientoId
+    WHERE e.completado = 1
     GROUP BY dia
     ORDER BY volumenTotal DESC
     LIMIT 1
@@ -102,15 +109,35 @@ interface SerieDao {
 
     @Query(
         """
-    SELECT 
+    SELECT
         e.fechaInicio as fecha,
         SUM(COALESCE(s.peso,0) * COALESCE(s.repeticiones,0)) as valor,
-        MAX(COALESCE(s.peso,0)) as pesoMax
+        MAX(COALESCE(s.peso,0)) as pesoMax,
+        CAST(
+            SUM(
+                CASE
+                    WHEN COALESCE(s.peso,0) = maximos.pesoMax
+                    THEN COALESCE(s.repeticiones,0)
+                    ELSE 0
+                END
+            ) AS INTEGER
+        ) as repeticionesPesoMax
     FROM series s
     JOIN entrenamiento_ejercicio ee
         ON ee.id = s.entrenamientoEjercicioId
     JOIN entrenamientos e
         ON e.id = ee.entrenamientoId
+    JOIN (
+        SELECT
+            ee2.entrenamientoId as entrenamientoId,
+            MAX(COALESCE(s2.peso,0)) as pesoMax
+        FROM series s2
+        JOIN entrenamiento_ejercicio ee2
+            ON ee2.id = s2.entrenamientoEjercicioId
+        WHERE ee2.ejercicioId = :ejercicioId
+        GROUP BY ee2.entrenamientoId
+    ) as maximos
+        ON maximos.entrenamientoId = e.id
     WHERE ee.ejercicioId = :ejercicioId
       AND e.completado = 1
     GROUP BY e.id
@@ -121,15 +148,35 @@ interface SerieDao {
 
     @Query(
         """
-    SELECT 
+    SELECT
         e.fechaInicio as fecha,
         SUM(COALESCE(s.tiempo,0) * COALESCE(s.intensidad,1)) as valor,
-        SUM(COALESCE(s.tiempo,0)) as tiempo
+        SUM(COALESCE(s.tiempo,0)) as tiempo,
+        CAST(
+            SUM(
+                CASE
+                    WHEN COALESCE(s.tiempo,0) = maximos.tiempoMax
+                    THEN COALESCE(s.intensidad,1)
+                    ELSE 0
+                END
+            ) AS INTEGER
+        ) as intensidadTiempoMax
     FROM series s
     JOIN entrenamiento_ejercicio ee
         ON ee.id = s.entrenamientoEjercicioId
     JOIN entrenamientos e
         ON e.id = ee.entrenamientoId
+    JOIN (
+        SELECT
+            ee2.entrenamientoId as entrenamientoId,
+            MAX(COALESCE(s2.tiempo,0)) as tiempoMax
+        FROM series s2
+        JOIN entrenamiento_ejercicio ee2
+            ON ee2.id = s2.entrenamientoEjercicioId
+        WHERE ee2.ejercicioId = :ejercicioId
+        GROUP BY ee2.entrenamientoId
+    ) as maximos
+        ON maximos.entrenamientoId = e.id
     WHERE ee.ejercicioId = :ejercicioId
       AND e.completado = 1
     GROUP BY e.id

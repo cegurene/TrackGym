@@ -187,13 +187,14 @@ interface EntrenamientoDao {
     @Query("SELECT COUNT(*) FROM entrenamientos WHERE rutinaId = :rutinaId AND completado = 1")
     suspend fun countCompletadosByRutinaId(rutinaId: Long): Int
 
-    @Query("SELECT COUNT(*) FROM entrenamientos")
+    @Query("SELECT COUNT(*) FROM entrenamientos WHERE completado = 1")
     fun getTotalEntrenamientosFlow(): Flow<Int>
 
     @Query("""
     SELECT MAX(fechaFin - fechaInicio)
     FROM entrenamientos
     WHERE fechaFin IS NOT NULL
+      AND completado = 1
 """)
     suspend fun getEntrenamientoMasLargo(): Long?
 
@@ -201,6 +202,7 @@ interface EntrenamientoDao {
     SELECT MIN(fechaFin - fechaInicio)
     FROM entrenamientos
     WHERE fechaFin IS NOT NULL
+      AND completado = 1
 """)
     suspend fun getEntrenamientoMasCorto(): Long?
 
@@ -223,6 +225,7 @@ interface EntrenamientoDao {
     SELECT SUM(fechaFin - fechaInicio)
     FROM entrenamientos
     WHERE fechaFin IS NOT NULL
+      AND completado = 1
     """)
     suspend fun getTiempoTotalEntrenado(): Long?
 
@@ -230,6 +233,7 @@ interface EntrenamientoDao {
     SELECT AVG(fechaFin - fechaInicio)
     FROM entrenamientos
     WHERE fechaFin IS NOT NULL
+      AND completado = 1
     """)
     suspend fun getDuracionMedia(): Double?
 
@@ -237,6 +241,7 @@ interface EntrenamientoDao {
     SELECT r.nombre
     FROM entrenamientos e
     INNER JOIN rutinas r ON r.id = e.rutinaId
+    WHERE e.completado = 1
     GROUP BY r.id
     ORDER BY COUNT(*) DESC
     LIMIT 1
@@ -256,7 +261,7 @@ interface EntrenamientoDao {
     @Query("""
     SELECT r.id, r.nombre, COUNT(e.id) as veces
     FROM rutinas r
-    LEFT JOIN entrenamientos e ON e.rutinaId = r.id
+    LEFT JOIN entrenamientos e ON e.rutinaId = r.id AND e.completado = 1
     GROUP BY r.id
 """)
     fun getVecesRutinasFlow(): Flow<List<RutinaVeces>>

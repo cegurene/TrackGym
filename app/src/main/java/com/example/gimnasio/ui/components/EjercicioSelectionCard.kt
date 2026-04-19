@@ -1,7 +1,6 @@
 package com.example.gimnasio.ui.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,7 +47,7 @@ fun EjercicioSelectionCard(
                 Text(
                     text = nombre,
                     style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 2,
+                    maxLines = 5,
                     overflow = TextOverflow.Ellipsis
                 )
             }

@@ -6,22 +6,29 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.ui.components.labelWithEmoji
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -100,42 +107,82 @@ fun RutinasScreen(
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
+                val filtrosScrollState = rememberScrollState()
+                val filtrosScrollScope = rememberCoroutineScope()
 
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     shape = MaterialTheme.shapes.large,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp)
+                        .padding(vertical = 6.dp)
                 ) {
 
                     Column(
-                        modifier = Modifier.padding(12.dp)
+                        modifier = Modifier.padding(8.dp)
                     ) {
 
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(filtrosScrollState)
+                                    .padding(horizontal = 28.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
 
-                            selectedMusculos.forEach { musculo ->
+                                selectedMusculos.forEach { musculo ->
 
-                                AssistChip(
-                                    onClick = { viewModel.toggleMusculo(musculo) },
-                                    label = {
-                                        Text(musculo.labelWithEmoji())
+                                    AssistChip(
+                                        onClick = { viewModel.toggleMusculo(musculo) },
+                                        label = {
+                                            Text(musculo.labelWithEmoji())
+                                        },
+                                        trailingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Quitar filtro"
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+
+                            if (filtrosScrollState.value > 0) {
+                                IconButton(
+                                    onClick = {
+                                        filtrosScrollScope.launch {
+                                            filtrosScrollState.animateScrollTo(0)
+                                        }
                                     },
-                                    trailingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "Quitar filtro"
-                                        )
-                                    }
-                                )
+                                    modifier = Modifier.align(Alignment.CenterStart)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowBack,
+                                        contentDescription = "Ver filtros anteriores"
+                                    )
+                                }
+                            }
+
+                            if (filtrosScrollState.value < filtrosScrollState.maxValue) {
+                                IconButton(
+                                    onClick = {
+                                        filtrosScrollScope.launch {
+                                            filtrosScrollState.animateScrollTo(filtrosScrollState.maxValue)
+                                        }
+                                    },
+                                    modifier = Modifier.align(Alignment.CenterEnd)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowForward,
+                                        contentDescription = "Ver más filtros"
+                                    )
+                                }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         AssistChip(
                             onClick = { viewModel.clearMusculos() },
@@ -268,29 +315,65 @@ fun RutinasScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Musculo.entries.forEach { musculo ->
-                        FilterChip(
-                            selected = selectedMusculos.contains(musculo),
-                            onClick = { viewModel.toggleMusculo(musculo) },
-                            label = { Text(musculo.labelWithEmoji()) },
-                            leadingIcon = if (selectedMusculos.contains(musculo)) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(FilterChipDefaults.IconSize)
-                                    )
-                                }
-                            } else {
-                                null
+                Musculo.entries
+                    .toList()
+                    .chunked(3)
+                    .forEach { fila ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            fila.forEach { musculo ->
+                                FilterChip(
+                                    selected = selectedMusculos.contains(musculo),
+                                    onClick = { viewModel.toggleMusculo(musculo) },
+                                    label = {
+                                        Text(
+                                            musculo.labelWithEmoji(),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    leadingIcon = if (selectedMusculos.contains(musculo)) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                            )
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(36.dp)
+                                )
                             }
-                        )
+
+                            repeat(3 - fila.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(onClick = { viewModel.clearMusculos() }) {
+                        Text("Limpiar")
+                    }
+                    Button(onClick = { showFilterSheet = false }) {
+                        Text("Aplicar")
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

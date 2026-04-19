@@ -6,12 +6,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -113,17 +119,35 @@ class MainActivity : ComponentActivity() {
                 }
 
                 DismissKeyboardOnTap {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        if (isOnboardingCompleted) {
-                            GymApp(
-                                selectedThemeMode = selectedThemeMode,
-                                onThemeModeSelected = { themeMode ->
-                                    scope.launch {
-                                        themePreferencesRepository.setThemeMode(themeMode)
+                    when {
+                        onboardingCompleted == null -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                        isOnboardingCompleted -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                GymApp(
+                                    selectedThemeMode = selectedThemeMode,
+                                    onThemeModeSelected = { themeMode ->
+                                        scope.launch {
+                                            themePreferencesRepository.setThemeMode(themeMode)
+                                        }
                                     }
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Se requiere Android 8.0 o superior")
                                 }
-                            )
-                        } else if (onboardingCompleted == false) {
+                            }
+                        }
+                        else -> {
                             InitialAccessScreen()
                         }
                     }
@@ -132,4 +156,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-

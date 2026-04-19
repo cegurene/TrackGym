@@ -5,6 +5,7 @@ import android.app.Application
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -35,11 +36,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.gimnasio.R
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
+import com.example.gimnasio.ui.components.displayLabel
 import com.example.gimnasio.ui.components.formatUiNumber
 import com.example.gimnasio.ui.components.labelWithEmoji
 import kotlinx.coroutines.launch
@@ -47,6 +51,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 private fun StatCard(
@@ -132,6 +137,25 @@ private fun sectionToIndex(section: String): Int {
         else -> 0
     }
 }
+
+private fun musculoImageRes(musculo: Musculo): Int {
+    return when (musculo) {
+        Musculo.PECHO -> R.drawable.ic_muscle_pecho
+        Musculo.ESPALDA -> R.drawable.ic_muscle_espalda
+        Musculo.HOMBROS -> R.drawable.ic_muscle_hombros
+        Musculo.BICEPS -> R.drawable.ic_muscle_biceps
+        Musculo.TRICEPS -> R.drawable.ic_muscle_triceps
+        Musculo.ANTEBRAZOS -> R.drawable.ic_muscle_antebrazo
+        Musculo.CUÁDRICEPS -> R.drawable.ic_muscle_cuadriceps
+        Musculo.FEMORAL -> R.drawable.ic_muscle_femoral
+        Musculo.ADUCTOR -> R.drawable.ic_muscle_aductor
+        Musculo.ABDUCTOR -> R.drawable.ic_muscle_abductor
+        Musculo.GEMELOS -> R.drawable.ic_muscle_gemelos
+        Musculo.ABDOMINALES -> R.drawable.ic_muscle_abdominales
+        Musculo.CARDIO -> R.drawable.ic_muscle_cardio
+    }
+}
+
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -153,6 +177,7 @@ fun EjercicioDetailScreen(
     var showRenameDialog by remember { mutableStateOf(false) }
     var showEditMusculosDialog by remember { mutableStateOf(false) }
     var mostrarErrorNombreEjercicioDuplicado by remember { mutableStateOf(false) }
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
 
     var nuevoNombre by remember { mutableStateOf("") }
     var musculoSeleccionado by remember { mutableStateOf<Musculo?>(null) }
@@ -242,6 +267,7 @@ fun EjercicioDetailScreen(
         valores: List<Float>,
         fechas: List<String>,
         unidad: String,
+        detallesTooltip: List<String?> = emptyList(),
         scrollState: ScrollState,
         onScrollStateChange: (Boolean) -> Unit = {},
         modifier: Modifier = Modifier
@@ -539,6 +565,7 @@ fun EjercicioDetailScreen(
 
                         val valor = valores[index]
                         val fecha = fechas.getOrNull(index) ?: ""
+                        val detalle = detallesTooltip.getOrNull(index)
                         val diferencia = if (index > 0) valor - valores[index - 1] else 0f
                         val colorDiferencia = when {
                             diferencia > 0 -> Color(0xFF4CAF50)
@@ -570,6 +597,12 @@ fun EjercicioDetailScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
+                                if (!detalle.isNullOrBlank()) {
+                                    Text(
+                                        "🏷 $detalle",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
                                 if (diferencia != 0f) {
                                     Text(
                                         "${if (diferencia > 0) "▲" else "▼"} ${kotlin.math.abs(diferencia).formatUiNumber()} $unidad",
@@ -717,8 +750,23 @@ fun EjercicioDetailScreen(
 
                                     Spacer(Modifier.height(8.dp))
 
+                                    ejercicioLocal.musculos.firstOrNull()?.let { musculo ->
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Image(
+                                                painter = painterResource(id = musculoImageRes(musculo)),
+                                                contentDescription = musculo.displayLabel(),
+                                                modifier = Modifier.size(128.dp)
+                                            )
+                                        }
+
+                                        Spacer(Modifier.height(8.dp))
+                                    }
+
                                     Text(
-                                        ejercicioLocal.musculos.joinToString(" • ") { it.labelWithEmoji() }
+                                        ejercicioLocal.musculos.joinToString(" • ") { it.labelWithEmoji()}
                                     )
                                 }
                             }
@@ -764,7 +812,7 @@ fun EjercicioDetailScreen(
                                     // Mostrar fecha en un card destacado
                                     StatCard(
                                         title = "Fecha",
-                                        value = "$fecha",
+                                        value = fecha.format(dateFormatter),
                                         icon = "📅"
                                     )
 
@@ -995,82 +1043,9 @@ fun EjercicioDetailScreen(
                                     // DATOS BASE
                                     // -------------------
 
-                                    val valores = remember(progreso) {
+                                    val valoresVolumen = remember(progreso) {
                                         progreso.map { it.valor }
                                     }
-
-                                    val unidad = if (esCardio) "pts" else "kg"
-
-                                    val primerValor = valores.first()
-                                    val ultimoValor = valores.last()
-                                    val diferencia = ultimoValor - primerValor
-                                    val colorDiferencia = when {
-                                        diferencia > 0 -> Color(0xFF4CAF50)
-                                        diferencia < 0 -> Color.Red
-                                        else -> Color.Gray
-                                    }
-
-                                    val fechas = remember(progreso) {
-                                        progreso.map {
-                                            val fecha = Instant
-                                                .ofEpochMilli(it.fecha)
-                                                .atZone(ZoneId.systemDefault())
-                                                .toLocalDate()
-
-                                            "${fecha.dayOfMonth}/${fecha.monthValue}"
-                                        }
-                                    }
-
-                                    // -------------------
-                                    // TEXTO
-                                    // -------------------
-
-                                    if (esCardio) {
-
-                                        FilaDato(
-                                            "Primer valor registrado:",
-                                            "${primerValor.toInt()} $unidad"
-                                        )
-
-                                        FilaDato(
-                                            "Último valor registrado:",
-                                            "${ultimoValor.toInt()} $unidad"
-                                        )
-
-                                        Spacer(Modifier.height(8.dp))
-
-                                        FilaDato(
-                                            "Diferencia:",
-                                            "${if (diferencia >= 0) "+" else "-"}${diferencia.toInt()} $unidad",
-                                            colorDiferencia
-                                        )
-
-                                    } else {
-
-                                        FilaDato(
-                                            "Primer valor registrado:",
-                                            "$primerValor $unidad"
-                                        )
-
-                                        FilaDato(
-                                            "Último valor registrado:",
-                                            "$ultimoValor $unidad"
-                                        )
-
-                                        Spacer(Modifier.height(8.dp))
-
-                                        FilaDato(
-                                            "Diferencia:",
-                                            "${if (diferencia >= 0) "+" else ""}$diferencia $unidad",
-                                            colorDiferencia
-                                        )
-                                    }
-
-                                    Spacer(Modifier.height(16.dp))
-
-                                    // -------------------
-                                    // GRAFICAS
-                                    // -------------------
 
                                     val valoresExtra = remember(progreso, esCardio) {
                                         if (esCardio) {
@@ -1080,6 +1055,40 @@ fun EjercicioDetailScreen(
                                         }
                                     }
 
+                                    val unidadExtra = if (esCardio) "min" else "kg"
+                                    val unidadVolumen = if (esCardio) "pts" else "kg"
+
+                                    val fechas = remember(progreso) {
+                                        progreso.map {
+                                            val fecha = Instant
+                                                .ofEpochMilli(it.fecha)
+                                                .atZone(ZoneId.systemDefault())
+                                                .toLocalDate()
+
+                                            fecha.format(dateFormatter)
+                                        }
+                                    }
+
+                                    val detallesGraficaExtra = remember(progreso, esCardio) {
+                                        if (esCardio) {
+                                            progreso.map {
+                                                val tiempo = it.tiempo ?: 0
+                                                val intensidad = it.intensidadTiempoMax ?: 0
+                                                if (tiempo > 0) "$tiempo min x $intensidad intensidad" else null
+                                            }
+                                        } else {
+                                            progreso.map {
+                                                val pesoMax = it.pesoMax ?: 0f
+                                                val reps = it.repeticionesPesoMax ?: 0
+                                                if (pesoMax > 0f) "${pesoMax.formatUiNumber()} kg x $reps reps" else null
+                                            }
+                                        }
+                                    }
+
+                                    // -------------------
+                                    // GRAFICA 1 (EXTRA)
+                                    // -------------------
+
                                     Text(
                                         text = if (esCardio) "Tiempo total (min)" else "Peso máximo (kg)",
                                         style = MaterialTheme.typography.titleMedium
@@ -1087,16 +1096,73 @@ fun EjercicioDetailScreen(
 
                                     Spacer(Modifier.height(8.dp))
 
+                                    val primerExtra = valoresExtra.first()
+                                    val ultimoExtra = valoresExtra.last()
+                                    val diferenciaExtra = ultimoExtra - primerExtra
+                                    val colorDiferenciaExtra = when {
+                                        diferenciaExtra > 0 -> Color(0xFF4CAF50)
+                                        diferenciaExtra < 0 -> Color.Red
+                                        else -> Color.Gray
+                                    }
+
+                                    if (esCardio) {
+
+                                        FilaDato(
+                                            "Primer valor registrado:",
+                                            "${primerExtra.formatUiNumber()} $unidadExtra"
+                                        )
+
+                                        FilaDato(
+                                            "Último valor registrado:",
+                                            "${ultimoExtra.formatUiNumber()} $unidadExtra"
+                                        )
+
+                                        Spacer(Modifier.height(8.dp))
+
+                                        FilaDato(
+                                            "Diferencia:",
+                                            "${if (diferenciaExtra >= 0) "+" else "-"}${kotlin.math.abs(diferenciaExtra).formatUiNumber()} $unidadExtra",
+                                            colorDiferenciaExtra
+                                        )
+
+                                    } else {
+
+                                        FilaDato(
+                                            "Primer valor registrado:",
+                                            "${primerExtra.formatUiNumber()} $unidadExtra"
+                                        )
+
+                                        FilaDato(
+                                            "Último valor registrado:",
+                                            "${ultimoExtra.formatUiNumber()} $unidadExtra"
+                                        )
+
+                                        Spacer(Modifier.height(8.dp))
+
+                                        FilaDato(
+                                            "Diferencia:",
+                                            "${if (diferenciaExtra >= 0) "+" else ""}${diferenciaExtra.formatUiNumber()} $unidadExtra",
+                                            colorDiferenciaExtra
+                                        )
+                                    }
+
+                                    Spacer(Modifier.height(16.dp))
+
                                     GraficaProgresoScrollable(
                                         valores = valoresExtra,
                                         fechas = fechas,
-                                        unidad = if (esCardio) "min" else "kg",
+                                        unidad = unidadExtra,
+                                        detallesTooltip = detallesGraficaExtra,
                                         scrollState = scrollStateGrafica,
                                         onScrollStateChange = { isScrollingGrafica = it },
                                         modifier = Modifier.fillMaxWidth()
                                     )
 
                                     Spacer(Modifier.height(24.dp))
+
+                                    // -------------------
+                                    // GRAFICA 2 (VOLUMEN / CARGA)
+                                    // -------------------
 
                                     Text(
                                         text = if (esCardio) "Carga de cardio (pts)" else "Volumen levantado (kg)",
@@ -1105,10 +1171,39 @@ fun EjercicioDetailScreen(
 
                                     Spacer(Modifier.height(8.dp))
 
+                                    val primerVolumen = valoresVolumen.first()
+                                    val ultimoVolumen = valoresVolumen.last()
+                                    val diferenciaVolumen = ultimoVolumen - primerVolumen
+                                    val colorDiferenciaVolumen = when {
+                                        diferenciaVolumen > 0 -> Color(0xFF4CAF50)
+                                        diferenciaVolumen < 0 -> Color.Red
+                                        else -> Color.Gray
+                                    }
+
+                                    FilaDato(
+                                        "Primer valor registrado:",
+                                        "${primerVolumen.formatUiNumber()} $unidadVolumen"
+                                    )
+
+                                    FilaDato(
+                                        "Último valor registrado:",
+                                        "${ultimoVolumen.formatUiNumber()} $unidadVolumen"
+                                    )
+
+                                    Spacer(Modifier.height(8.dp))
+
+                                    FilaDato(
+                                        "Diferencia:",
+                                        "${if (diferenciaVolumen >= 0) "+" else ""}${diferenciaVolumen.formatUiNumber()} $unidadVolumen",
+                                        colorDiferenciaVolumen
+                                    )
+
+                                    Spacer(Modifier.height(16.dp))
+
                                     GraficaProgresoScrollable(
-                                        valores = valores,
+                                        valores = valoresVolumen,
                                         fechas = fechas,
-                                        unidad = if (esCardio) "min" else "kg",
+                                        unidad = unidadVolumen,
                                         scrollState = scrollStateGrafica,
                                         onScrollStateChange = { isScrollingGrafica = it },
                                         modifier = Modifier.fillMaxWidth()
