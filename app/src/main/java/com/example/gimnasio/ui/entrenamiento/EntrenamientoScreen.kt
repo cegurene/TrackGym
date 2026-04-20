@@ -1,17 +1,24 @@
 package com.example.gimnasio.ui.entrenamiento
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.app.Application
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -24,11 +31,13 @@ import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
 import androidx.compose.material3.Icon
 import kotlinx.coroutines.delay
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
 import com.example.gimnasio.ui.components.EjercicioSelectionCard
+import com.example.gimnasio.ui.components.displayLabel
 import com.example.gimnasio.ui.components.formatUiNumber
 import com.example.gimnasio.ui.components.emojiSummary
-import com.example.gimnasio.ui.components.labelWithEmoji
+import com.example.gimnasio.ui.components.imageRes
 import java.math.RoundingMode
 
 private fun parseDecimalInput(text: String): Float =
@@ -171,16 +180,6 @@ fun EntrenamientoScreen(
     val ejerciciosNoAgregadosFiltrados = remember(ejerciciosNoAgregados, musculoFiltro) {
         ejerciciosNoAgregados.filter { ejercicio ->
             musculoFiltro == null || ejercicio.musculos.contains(musculoFiltro)
-        }
-    }
-    val conteoEjerciciosPorMusculo = remember(ejerciciosNoAgregados) {
-        Musculo.entries.associateWith { musculo ->
-            ejerciciosNoAgregados.count { ejercicio -> ejercicio.musculos.contains(musculo) }
-        }
-    }
-    val musculosConEjercicios = remember(conteoEjerciciosPorMusculo) {
-        Musculo.entries.filter { musculo ->
-            (conteoEjerciciosPorMusculo[musculo] ?: 0) > 0
         }
     }
 
@@ -505,65 +504,78 @@ fun EntrenamientoScreen(
             onDismissRequest = { showAddExerciseDialog = false },
             title = { Text("Añadir ejercicio") },
             text = {
-                var filtroExpanded by remember { mutableStateOf(false) }
-                val filtroLabel = musculoFiltro?.labelWithEmoji() ?: "Todos"
-
+                var filtroExpandido by remember { mutableStateOf(false) }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ExposedDropdownMenuBox(
-                        expanded = filtroExpanded,
-                        onExpandedChange = { filtroExpanded = !filtroExpanded }
+                        expanded = filtroExpandido,
+                        onExpandedChange = { filtroExpandido = !filtroExpandido }
                     ) {
                         OutlinedTextField(
-                            value = filtroLabel,
+                            value = musculoFiltro?.displayLabel() ?: "Todos",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Filtrar por músculo") },
                             trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = filtroExpanded)
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = filtroExpandido)
                             },
                             modifier = Modifier
                                 .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
                                 .fillMaxWidth()
                         )
+                    }
 
-                        ExposedDropdownMenu(
-                            expanded = filtroExpanded,
-                            onDismissRequest = { filtroExpanded = false }
+                    if (filtroExpandido) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 250.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text("Todos")
-                                        Spacer(modifier = Modifier.weight(1f))
-                                        Text(ejerciciosNoAgregados.size.toString())
-                                    }
-                                },
-                                onClick = {
-                                    musculoFiltro = null
-                                    filtroExpanded = false
-                                }
-                            )
-
-                                musculosConEjercicios.forEach { musculo ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(musculo.labelWithEmoji())
-                                            Spacer(modifier = Modifier.weight(1f))
-                                            Text((conteoEjerciciosPorMusculo[musculo] ?: 0).toString())
-                                        }
-                                    },
+                            gridItems(Musculo.entries.toList()) { musculo ->
+                                val seleccionado = musculoFiltro == musculo
+                                Surface(
                                     onClick = {
-                                        musculoFiltro = musculo
-                                        filtroExpanded = false
+                                        musculoFiltro = if (seleccionado) null else musculo
+                                    },
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = if (seleccionado) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    },
+                                    border = BorderStroke(
+                                        width = 1.dp,
+                                        color = if (seleccionado) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.outlineVariant
+                                        }
+                                    )
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(10.dp)
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = musculo.imageRes()),
+                                            contentDescription = musculo.displayLabel(),
+                                            modifier = Modifier.height(65.dp),
+                                            contentScale = ContentScale.Fit
+                                        )
+
+                                        Text(
+                                            text = musculo.displayLabel(),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
-                                )
+                                }
                             }
                         }
                     }

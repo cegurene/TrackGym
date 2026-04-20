@@ -1,6 +1,8 @@
 package com.example.gimnasio.ui.ejercicios
 
 import android.app.Application
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -9,14 +11,17 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -25,10 +30,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.gimnasio.R
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.Musculo
+import com.example.gimnasio.ui.components.displayLabel
+import com.example.gimnasio.ui.components.imageRes
 import com.example.gimnasio.ui.components.labelWithEmoji
 import kotlinx.coroutines.launch
 
@@ -150,7 +160,7 @@ fun EjerciciosScreen(
                                                 imageVector = Icons.Default.Close,
                                                 contentDescription = "Quitar filtro"
                                             )
-                                        }
+                                                }
                                     )
                                 }
                             }
@@ -287,31 +297,61 @@ fun EjerciciosScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    FlowRow(
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 320.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Musculo.entries.forEach { musculo ->
-                            FilterChip(
-                                selected = musculoSeleccionado == musculo,
+                        gridItems(Musculo.entries.toList()) { musculo ->
+                            val seleccionado = musculoSeleccionado == musculo
+
+                            Surface(
                                 onClick = {
-                                    musculoSeleccionado =
-                                        if (musculoSeleccionado == musculo) null else musculo
+                                    musculoSeleccionado = if (seleccionado) null else musculo
                                     mostrarErrorMusculo = false
                                 },
-                                label = { Text(musculo.labelWithEmoji()) },
-                                leadingIcon = if (musculoSeleccionado == musculo) {
-                                    {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(FilterChipDefaults.IconSize)
-                                        )
-                                    }
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (seleccionado) {
+                                    MaterialTheme.colorScheme.primaryContainer
                                 } else {
-                                    null
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                },
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                                border = BorderStroke(
+                                    width = 1.dp,
+                                    color = if (seleccionado) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.outlineVariant
+                                    }
+                                )
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = musculoImageRes(musculo)),
+                                        contentDescription = musculo.displayLabel(),
+                                        modifier = Modifier
+                                            .height(75.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+
+                                    Text(
+                                        text = musculo.displayLabel(),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
                 }
@@ -387,51 +427,58 @@ fun EjerciciosScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Musculo.entries
-                    .toList()
-                    .chunked(3)
-                    .forEach { fila ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    gridItems(Musculo.entries.toList()) { musculo ->
+                        val seleccionado = selectedMusculos.contains(musculo)
+
+                        Surface(
+                            onClick = { viewModel.toggleMusculo(musculo) },
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (seleccionado) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = if (seleccionado) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.outlineVariant
+                                }
+                            )
                         ) {
-                            fila.forEach { musculo ->
-                                FilterChip(
-                                    selected = selectedMusculos.contains(musculo),
-                                    onClick = { viewModel.toggleMusculo(musculo) },
-                                    label = {
-                                        Text(
-                                            musculo.labelWithEmoji(),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    },
-                                    leadingIcon = if (selectedMusculos.contains(musculo)) {
-                                        {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(FilterChipDefaults.IconSize)
-                                            )
-                                        }
-                                    } else {
-                                        null
-                                    },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(36.dp)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(10.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = musculo.imageRes()),
+                                    contentDescription = musculo.displayLabel(),
+                                    modifier = Modifier.height(65.dp),
+                                    contentScale = ContentScale.Fit
+                                )
+
+                                Text(
+                                    text = musculo.displayLabel(),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
-
-                            repeat(3 - fila.size) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
                         }
-
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
+                }
 
                 //Spacer(modifier = Modifier.height(14.dp))
 
@@ -452,3 +499,22 @@ fun EjerciciosScreen(
         }
     }
 }
+
+private fun musculoImageRes(musculo: Musculo): Int {
+    return when (musculo) {
+        Musculo.PECHO -> R.drawable.ic_muscle_pecho
+        Musculo.ESPALDA -> R.drawable.ic_muscle_espalda
+        Musculo.HOMBROS -> R.drawable.ic_muscle_hombros
+        Musculo.BICEPS -> R.drawable.ic_muscle_biceps
+        Musculo.TRICEPS -> R.drawable.ic_muscle_triceps
+        Musculo.ANTEBRAZOS -> R.drawable.ic_muscle_antebrazo
+        Musculo.CUÁDRICEPS -> R.drawable.ic_muscle_cuadriceps
+        Musculo.FEMORAL -> R.drawable.ic_muscle_femoral
+        Musculo.ADUCTOR -> R.drawable.ic_muscle_aductor
+        Musculo.ABDUCTOR -> R.drawable.ic_muscle_abductor
+        Musculo.GEMELOS -> R.drawable.ic_muscle_gemelos
+        Musculo.ABDOMINALES -> R.drawable.ic_muscle_abdominales
+        Musculo.CARDIO -> R.drawable.ic_muscle_cardio
+    }
+}
+

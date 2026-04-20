@@ -79,7 +79,7 @@ fun HistoricoScreen(
             ) {
                 Text("🧩", modifier = Modifier.padding(end = 8.dp))
                 if (filtrosActivos == 0) {
-                    Text("Filtrar")
+                    Text("Filtrar por rutina y fecha")
                 } else {
                     Text("Filtrar ($filtrosActivos)")
                 }
