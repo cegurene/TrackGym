@@ -1,6 +1,5 @@
 package com.example.gimnasio.ui.historico
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +19,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.gimnasio.data.model.EntrenamientoConRutinaYEjercicios
 import com.example.gimnasio.ui.components.emojiSummary
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 @Composable
@@ -36,6 +38,10 @@ fun HistoricoItem(
         ((finMillis - inicioMillis) / 1000 / 60)
     } else 0
 
+    val localeEs = Locale("es", "ES")
+    val diaSemana = SimpleDateFormat("EEEE", localeEs)
+        .format(Date(inicioMillis))
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(localeEs) else it.toString() }
     val fecha = android.text.format.DateFormat
         .format("dd/MM/yyyy", inicioMillis)
         .toString()
@@ -97,7 +103,7 @@ fun HistoricoItem(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "📅 Fecha: $fecha",
+                text = "📅 Fecha: $diaSemana $fecha",
                 style = MaterialTheme.typography.bodyMedium
             )
 

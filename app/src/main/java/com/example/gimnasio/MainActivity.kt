@@ -1,10 +1,13 @@
 package com.example.gimnasio
 
+import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.core.content.ContextCompat
+import com.example.gimnasio.data.GymDatabase
+import com.example.gimnasio.notifications.EntrenamientoNotificationManager
 import com.example.gimnasio.data.preferences.AccountPreferencesRepository
 import com.example.gimnasio.data.preferences.AccountSession
 import com.example.gimnasio.data.preferences.OnboardingPreferencesRepository
@@ -48,6 +54,14 @@ class MainActivity : ComponentActivity() {
             val selectedThemeMode by themePreferencesRepository
                 .themeModeFlow
                 .collectAsState(initial = ThemeMode.SYSTEM)
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission(),
+                onResult = { }
+            )
+            val database = remember { GymDatabase.getDatabase(applicationContext) }
+            val entrenamientoActivo by database.entrenamientoDao()
+                .getEntrenamientoActivoFlow()
+                .collectAsState(initial = null)
             val accountSession by accountPreferencesRepository
                 .accountSessionFlow
                 .collectAsState(initial = AccountSession.LoggedOut)
@@ -70,6 +84,31 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(isOnboardingCompleted, accountSession, initialCloudSyncService) {
                 if (isOnboardingCompleted) {
                     initialCloudSyncService?.syncIfNeeded(accountSession)
+                }
+            }
+
+            LaunchedEffect(isOnboardingCompleted) {
+                if (!isOnboardingCompleted) return@LaunchedEffect
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@LaunchedEffect
+
+                val granted = ContextCompat.checkSelfPermission(
+                    applicationContext,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+                if (!granted) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+
+            LaunchedEffect(entrenamientoActivo?.id, entrenamientoActivo?.nombre) {
+                if (entrenamientoActivo == null) {
+                    EntrenamientoNotificationManager.cancelarEntrenamientoActivo(applicationContext)
+                } else {
+                    EntrenamientoNotificationManager.mostrarEntrenamientoActivo(
+                        context = applicationContext,
+                        nombreEntrenamiento = entrenamientoActivo?.nombre
+                    )
                 }
             }
 

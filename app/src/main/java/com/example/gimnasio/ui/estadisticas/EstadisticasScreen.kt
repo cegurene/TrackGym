@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -282,35 +283,52 @@ fun EstadisticasScreen(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     ) {
-                        StatCard(
-                            title = "Semana",
-                            value = "${actividad.entrenamientosSemana}",
-                            icon = "🔥",
-                            compactTitle = true,
-                            modifier = Modifier.weight(1f)
-                        )
-                        StatCard(
-                            title = "Mes",
-                            value = "${actividad.entrenamientosMes}",
-                            icon = "📅",
-                            compactTitle = true,
-                            modifier = Modifier.weight(1f)
-                        )
-                        StatCard(
-                            title = "Total",
-                            value = "${resumen.totalEntrenamientos}",
-                            icon = "🏁",
-                            compactTitle = true,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                StatCard(
+                                    title = "Semana",
+                                    value = "${actividad.entrenamientosSemana}",
+                                    icon = "🔥",
+                                    compactTitle = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                StatCard(
+                                    title = "Mes",
+                                    value = "${actividad.entrenamientosMes}",
+                                    icon = "📅",
+                                    compactTitle = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                StatCard(
+                                    title = "Total",
+                                    value = "${resumen.totalEntrenamientos}",
+                                    icon = "🏁",
+                                    compactTitle = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            Text(
+                                text = "entrenamientos",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            )
+                        }
                     }
                 }
             }

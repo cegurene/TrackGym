@@ -1,5 +1,6 @@
 package com.example.gimnasio.ui.historico
 
+import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -18,6 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,9 +44,15 @@ fun HistoricoScreen(
 
     val rutinas by viewModel.rutinas.collectAsState()
     val selectedRutinaId by viewModel.selectedRutinaId.collectAsState()
+    val selectedFechaDesde by viewModel.selectedFechaDesde.collectAsState()
+    val selectedFechaHasta by viewModel.selectedFechaHasta.collectAsState()
     val rutinaSeleccionada = remember(rutinas, selectedRutinaId) {
         rutinas.firstOrNull { it.id == selectedRutinaId }
     }
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val filtrosActivos = (if (selectedRutinaId != null) 1 else 0) +
+        (if (selectedFechaDesde != null) 1 else 0) +
+        (if (selectedFechaHasta != null) 1 else 0)
 
     var showFilterSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -67,15 +78,15 @@ fun HistoricoScreen(
                     .padding(top = 8.dp)
             ) {
                 Text("🧩", modifier = Modifier.padding(end = 8.dp))
-                if (selectedRutinaId == null) {
-                    Text("Filtrar por rutina")
+                if (filtrosActivos == 0) {
+                    Text("Filtrar")
                 } else {
-                    Text("Filtrar (1)")
+                    Text("Filtrar ($filtrosActivos)")
                 }
             }
 
             AnimatedVisibility(
-                visible = selectedRutinaId != null,
+                visible = filtrosActivos > 0,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
@@ -91,16 +102,44 @@ fun HistoricoScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        AssistChip(
-                            onClick = { viewModel.limpiarFiltroRutina() },
-                            label = { Text(rutinaSeleccionada?.nombre ?: "Rutina") },
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Quitar filtro"
-                                )
-                            }
-                        )
+                        if (selectedRutinaId != null) {
+                            AssistChip(
+                                onClick = { viewModel.limpiarFiltroRutina() },
+                                label = { Text(rutinaSeleccionada?.nombre ?: "Rutina") },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Quitar filtro rutina"
+                                    )
+                                }
+                            )
+                        }
+
+                        if (selectedFechaDesde != null) {
+                            AssistChip(
+                                onClick = { viewModel.seleccionarFechaDesde(null) },
+                                label = { Text("Desde ${dateFormatter.format(Date(selectedFechaDesde!!))}") },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Quitar fecha desde"
+                                    )
+                                }
+                            )
+                        }
+
+                        if (selectedFechaHasta != null) {
+                            AssistChip(
+                                onClick = { viewModel.seleccionarFechaHasta(null) },
+                                label = { Text("Hasta ${dateFormatter.format(Date(selectedFechaHasta!!))}") },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Quitar fecha hasta"
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -132,7 +171,7 @@ fun HistoricoScreen(
                         )
                     ) {
                         Text(
-                            text = "Aún no hay entrenamientos con ${rutinaSeleccionada?.nombre ?: "esta rutina"}.",
+                            text = "Aún no hay entrenamientos con los filtros seleccionados.",
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(16.dp)
                         )
@@ -172,15 +211,21 @@ fun HistoricoScreen(
                     .fillMaxWidth()
             ) {
                 Text(
-                    text = "Filtrar por rutina",
+                    text = "Filtrar histórico",
                     style = MaterialTheme.typography.titleLarge
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
+                Text(
+                    text = "Rutina",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp),
+                        .heightIn(max = 260.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     itemsIndexed(rutinas) { _, rutina ->
@@ -216,11 +261,59 @@ fun HistoricoScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                Text(
+                    text = "Fecha",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            context.showDatePickerDialog(selectedFechaDesde) { millis ->
+                                viewModel.seleccionarFechaDesde(millis)
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            if (selectedFechaDesde == null) {
+                                "Desde"
+                            } else {
+                                "Desde ${dateFormatter.format(Date(selectedFechaDesde!!))}"
+                            }
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            context.showDatePickerDialog(selectedFechaHasta) { millis ->
+                                viewModel.seleccionarFechaHasta(millis)
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            if (selectedFechaHasta == null) {
+                                "Hasta"
+                            } else {
+                                "Hasta ${dateFormatter.format(Date(selectedFechaHasta!!))}"
+                            }
+                        )
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    TextButton(onClick = { viewModel.limpiarFiltroRutina() }) {
+                    TextButton(onClick = {
+                        viewModel.limpiarFiltroRutina()
+                        viewModel.limpiarFiltroFechas()
+                    }) {
                         Text("Limpiar")
                     }
                     Button(onClick = { showFilterSheet = false }) {
@@ -232,3 +325,32 @@ fun HistoricoScreen(
         }
     }
 }
+
+private fun android.content.Context.showDatePickerDialog(
+    initialMillis: Long?,
+    onDateSelected: (Long) -> Unit
+) {
+    val calendar = Calendar.getInstance().apply {
+        timeInMillis = initialMillis ?: System.currentTimeMillis()
+    }
+
+    DatePickerDialog(
+        this,
+        { _, year, month, dayOfMonth ->
+            val selected = Calendar.getInstance().apply {
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, month)
+                set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            onDateSelected(selected.timeInMillis)
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    ).show()
+}
+
