@@ -1,5 +1,6 @@
 package com.example.gimnasio.ui.historico
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,7 +13,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -20,7 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.ui.components.emojiSummary
-import com.example.gimnasio.ui.components.formatUiNumber
+import com.example.gimnasio.ui.components.primaryImageRes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +101,7 @@ fun HistoricoDetailScreen(
 
             val data = entrenamiento!!
             val rutina = entrenamientoConRutina!!.rutina
+            val ejerciciosOrdenados = data.ejercicios.sortedBy { it.entrenamientoEjercicio.orden }
 
             fun calcularVolumen(series: List<SerieEntity>): Int {
                 return series.sumOf {
@@ -172,7 +177,7 @@ fun HistoricoDetailScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.weight(1f),
-                                    maxLines = 1,
+                                    maxLines = 5,
                                     overflow = TextOverflow.Ellipsis
                                 )
 
@@ -190,7 +195,7 @@ fun HistoricoDetailScreen(
 
                 }
 
-                items(data.ejercicios) { ejercicioConSeries ->
+                items(ejerciciosOrdenados) { ejercicioConSeries ->
 
                     val volumen = calcularVolumen(ejercicioConSeries.series)
 
@@ -211,80 +216,93 @@ fun HistoricoDetailScreen(
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
 
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-
-                            Text(
-                                text = ejercicioConSeries.ejercicio.nombre,
-                                style = MaterialTheme.typography.titleMedium
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Image(
+                                painter = painterResource(id = ejercicioConSeries.ejercicio.musculos.primaryImageRes()),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .alpha(0.20f),
+                                contentScale = ContentScale.Fit
                             )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
 
-                            ejercicioConSeries.series.forEachIndexed { index, serie ->
+                                Text(
+                                    text = ejercicioConSeries.ejercicio.nombre,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                ejercicioConSeries.series.forEachIndexed { index, serie ->
+
+                                    if (!esCardio) {
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = "Serie ${index + 1}",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+
+                                            Text(
+                                                text = "${serie.peso}kg × ${serie.repeticiones} reps"
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+
+                                    } else {
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = "Serie ${index + 1}",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+
+                                            Text(
+                                                text = "${serie.tiempo ?: 0}min × ${serie.intensidad} intensidad"
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+
+                                    }
+
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
 
                                 if (!esCardio) {
 
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = "Serie ${index + 1}",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-
-                                        Text(
-                                            text = "${serie.peso}kg × ${serie.repeticiones} reps"
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
+                                    Text(
+                                        text = "Volumen total: $volumen kg",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
 
                                 } else {
 
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = "Serie ${index + 1}",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-
-                                        Text(
-                                            text = "${serie.tiempo ?: 0}min × ${serie.intensidad} intensidad"
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
+                                    Text(
+                                        text = "Tiempo total: $tiempo min",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text("Sin implementar - Intensidad")
 
                                 }
 
                             }
-
-                            if(!esCardio){
-
-                                Text(
-                                    text = "Volumen total: $volumen kg",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-
-                            } else{
-
-                                Text(
-                                    text = "Tiempo total: $tiempo min",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text("Sin implementar - Intensidad")
-
-                            }
-
                         }
                     }
                 }
@@ -345,9 +363,11 @@ fun HistoricoDetailScreen(
                                     showRenameDialog = false
                                     mostrarErrorNombreEntrenamientoDuplicado = false
                                 }
+
                                 HistoricoDetailViewModel.NombreOperacionResultado.DUPLICADO -> {
                                     mostrarErrorNombreEntrenamientoDuplicado = true
                                 }
+
                                 HistoricoDetailViewModel.NombreOperacionResultado.VACIO -> {
                                     mostrarErrorNombreEntrenamientoDuplicado = false
                                 }
@@ -397,5 +417,4 @@ fun HistoricoDetailScreen(
     }
 
 }
-
 

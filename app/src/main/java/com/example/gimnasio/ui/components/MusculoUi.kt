@@ -39,3 +39,5 @@ fun Musculo.imageRes(): Int = when (this) {
     Musculo.CARDIO -> R.drawable.ic_muscle_cardio
 }
 
+fun Iterable<Musculo>.primaryImageRes(): Int =
+    firstOrNull()?.imageRes() ?: R.drawable.ic_muscle_pecho

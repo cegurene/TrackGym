@@ -53,34 +53,36 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
                 )
             )
 
-            entrenamiento.ejercicios
+            // Replica la secuencia real del histórico, aunque difiera de la rutina base.
+            val ejerciciosOrdenados = entrenamiento.ejercicios
                 .sortedBy { it.entrenamientoEjercicio.orden }
-                .forEach { item ->
-                    val entrenamientoEjercicioId = dao.insertEjercicioDeEntrenamiento(
-                        EntrenamientoEjercicioEntity(
-                            entrenamientoId = nuevoId,
-                            ejercicioId = item.entrenamientoEjercicio.ejercicioId,
-                            orden = item.entrenamientoEjercicio.orden
-                        )
+
+            ejerciciosOrdenados.forEachIndexed { index, item ->
+                val entrenamientoEjercicioId = dao.insertEjercicioDeEntrenamiento(
+                    EntrenamientoEjercicioEntity(
+                        entrenamientoId = nuevoId,
+                        ejercicioId = item.entrenamientoEjercicio.ejercicioId,
+                        orden = index
                     )
+                )
 
-                    val esCardio = item.ejercicio.musculos.contains(Musculo.CARDIO)
-                    val serieInicial = if (esCardio) {
-                        SerieEntity(
-                            entrenamientoEjercicioId = entrenamientoEjercicioId,
-                            tiempo = 0,
-                            intensidad = 0
-                        )
-                    } else {
-                        SerieEntity(
-                            entrenamientoEjercicioId = entrenamientoEjercicioId,
-                            peso = 0f,
-                            repeticiones = 0
-                        )
-                    }
-
-                    serieDao.insert(serieInicial)
+                val esCardio = item.ejercicio.musculos.contains(Musculo.CARDIO)
+                val serieInicial = if (esCardio) {
+                    SerieEntity(
+                        entrenamientoEjercicioId = entrenamientoEjercicioId,
+                        tiempo = 0,
+                        intensidad = 0
+                    )
+                } else {
+                    SerieEntity(
+                        entrenamientoEjercicioId = entrenamientoEjercicioId,
+                        peso = 0f,
+                        repeticiones = 0
+                    )
                 }
+
+                serieDao.insert(serieInicial)
+            }
 
             onNavigate(nuevoId)
         }
