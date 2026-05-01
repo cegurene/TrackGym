@@ -140,7 +140,7 @@ fun RutinaDetailScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(vertical = 16.dp),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 112.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item {

@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -33,6 +35,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -741,33 +744,29 @@ fun EjercicioDetailScreen(
                             ),
                             elevation = CardDefaults.cardElevation(2.dp)
                         ) {
-                            Column(Modifier.padding(16.dp)) {
-
-                                if(esCardio) {
-                                    Text("🏃 Cardio", style = MaterialTheme.typography.titleLarge)
-                                } else {
-                                    Text("Músculo", style = MaterialTheme.typography.titleLarge)
-
-                                    Spacer(Modifier.height(8.dp))
-
-                                    ejercicioLocal.musculos.firstOrNull()?.let { musculo ->
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Image(
-                                                painter = painterResource(id = musculoImageRes(musculo)),
-                                                contentDescription = musculo.displayLabel(),
-                                                modifier = Modifier.size(128.dp)
-                                            )
-                                        }
-
-                                        Spacer(Modifier.height(8.dp))
-                                    }
-
-                                    Text(
-                                        ejercicioLocal.musculos.joinToString(" • ") { it.labelWithEmoji()}
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                ejercicioLocal.musculos.firstOrNull()?.let { musculo ->
+                                    Image(
+                                        painter = painterResource(id = musculoImageRes(musculo)),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .alpha(0.25f),
+                                        contentScale = ContentScale.Fit
                                     )
+                                }
+
+                                Column(Modifier.padding(16.dp)) {
+                                    if (esCardio) {
+                                        Text("🏃 Cardio", style = MaterialTheme.typography.titleLarge)
+                                        Spacer(Modifier.height(88.dp))
+                                    } else {
+                                        Text("Músculo", style = MaterialTheme.typography.titleLarge)
+                                        Spacer(Modifier.height(68.dp))
+                                        Text(
+                                            ejercicioLocal.musculos.joinToString(" • ") { it.labelWithEmoji() }
+                                        )
+                                    }
                                 }
                             }
                         }

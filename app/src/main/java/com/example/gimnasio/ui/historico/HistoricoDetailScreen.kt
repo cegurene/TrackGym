@@ -222,7 +222,7 @@ fun HistoricoDetailScreen(
                                 contentDescription = null,
                                 modifier = Modifier
                                     .matchParentSize()
-                                    .alpha(0.20f),
+                                    .alpha(0.25f),
                                 contentScale = ContentScale.Fit
                             )
 
