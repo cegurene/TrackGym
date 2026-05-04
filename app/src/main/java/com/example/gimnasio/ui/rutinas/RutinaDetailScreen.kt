@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.collectAsState
@@ -41,6 +42,7 @@ import com.example.gimnasio.ui.components.EjercicioSelectionCard
 import com.example.gimnasio.ui.components.displayLabel
 import com.example.gimnasio.ui.components.emojiSummary
 import com.example.gimnasio.ui.components.imageRes
+import com.example.gimnasio.ui.components.primaryImageRes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -213,15 +215,25 @@ fun RutinaDetailScreen(
                         itemsIndexed(ejercicios) { index, item ->
                             val musculosEmoji = item.ejercicio.musculos.emojiSummary()
 
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp)),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                ),
-                                elevation = CardDefaults.cardElevation(2.dp)
-                            ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp)),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(2.dp)
+                        ) {
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                Image(
+                                    painter = painterResource(id = item.ejercicio.musculos.primaryImageRes()),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .alpha(0.25f),
+                                    contentScale = ContentScale.Fit
+                                )
+
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -298,6 +310,7 @@ fun RutinaDetailScreen(
                                     }
                                 }
                             }
+                        }
 
                         }
                     }

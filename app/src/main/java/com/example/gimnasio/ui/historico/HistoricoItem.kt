@@ -38,6 +38,14 @@ fun HistoricoItem(
         ((finMillis - inicioMillis) / 1000 / 60)
     } else 0
 
+    val duracionTexto = if (duracionMin >= 60) {
+        val h = duracionMin / 60
+        val m = duracionMin % 60
+        if (m > 0) "${h} h ${m} min" else "${h} h"
+    } else {
+        "$duracionMin min"
+    }
+
     val localeEs = Locale("es", "ES")
     val diaSemana = SimpleDateFormat("EEEE", localeEs)
         .format(Date(inicioMillis))
@@ -108,7 +116,7 @@ fun HistoricoItem(
             )
 
             Text(
-                text = "⏱️ Duración: $duracionMin min",
+                text = "⏱️ Duración: $duracionTexto",
                 style = MaterialTheme.typography.bodyMedium
             )
         }

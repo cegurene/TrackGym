@@ -278,7 +278,7 @@ fun EjercicioDetailScreen(
 
         if (valores.isEmpty()) return
 
-        val puntoWidth = 50.dp
+        val puntoWidth = 30.dp
         val graficaWidth = puntoWidth * valores.size
 
         val max = valores.maxOrNull() ?: 1f

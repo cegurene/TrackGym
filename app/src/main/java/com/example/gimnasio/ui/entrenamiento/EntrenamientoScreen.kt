@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,6 +39,7 @@ import com.example.gimnasio.ui.components.displayLabel
 import com.example.gimnasio.ui.components.formatUiNumber
 import com.example.gimnasio.ui.components.emojiSummary
 import com.example.gimnasio.ui.components.imageRes
+import com.example.gimnasio.ui.components.primaryImageRes
 import java.math.RoundingMode
 
 private fun parseDecimalInput(text: String): Float =
@@ -232,221 +234,232 @@ fun EntrenamientoScreen(
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            val musculosEmoji = ejercicioConSeries.ejercicio.musculos.emojiSummary()
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Image(
+                                painter = painterResource(id = ejercicioConSeries.ejercicio.musculos.primaryImageRes()),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .alpha(0.2f),
+                                contentScale = ContentScale.Fit
+                            )
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
+                            Column(
+                                modifier = Modifier.padding(16.dp)
                             ) {
-                                Checkbox(
-                                    checked = ejercicioCompletado,
-                                    onCheckedChange = null
-                                )
+                                val musculosEmoji = ejercicioConSeries.ejercicio.musculos.emojiSummary()
 
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                Text(
-                                    text = ejercicioConSeries.ejercicio.nombre,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable {
-                                            onNavigateToEjercicio(ejercicioConSeries.ejercicio.id)
-                                        },
-                                    maxLines = 4,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                Text(
-                                    text = musculosEmoji,
-                                    style = MaterialTheme.typography.headlineSmall
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row {
-                                    IconButton(
-                                        enabled = index > 0,
-                                        onClick = {
-                                            viewModel.moverEjercicio(
-                                                ejercicioConSeries,
-                                                ejercicios[index - 1]
-                                            )
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.KeyboardArrowUp,
-                                            contentDescription = "Subir ejercicio"
-                                        )
-                                    }
-
-                                    IconButton(
-                                        enabled = index < ejercicios.lastIndex,
-                                        onClick = {
-                                            viewModel.moverEjercicio(
-                                                ejercicioConSeries,
-                                                ejercicios[index + 1]
-                                            )
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.KeyboardArrowDown,
-                                            contentDescription = "Bajar ejercicio"
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.weight(1f))
-
-                                IconButton(
-                                    enabled = !ejercicioCompletado,
-                                    onClick = {
-                                        viewModel.eliminarEjercicio(
-                                            ejercicioConSeries.entrenamientoEjercicio.id
-                                        )
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Eliminar ejercicio"
-                                    )
-                                }
-                            }
-
-                            // 🔹 SERIES
-                            ejercicioConSeries.series.forEachIndexed { index, serie ->
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 0.dp, vertical = 4.dp)
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    Checkbox(
+                                        checked = ejercicioCompletado,
+                                        onCheckedChange = null
+                                    )
+
+                                    Spacer(modifier = Modifier.width(12.dp))
 
                                     Text(
-                                        text = "Serie ${index + 1}",
-                                        modifier = Modifier.width(80.dp)
+                                        text = ejercicioConSeries.ejercicio.nombre,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                onNavigateToEjercicio(ejercicioConSeries.ejercicio.id)
+                                            },
+                                        maxLines = 4,
+                                        overflow = TextOverflow.Ellipsis
                                     )
 
-                                    if (!esCardio) {
-                                        SerieInputField(
-                                                    initialValue = if ((serie.peso ?: 0f) == 0f) "" else serie.peso!!.formatUiNumber(),
-                                                    onValueCommit = { peso ->
-                                                        viewModel.actualizarPesoSerie(serie.id, parseDecimalInput(peso))
-                                            },
-                                            label = "Kg",
-                                                    enabled = !serie.completada,
-                                                    allowDecimal = true
-                                        )
+                                    Spacer(modifier = Modifier.width(12.dp))
 
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        SerieInputField(
-                                            initialValue = if ((serie.repeticiones ?: 0) == 0) "" else serie.repeticiones.toString(),
-                                            onValueCommit = { reps ->
-                                                        viewModel.actualizarRepsSerie(serie.id, parseIntInput(reps))
-                                            },
-                                            label = "Reps",
-                                            enabled = !serie.completada
-                                        )
-                                    } else {
-                                        SerieInputField(
-                                                    initialValue = if ((serie.tiempo ?: 0) == 0) "" else serie.tiempo.toString(),
-                                            onValueCommit = { tiempo ->
-                                                        viewModel.actualizarTiempoSerie(serie.id, parseIntInput(tiempo))
-                                            },
-                                            label = "Min",
-                                                    enabled = !serie.completada,
-                                                    allowDecimal = false
-                                        )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        SerieInputField(
-                                            initialValue = if ((serie.intensidad ?: 0) == 0) "" else serie.intensidad.toString(),
-                                            onValueCommit = { intensidad ->
-                                                        viewModel.actualizarIntensidadSerie(serie.id, parseIntInput(intensidad))
-                                            },
-                                            label = "Intens",
-                                            enabled = !serie.completada
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    val checkboxColors = if (erroresValidacion.containsKey(ejercicioConSeries.entrenamientoEjercicio.id)) {
-                                        CheckboxDefaults.colors(
-                                            checkedColor = MaterialTheme.colorScheme.error,
-                                            uncheckedColor = MaterialTheme.colorScheme.error
-                                        )
-                                    } else {
-                                        CheckboxDefaults.colors()
-                                    }
-
-                                    Checkbox(
-                                        checked = serie.completada,
-                                        onCheckedChange = { checked ->
-                                            viewModel.marcarSerieCompletada(
-                                                serie.id,
-                                                checked,
-                                                esCardio,
-                                                serie.peso,
-                                                serie.repeticiones,
-                                                serie.tiempo,
-                                                serie.intensidad
-                                            )
-                                        },
-                                        colors = checkboxColors
+                                    Text(
+                                        text = musculosEmoji,
+                                        style = MaterialTheme.typography.headlineSmall
                                     )
+                                }
 
-                                    if (index == ejercicioConSeries.series.size - 1) {
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row {
                                         IconButton(
-                                            onClick = { viewModel.eliminarSerie(serie.id) },
-                                            enabled = !serie.completada
+                                            enabled = index > 0,
+                                            onClick = {
+                                                viewModel.moverEjercicio(
+                                                    ejercicioConSeries,
+                                                    ejercicios[index - 1]
+                                                )
+                                            }
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Delete,
-                                                contentDescription = "Eliminar serie"
+                                                imageVector = Icons.Default.KeyboardArrowUp,
+                                                contentDescription = "Subir ejercicio"
+                                            )
+                                        }
+
+                                        IconButton(
+                                            enabled = index < ejercicios.lastIndex,
+                                            onClick = {
+                                                viewModel.moverEjercicio(
+                                                    ejercicioConSeries,
+                                                    ejercicios[index + 1]
+                                                )
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.KeyboardArrowDown,
+                                                contentDescription = "Bajar ejercicio"
                                             )
                                         }
                                     }
-                                }
-                            }
 
-                            // 🔹 BOTÓN AÑADIR SERIE
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Button(
-                                    onClick = {
-                                        viewModel.añadirSerie(
-                                            ejercicioConSeries.entrenamientoEjercicio.id,
-                                            esCardio
+                                    Spacer(modifier = Modifier.weight(1f))
+
+                                    IconButton(
+                                        enabled = !ejercicioCompletado,
+                                        onClick = {
+                                            viewModel.eliminarEjercicio(
+                                                ejercicioConSeries.entrenamientoEjercicio.id
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Eliminar ejercicio"
                                         )
-                                    },
-                                    modifier = Modifier.padding(top = 8.dp)
-                                ) {
-                                    Text("+ Añadir serie")
+                                    }
                                 }
 
-                                if (erroresValidacion.containsKey(ejercicioConSeries.entrenamientoEjercicio.id)) {
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = erroresValidacion[ejercicioConSeries.entrenamientoEjercicio.id] ?: "",
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.weight(1f)
-                                    )
+                                // 🔹 SERIES
+                                ejercicioConSeries.series.forEachIndexed { index, serie ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 0.dp, vertical = 4.dp)
+                                    ) {
+
+                                        Text(
+                                            text = "Serie ${index + 1}",
+                                            modifier = Modifier.width(80.dp)
+                                        )
+
+                                        if (!esCardio) {
+                                            SerieInputField(
+                                                initialValue = if ((serie.peso ?: 0f) == 0f) "" else serie.peso!!.formatUiNumber(),
+                                                onValueCommit = { peso ->
+                                                    viewModel.actualizarPesoSerie(serie.id, parseDecimalInput(peso))
+                                                },
+                                                label = "Kg",
+                                                enabled = !serie.completada,
+                                                allowDecimal = true
+                                            )
+
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            SerieInputField(
+                                                initialValue = if ((serie.repeticiones ?: 0) == 0) "" else serie.repeticiones.toString(),
+                                                onValueCommit = { reps ->
+                                                    viewModel.actualizarRepsSerie(serie.id, parseIntInput(reps))
+                                                },
+                                                label = "Reps",
+                                                enabled = !serie.completada
+                                            )
+                                        } else {
+                                            SerieInputField(
+                                                initialValue = if ((serie.tiempo ?: 0) == 0) "" else serie.tiempo.toString(),
+                                                onValueCommit = { tiempo ->
+                                                    viewModel.actualizarTiempoSerie(serie.id, parseIntInput(tiempo))
+                                                },
+                                                label = "Min",
+                                                enabled = !serie.completada,
+                                                allowDecimal = false
+                                            )
+
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            SerieInputField(
+                                                initialValue = if ((serie.intensidad ?: 0) == 0) "" else serie.intensidad.toString(),
+                                                onValueCommit = { intensidad ->
+                                                    viewModel.actualizarIntensidadSerie(serie.id, parseIntInput(intensidad))
+                                                },
+                                                label = "Intens",
+                                                enabled = !serie.completada
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                        val checkboxColors = if (erroresValidacion.containsKey(ejercicioConSeries.entrenamientoEjercicio.id)) {
+                                            CheckboxDefaults.colors(
+                                                checkedColor = MaterialTheme.colorScheme.error,
+                                                uncheckedColor = MaterialTheme.colorScheme.error
+                                            )
+                                        } else {
+                                            CheckboxDefaults.colors()
+                                        }
+
+                                        Checkbox(
+                                            checked = serie.completada,
+                                            onCheckedChange = { checked ->
+                                                viewModel.marcarSerieCompletada(
+                                                    serie.id,
+                                                    checked,
+                                                    esCardio,
+                                                    serie.peso,
+                                                    serie.repeticiones,
+                                                    serie.tiempo,
+                                                    serie.intensidad
+                                                )
+                                            },
+                                            colors = checkboxColors
+                                        )
+
+                                        if (index == ejercicioConSeries.series.size - 1) {
+                                            IconButton(
+                                                onClick = { viewModel.eliminarSerie(serie.id) },
+                                                enabled = !serie.completada
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Eliminar serie"
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // 🔹 BOTÓN AÑADIR SERIE
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            viewModel.añadirSerie(
+                                                ejercicioConSeries.entrenamientoEjercicio.id,
+                                                esCardio
+                                            )
+                                        },
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    ) {
+                                        Text("+ Añadir serie")
+                                    }
+
+                                    if (erroresValidacion.containsKey(ejercicioConSeries.entrenamientoEjercicio.id)) {
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(
+                                            text = erroresValidacion[ejercicioConSeries.entrenamientoEjercicio.id] ?: "",
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
                                 }
                             }
                         }
