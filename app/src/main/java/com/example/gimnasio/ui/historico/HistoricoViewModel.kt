@@ -4,7 +4,10 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.gimnasio.data.GymDatabase
+import com.example.gimnasio.data.entity.RutinaEntity
 import com.example.gimnasio.data.model.EntrenamientoConRutinaYEjercicios
+import com.example.gimnasio.data.prefs.SortPreferences
+import com.example.gimnasio.ui.rutinas.RutinaViewModel
 import java.util.Calendar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,16 +29,40 @@ class HistoricoViewModel(context: Context) : ViewModel() {
     private val selectedFechaDesdeFlow = MutableStateFlow<Long?>(null)
     private val selectedFechaHastaFlow = MutableStateFlow<Long?>(null)
 
+    private val sortPreferences = SortPreferences(context)
+    private val _rutinaOrder = MutableStateFlow(sortPreferences.getRutinaOrder())
+
     val selectedRutinaId: StateFlow<Long?> = selectedRutinaIdFlow
     val selectedFechaDesde: StateFlow<Long?> = selectedFechaDesdeFlow
     val selectedFechaHasta: StateFlow<Long?> = selectedFechaHastaFlow
 
-    val rutinas = rutinaDao.getAllRutinas()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    // Helper privado para aplicar ordenamiento
+    private fun sortRutinas(
+        lista: List<RutinaEntity>,
+        orden: RutinaViewModel.RutinaOrder,
+        vecesMap: Map<Long, Int>
+    ): List<RutinaEntity> {
+        return when (orden) {
+            RutinaViewModel.RutinaOrder.ALPHABETIC_ASC -> lista.sortedBy { it.nombre }
+            RutinaViewModel.RutinaOrder.ALPHABETIC_DESC -> lista.sortedByDescending { it.nombre }
+            RutinaViewModel.RutinaOrder.TIMES_DONE_DESC -> lista.sortedByDescending { vecesMap[it.id] ?: 0 }
+            RutinaViewModel.RutinaOrder.TIMES_DONE_ASC -> lista.sortedBy { vecesMap[it.id] ?: 0 }
+        }
+    }
+
+    // Obtener rutinas ordenadas según el estado actual
+    val rutinas: StateFlow<List<RutinaEntity>> = combine(
+        rutinaDao.getAllRutinas(),
+        entrenamientoDao.getVecesRutinasFlow(),
+        _rutinaOrder
+    ) { todas, vecesRealizadas, orden ->
+        val vecesMap = vecesRealizadas.associate { it.id to it.veces }
+        sortRutinas(todas, orden, vecesMap)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     val entrenamientos =
         entrenamientoDao.getEntrenamientosCompletadosConRutina()
@@ -64,6 +91,11 @@ class HistoricoViewModel(context: Context) : ViewModel() {
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList<EntrenamientoConRutinaYEjercicios>()
     )
+
+    fun setRutinaOrder(orden: RutinaViewModel.RutinaOrder) {
+        _rutinaOrder.value = orden
+        sortPreferences.saveRutinaOrder(orden)
+    }
 
     fun seleccionarRutina(rutinaId: Long?) {
         selectedRutinaIdFlow.value = rutinaId

@@ -9,6 +9,7 @@ import com.example.gimnasio.data.dao.SerieDao
 import com.example.gimnasio.data.entity.EjercicioEntity
 import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.model.UltimaSesionEjercicio
+import com.example.gimnasio.data.prefs.SortPreferences
 import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +31,22 @@ class EjercicioViewModel(
         DUPLICADO
     }
 
+    enum class EjercicioOrder {
+        ALPHABETIC_ASC,
+        ALPHABETIC_DESC,
+        MUSCLE_ASC,
+        MUSCLE_DESC
+    }
+
+    enum class DetailExerciseOrder {
+        ALPHABETIC_ASC,
+        ALPHABETIC_DESC,
+        MUSCLE_ASC,
+        MUSCLE_DESC
+    }
+
     private val cloudSyncCoordinator = CloudSyncCoordinator(application)
+    private val sortPreferences = SortPreferences(application)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery
@@ -40,12 +56,36 @@ class EjercicioViewModel(
     private val _selectedMusculos = MutableStateFlow<Set<Musculo>>(emptySet())
     val selectedMusculos = _selectedMusculos
 
+    private val _order = MutableStateFlow(sortPreferences.getEjercicioOrder())
+    val order = _order
+
+    // Helper privado para aplicar ordenamiento
+    private fun sortEjercicios(lista: List<EjercicioEntity>, orden: EjercicioOrder): List<EjercicioEntity> {
+        return when (orden) {
+            EjercicioOrder.ALPHABETIC_ASC -> lista.sortedBy { it.nombre }
+            EjercicioOrder.ALPHABETIC_DESC -> lista.sortedByDescending { it.nombre }
+            EjercicioOrder.MUSCLE_ASC -> {
+                lista.sortedWith(
+                    compareBy<EjercicioEntity> { it.musculos.firstOrNull()?.ordinal ?: Int.MAX_VALUE }
+                        .thenBy { it.nombre }
+                )
+            }
+            EjercicioOrder.MUSCLE_DESC -> {
+                lista.sortedWith(
+                    compareByDescending<EjercicioEntity> { it.musculos.firstOrNull()?.ordinal ?: -1 }
+                        .thenBy { it.nombre }
+                )
+            }
+        }
+    }
+
     // Lista reactiva filtrada
     val ejercicios = combine(
         ejerciciosOriginal,
         _searchQuery,
-        _selectedMusculos
-    ) { lista, query, musculosSeleccionados ->
+        _selectedMusculos,
+        _order
+    ) { lista, query, musculosSeleccionados, orden ->
 
         lista.filter { ejercicio ->
 
@@ -57,6 +97,8 @@ class EjercicioViewModel(
                         ejercicio.musculos.any { it in musculosSeleccionados }
 
             coincideNombre && coincideMusculo
+        }.let { filtrados ->
+            sortEjercicios(filtrados, orden)
         }
 
     }.stateIn(
@@ -64,6 +106,11 @@ class EjercicioViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = emptyList()
     )
+
+    // Método para obtener ejercicios sin filtros de búsqueda/músculos pero ordenados según estado actual
+    fun getEjerciciosOrdenados(ejercicios: List<EjercicioEntity>): List<EjercicioEntity> {
+        return sortEjercicios(ejercicios, _order.value)
+    }
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
@@ -80,6 +127,11 @@ class EjercicioViewModel(
 
     fun clearMusculos() {
         _selectedMusculos.value = emptySet()
+    }
+
+    fun onOrderChange(newOrder: EjercicioOrder) {
+        _order.value = newOrder
+        sortPreferences.saveEjercicioOrder(newOrder)
     }
 
     // ---------- TU CÓDIGO ORIGINAL ----------
@@ -208,11 +260,16 @@ class EjercicioViewModel(
             serieDao.getFechaEntrenamiento(entrenamientoEjercicioId)
                 ?: return null
 
+        val nombreEntrenamiento =
+            serieDao.getNombreEntrenamiento(entrenamientoEjercicioId)
+                ?: "Entrenamiento"
+
         val series =
             serieDao.getSeriesEntrenamiento(entrenamientoEjercicioId)
 
         return UltimaSesionEjercicio(
             fecha = fecha,
+            nombreEntrenamiento = nombreEntrenamiento,
             series = series
         )
     }
@@ -232,12 +289,17 @@ class EjercicioViewModel(
                 serieDao.getFechaEntrenamiento(entrenamientoEjercicioId)
                     ?: return@flow emit(null)
 
+            val nombreEntrenamiento =
+                serieDao.getNombreEntrenamiento(entrenamientoEjercicioId)
+                    ?: "Entrenamiento"
+
             val series =
                 serieDao.getSeriesEntrenamiento(entrenamientoEjercicioId)
 
             emit(
                 UltimaSesionEjercicio(
                     fecha = fecha,
+                    nombreEntrenamiento = nombreEntrenamiento,
                     series = series
                 )
             )

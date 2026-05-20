@@ -15,6 +15,7 @@ class AccountPreferencesRepository(private val context: Context) {
     private val sessionEmailKey = stringPreferencesKey("session_email")
     private val sessionProviderKey = stringPreferencesKey("session_provider")
     private val sessionNeedsSyncKey = booleanPreferencesKey("session_needs_sync")
+    private val lastSyncRemoteHashKey = stringPreferencesKey("last_sync_remote_hash")
     private val accountsKey = stringPreferencesKey("accounts")
 
     val accountSessionFlow: Flow<AccountSession> = context.accountDataStore.data.map { preferences ->
@@ -26,13 +27,15 @@ class AccountPreferencesRepository(private val context: Context) {
                     else -> AuthProvider.EMAIL
                 }
                 val needsSync = preferences[sessionNeedsSyncKey] ?: false
+                val lastSyncHash = preferences[lastSyncRemoteHashKey]
                 if (email.isNullOrBlank()) {
                     AccountSession.LoggedOut
                 } else {
                     AccountSession.LoggedIn(
                         email = email,
                         provider = provider,
-                        needsInitialSync = needsSync
+                        needsInitialSync = needsSync,
+                        lastSyncRemoteHash = lastSyncHash
                     )
                 }
             }
@@ -116,6 +119,16 @@ class AccountPreferencesRepository(private val context: Context) {
     suspend fun markInitialSyncCompleted() {
         context.accountDataStore.edit { preferences ->
             preferences[sessionNeedsSyncKey] = false
+        }
+    }
+
+    suspend fun updateLastSyncRemoteHash(hash: String?) {
+        context.accountDataStore.edit { preferences ->
+            if (hash == null) {
+                preferences.remove(lastSyncRemoteHashKey)
+            } else {
+                preferences[lastSyncRemoteHashKey] = hash
+            }
         }
     }
 

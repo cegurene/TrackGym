@@ -1,5 +1,6 @@
 package com.example.gimnasio.ui.historico
 
+import android.app.Application
 import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -19,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.gimnasio.ui.rutinas.RutinaViewModel
+import com.example.gimnasio.ui.rutinas.RutinaViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -35,6 +38,17 @@ fun HistoricoScreen(
     val viewModel: HistoricoViewModel = viewModel(
         factory = HistoricoViewModelFactory(context)
     )
+
+    // Obtener RutinaViewModel para sincronizar el ordenamiento
+    val rutinaViewModel: RutinaViewModel = viewModel(
+        factory = RutinaViewModelFactory(context.applicationContext as Application)
+    )
+    val rutinaOrder by rutinaViewModel.order.collectAsState()
+
+    // Sincronizar el estado de orden con HistoricoViewModel
+    LaunchedEffect(rutinaOrder) {
+        viewModel.setRutinaOrder(rutinaOrder)
+    }
 
     val entrenamientosTotales by viewModel.entrenamientos
         .collectAsState(initial = emptyList())

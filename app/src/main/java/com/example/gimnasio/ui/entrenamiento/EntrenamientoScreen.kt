@@ -40,6 +40,8 @@ import com.example.gimnasio.ui.components.formatUiNumber
 import com.example.gimnasio.ui.components.emojiSummary
 import com.example.gimnasio.ui.components.imageRes
 import com.example.gimnasio.ui.components.primaryImageRes
+import com.example.gimnasio.ui.ejercicios.EjercicioViewModel
+import com.example.gimnasio.ui.ejercicios.EjercicioViewModelFactory
 import java.math.RoundingMode
 
 private fun parseDecimalInput(text: String): Float =
@@ -163,6 +165,12 @@ fun EntrenamientoScreen(
 
     val database = remember { GymDatabase.getDatabase(context) }
     val ejercicioDao = remember { database.ejercicioDao() }
+    
+    // Obtener el ViewModel de ejercicios para usar su ordenamiento actual
+    val ejercicioViewModel: EjercicioViewModel = viewModel(
+        factory = EjercicioViewModelFactory(context.applicationContext as Application, database)
+    )
+    val ejerciciosOrder by ejercicioViewModel.order.collectAsState()
 
     val ejerciciosDisponibles by ejercicioDao
         .getAll()
@@ -179,10 +187,14 @@ fun EntrenamientoScreen(
     }
 
     var musculoFiltro by remember { mutableStateOf<Musculo?>(null) }
-    val ejerciciosNoAgregadosFiltrados = remember(ejerciciosNoAgregados, musculoFiltro) {
-        ejerciciosNoAgregados.filter { ejercicio ->
-            musculoFiltro == null || ejercicio.musculos.contains(musculoFiltro)
-        }
+    val ejerciciosNoAgregadosFiltrados = remember(ejerciciosNoAgregados, musculoFiltro, ejerciciosOrder) {
+        ejerciciosNoAgregados
+            .filter { ejercicio ->
+                musculoFiltro == null || ejercicio.musculos.contains(musculoFiltro)
+            }
+            .let { filtrados ->
+                ejercicioViewModel.getEjerciciosOrdenados(filtrados)
+            }
     }
 
     Scaffold(

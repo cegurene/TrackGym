@@ -10,7 +10,8 @@ sealed interface AccountSession {
     data class LoggedIn(
         val email: String,
         val provider: AuthProvider = AuthProvider.EMAIL,
-        val needsInitialSync: Boolean = false
+        val needsInitialSync: Boolean = false,
+        val lastSyncRemoteHash: String? = null
     ) : AccountSession
 }
 

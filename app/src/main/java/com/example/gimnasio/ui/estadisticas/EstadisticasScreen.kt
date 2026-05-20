@@ -1,6 +1,7 @@
 package com.example.gimnasio.ui.estadisticas
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,10 +42,19 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -56,6 +66,143 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.math.*
+
+@Composable
+fun DuracionCampanaGauss(
+    duraciones: List<Double>,
+    modifier: Modifier = Modifier
+) {
+    if (duraciones.size < 2) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(120.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Se necesitan al menos 2 entrenamientos para mostrar la distribución",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+        return
+    }
+
+    val mean = duraciones.average()
+    val stdDev = sqrt(duraciones.map { (it - mean).pow(2) }.average()).coerceAtLeast(1.0)
+
+    val minDur = duraciones.minOrNull() ?: 0.0
+    val maxDur = duraciones.maxOrNull() ?: 100.0
+    
+    // Extendemos el rango un poco para que la campana se vea completa
+    val rangeMin = (minDur - stdDev).coerceAtLeast(0.0)
+    val rangeMax = maxDur + stdDev
+    val range = rangeMax - rangeMin
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val density = LocalDensity.current
+
+    Column(modifier = modifier) {
+        Text(
+            text = "Distribución de duración",
+            style = MaterialTheme.typography.labelMedium,
+            color = onSurfaceColor,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+        ) {
+            val width = size.width
+            val labelHeight = 20.dp.toPx()
+            val graphHeight = size.height - labelHeight
+            val steps = 100
+            
+            val path = Path()
+            val fillPath = Path()
+
+            // Función de densidad de probabilidad Gaussiana
+            fun g(x: Double): Double {
+                return (1.0 / (stdDev * sqrt(2.0 * PI))) * exp(-0.5 * ((x - mean) / stdDev).pow(2.0))
+            }
+
+            // Encontramos el valor máximo de g(x) para escalar la gráfica
+            val maxG = g(mean)
+            
+            for (i in 0..steps) {
+                val xVal = rangeMin + (i.toDouble() / steps) * range
+                val yVal = g(xVal)
+                
+                val xPos = (i.toDouble() / steps) * width
+                val yPos = graphHeight - (yVal / maxG).toFloat() * graphHeight
+
+                if (i == 0) {
+                    path.moveTo(xPos.toFloat(), yPos)
+                    fillPath.moveTo(xPos.toFloat(), graphHeight)
+                    fillPath.lineTo(xPos.toFloat(), yPos)
+                } else {
+                    path.lineTo(xPos.toFloat(), yPos)
+                    fillPath.lineTo(xPos.toFloat(), yPos)
+                }
+                
+                if (i == steps) {
+                    fillPath.lineTo(xPos.toFloat(), graphHeight)
+                    fillPath.close()
+                }
+            }
+
+            // Dibujar el área rellena
+            drawPath(
+                path = fillPath,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        primaryColor.copy(alpha = 0.4f),
+                        primaryColor.copy(alpha = 0.05f)
+                    )
+                )
+            )
+
+            // Dibujar la línea de la campana
+            drawPath(
+                path = path,
+                color = primaryColor,
+                style = Stroke(width = 3.dp.toPx())
+            )
+
+            // Eje X (Línea base)
+            drawLine(
+                color = onSurfaceColor.copy(alpha = 0.3f),
+                start = Offset(0f, graphHeight),
+                end = Offset(width, graphHeight),
+                strokeWidth = 1.dp.toPx()
+            )
+
+            // Etiquetas de tiempo
+            val paint = android.graphics.Paint().apply {
+                color = onSurfaceColor.toArgb()
+                textSize = with(density) { 10.sp.toPx() }
+                textAlign = android.graphics.Paint.Align.CENTER
+            }
+
+            // Dibujar 3 etiquetas: min, media, max
+            val labels = listOf(rangeMin, mean, rangeMax)
+            labels.forEach { valTime ->
+                val xPos = ((valTime - rangeMin) / range) * width
+                drawContext.canvas.nativeCanvas.drawText(
+                    "${valTime.toInt()}m",
+                    xPos.toFloat(),
+                    size.height - 5.dp.toPx(),
+                    paint
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun StatCard(
@@ -245,6 +392,7 @@ fun EstadisticasScreen(
     val tiempo by viewModel.tiempo.collectAsState()
     val rutinasFrecuencia by viewModel.rutinasFrecuencia.collectAsState()
     val tiempoCardioTotal by viewModel.tiempoCardioTotal.collectAsState()
+    val duracionesEntrenamientos by viewModel.duracionesEntrenamientos.collectAsState()
 
     val totalEjercicios = remember(stats) { stats.values.sum() }
 
@@ -349,7 +497,7 @@ fun EstadisticasScreen(
                                 value = tiempo.tiempoTotal
                             )
 
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
 
                             StatCard(
                                 title = "Duración media",
@@ -376,6 +524,13 @@ fun EstadisticasScreen(
                                 title = "Cardio total",
                                 value = tiempoCardioTotal,
                                 icon = "❤️"
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            DuracionCampanaGauss(
+                                duraciones = duracionesEntrenamientos,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }

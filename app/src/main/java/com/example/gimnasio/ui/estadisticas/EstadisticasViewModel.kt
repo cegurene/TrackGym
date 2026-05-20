@@ -182,6 +182,17 @@ class EstadisticasViewModel(
         entrenamientoDao.getVecesRutinasFlow()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val duracionesEntrenamientos: StateFlow<List<Double>> =
+        entrenamientoDao.getEntrenamientosCompletados()
+            .map { lista ->
+                lista.mapNotNull {
+                    if (it.fechaFin != null) {
+                        (it.fechaFin - it.fechaInicio).toDouble() / (1000 * 60) // en minutos
+                    } else null
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
         refreshStats()
     }

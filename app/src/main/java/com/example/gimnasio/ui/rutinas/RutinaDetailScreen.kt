@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
@@ -91,6 +93,8 @@ fun RutinaDetailScreen(
     val entrenamientoActivo by viewModel
         .entrenamientoActivo
         .collectAsState(initial = null)
+
+
 
     Scaffold(
         topBar = {
@@ -191,10 +195,18 @@ fun RutinaDetailScreen(
                     }
 
                     item {
-                        Text(
-                            text = "💪 Ejercicios",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "💪 Ejercicios",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
                     }
 
                     if (ejercicios.isEmpty()) {
@@ -263,32 +275,32 @@ fun RutinaDetailScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row {
-                                            IconButton(
-                                                onClick = {
-                                                    viewModel.moverEjercicio(
-                                                        rutinaId,
-                                                        item,
-                                                        ejercicios[index - 1]
-                                                    )
-                                                },
-                                                enabled = index > 0
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.KeyboardArrowUp,
-                                                    contentDescription = "Subir"
+                                    Row {
+                                        IconButton(
+                                            onClick = {
+                                                viewModel.moverEjercicio(
+                                                    rutinaId,
+                                                    item,
+                                                    ejercicios[index - 1]
                                                 )
-                                            }
+                                            },
+                                            enabled = index > 0
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.KeyboardArrowUp,
+                                                contentDescription = "Subir"
+                                            )
+                                        }
 
-                                            IconButton(
-                                                onClick = {
-                                                    viewModel.moverEjercicio(
-                                                        rutinaId,
-                                                        item,
-                                                        ejercicios[index + 1]
-                                                    )
-                                                },
-                                                enabled = index < ejercicios.lastIndex
+                                        IconButton(
+                                            onClick = {
+                                                viewModel.moverEjercicio(
+                                                    rutinaId,
+                                                    item,
+                                                    ejercicios[index + 1]
+                                                )
+                                            },
+                                            enabled = index < ejercicios.lastIndex
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.KeyboardArrowDown,
@@ -428,10 +440,13 @@ fun RutinaDetailScreen(
         val ejerciciosNoEnRutina = todosLosEjercicios.filter { ejercicio ->
             ejercicio.id !in ejercicios.map { it.ejercicio.id }
         }
+        // Ordenar por nombre (igual que en EjerciciosScreen)
         val ejerciciosNoEnRutinaFiltrados = remember(ejerciciosNoEnRutina, musculoFiltro) {
-            ejerciciosNoEnRutina.filter { ejercicio ->
-                musculoFiltro == null || ejercicio.musculos.contains(musculoFiltro)
-            }
+            ejerciciosNoEnRutina
+                .filter { ejercicio ->
+                    musculoFiltro == null || ejercicio.musculos.contains(musculoFiltro)
+                }
+                .sortedBy { it.nombre }
         }
 
         AlertDialog(
@@ -581,6 +596,9 @@ fun RutinaDetailScreen(
             }
         )
     }
+
+    // ========== ORDEN SHEET ==========
+    //REMOVIDO: El ordenamiento de ejercicios se removió de RutinaDetailScreen
 
 }
 

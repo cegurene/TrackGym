@@ -6,5 +6,6 @@ data class PuntoProgreso(
     val pesoMax: Float? = null,
     val tiempo: Int? = null,
     val repeticionesPesoMax: Int? = null,
-    val intensidadTiempoMax: Int? = null
+    val intensidadTiempoMax: Int? = null,
+    val seriesTexto: String? = null
 )

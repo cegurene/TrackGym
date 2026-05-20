@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -40,6 +42,7 @@ import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.ui.components.displayLabel
 import com.example.gimnasio.ui.components.imageRes
 import com.example.gimnasio.ui.components.labelWithEmoji
+import com.example.gimnasio.ui.components.getLabel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -66,7 +69,9 @@ fun EjerciciosScreen(
     // Para la busqueda y filtros
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedMusculos by viewModel.selectedMusculos.collectAsState()
+    val currentOrder by viewModel.order.collectAsState()
     var showFilterSheet by remember { mutableStateOf(false) }
+    var showOrderSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false // permite partial + full
     )
@@ -106,16 +111,32 @@ fun EjerciciosScreen(
                 }
             )
 
-            FilledTonalButton(
-                onClick = { showFilterSheet = true },
-                modifier = Modifier
-                    .fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("🧩", modifier = Modifier.padding(end = 8.dp))
-                if (selectedMusculos.isEmpty()) {
-                    Text("Filtrar por músculo")
-                } else {
-                    Text("Filtrar (${selectedMusculos.size})")
+                FilledTonalButton(
+                    onClick = { showFilterSheet = true },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("🧩", modifier = Modifier.padding(end = 2.dp))
+                    if (selectedMusculos.isEmpty()) {
+                        Text("Filtrar")
+                    } else {
+                        Text("Filtrar (${selectedMusculos.size})")
+                    }
+                }
+
+                FilledTonalButton(
+                    onClick = { showOrderSheet = true },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("🔃", modifier = Modifier.padding(end = 2.dp))
+                    Text(
+                        "Ordenar (${currentOrder.getLabel()})",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
 
@@ -480,16 +501,104 @@ fun EjerciciosScreen(
                     }
                 }
 
-                //Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(onClick = {
+                        viewModel.clearMusculos()
+                    }) {
+                        Text("Limpiar")
+                    }
+                    Button(onClick = { showFilterSheet = false }) {
+                        Text("Aplicar")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+
+    // Ventana de ordenamiento
+    if (showOrderSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showOrderSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = "Ordenar ejercicios",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val isAlphabetic = currentOrder == EjercicioViewModel.EjercicioOrder.ALPHABETIC_ASC ||
+                            currentOrder == EjercicioViewModel.EjercicioOrder.ALPHABETIC_DESC
+
+                    FilterChip(
+                        selected = isAlphabetic,
+                        onClick = {
+                            val next = if (currentOrder == EjercicioViewModel.EjercicioOrder.ALPHABETIC_ASC) {
+                                EjercicioViewModel.EjercicioOrder.ALPHABETIC_DESC
+                            } else {
+                                EjercicioViewModel.EjercicioOrder.ALPHABETIC_ASC
+                            }
+                            viewModel.onOrderChange(next)
+                        },
+                        label = { Text("A-Z") },
+                        trailingIcon = {
+                            if (isAlphabetic) {
+                                // Usar triángulos: ▼ para ASC (A arriba, visualmente descendente), ▲ para DESC
+                                Text(text = if (currentOrder == EjercicioViewModel.EjercicioOrder.ALPHABETIC_ASC) "▲" else "▼")
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    val isMuscle = currentOrder == EjercicioViewModel.EjercicioOrder.MUSCLE_ASC ||
+                            currentOrder == EjercicioViewModel.EjercicioOrder.MUSCLE_DESC
+
+                    FilterChip(
+                        selected = isMuscle,
+                        onClick = {
+                            val next = if (currentOrder == EjercicioViewModel.EjercicioOrder.MUSCLE_ASC) {
+                                EjercicioViewModel.EjercicioOrder.MUSCLE_DESC
+                            } else {
+                                EjercicioViewModel.EjercicioOrder.MUSCLE_ASC
+                            }
+                            viewModel.onOrderChange(next)
+                        },
+                        label = { Text("Músculo") },
+                        trailingIcon = {
+                            if (isMuscle) {
+                                Text(text = if (currentOrder == EjercicioViewModel.EjercicioOrder.MUSCLE_ASC) "▲" else "▼")
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    TextButton(onClick = { viewModel.clearMusculos() }) {
+                    TextButton(onClick = {
+                        viewModel.onOrderChange(EjercicioViewModel.EjercicioOrder.ALPHABETIC_ASC)
+                    }) {
                         Text("Limpiar")
                     }
-                    Button(onClick = { showFilterSheet = false }) {
+                    Button(onClick = { showOrderSheet = false }) {
                         Text("Aplicar")
                     }
                 }

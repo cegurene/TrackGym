@@ -121,7 +121,8 @@ interface SerieDao {
                     ELSE 0
                 END
             ) AS INTEGER
-        ) as repeticionesPesoMax
+        ) as repeticionesPesoMax,
+        GROUP_CONCAT(COALESCE(s.peso, 0) || 'x' || COALESCE(s.repeticiones, 0), ' | ') as seriesTexto
     FROM series s
     JOIN entrenamiento_ejercicio ee
         ON ee.id = s.entrenamientoEjercicioId
@@ -160,7 +161,8 @@ interface SerieDao {
                     ELSE 0
                 END
             ) AS INTEGER
-        ) as intensidadTiempoMax
+        ) as intensidadTiempoMax,
+        GROUP_CONCAT(COALESCE(s.tiempo, 0) || 'm@' || COALESCE(s.intensidad, 1), ' | ') as seriesTexto
     FROM series s
     JOIN entrenamiento_ejercicio ee
         ON ee.id = s.entrenamientoEjercicioId
@@ -189,9 +191,16 @@ interface SerieDao {
         """
     SELECT
         MAX(COALESCE(s.peso,0) * COALESCE(s.repeticiones,0)) as volumenMaxSerie,
+        (SELECT en2.fechaInicio 
+         FROM series s2 
+         JOIN entrenamiento_ejercicio ee2 ON ee2.id = s2.entrenamientoEjercicioId
+         JOIN entrenamientos en2 ON en2.id = ee2.entrenamientoId
+         WHERE ee2.ejercicioId = :ejercicioId AND en2.completado = 1 
+         ORDER BY (COALESCE(s2.peso,0) * COALESCE(s2.repeticiones,0)) DESC, en2.fechaInicio DESC LIMIT 1) as fechaVolumenMaxSerie,
         SUM(COALESCE(s.peso,0) * COALESCE(s.repeticiones,0)) as volumenTotal,
         COUNT(*) as seriesTotales,
-        SUM(COALESCE(s.repeticiones,0)) as repeticionesTotales
+        SUM(COALESCE(s.repeticiones,0)) as repeticionesTotales,
+        COUNT(DISTINCT ee.entrenamientoId) as entrenamientosConEjercicio
     FROM series s
     JOIN entrenamiento_ejercicio ee
         ON ee.id = s.entrenamientoEjercicioId
@@ -207,8 +216,15 @@ interface SerieDao {
         """
     SELECT
         MAX(COALESCE(s.tiempo,0) * COALESCE(s.intensidad,1)) as mejorTiempo,
+        (SELECT en2.fechaInicio 
+         FROM series s2 
+         JOIN entrenamiento_ejercicio ee2 ON ee2.id = s2.entrenamientoEjercicioId
+         JOIN entrenamientos en2 ON en2.id = ee2.entrenamientoId
+         WHERE ee2.ejercicioId = :ejercicioId AND en2.completado = 1 
+         ORDER BY (COALESCE(s2.tiempo,0) * COALESCE(s2.intensidad,1)) DESC, en2.fechaInicio DESC LIMIT 1) as fechaMejorCarga,
         SUM(COALESCE(s.tiempo,0) * COALESCE(s.intensidad,1)) as tiempoTotal,
-        COUNT(*) as seriesTotales
+        COUNT(*) as seriesTotales,
+        COUNT(DISTINCT ee.entrenamientoId) as entrenamientosConEjercicio
     FROM series s
     JOIN entrenamiento_ejercicio ee
         ON ee.id = s.entrenamientoEjercicioId
@@ -247,6 +263,17 @@ interface SerieDao {
 
     @Query(
         """
+    SELECT e.nombre
+    FROM entrenamiento_ejercicio ee
+    JOIN entrenamientos e
+    ON e.id = ee.entrenamientoId
+    WHERE ee.id = :entrenamientoEjercicioId
+    """
+    )
+    suspend fun getNombreEntrenamiento(entrenamientoEjercicioId: Long): String?
+
+    @Query(
+        """
     SELECT *
     FROM series
     WHERE entrenamientoEjercicioId = :entrenamientoEjercicioId
@@ -257,24 +284,26 @@ interface SerieDao {
 
     @Query(
         """
-    SELECT MAX(COALESCE(s.peso,0)) as pr
+    SELECT 
+        s.peso as pr,
+        en.fechaInicio as fecha
     FROM series s
-    JOIN entrenamiento_ejercicio ee 
-        ON ee.id = s.entrenamientoEjercicioId
-    JOIN entrenamientos en
-        ON en.id = ee.entrenamientoId
-    WHERE ee.ejercicioId = :ejercicioId
-      AND en.completado = 1
+    JOIN entrenamiento_ejercicio ee ON ee.id = s.entrenamientoEjercicioId
+    JOIN entrenamientos en ON en.id = ee.entrenamientoId
+    WHERE ee.ejercicioId = :ejercicioId AND en.completado = 1
+    ORDER BY s.peso DESC, en.fechaInicio DESC
+    LIMIT 1
     """
     )
     fun getPR(ejercicioId: Long): Flow<PRRecord?>
 
     @Query(
         """
-    SELECT MAX(totalSesion) as mejorSesion
+    SELECT mejorSesion, fecha
     FROM (
         SELECT 
-            SUM(COALESCE(s.peso,0) * COALESCE(s.repeticiones,0)) as totalSesion
+            SUM(COALESCE(s.peso,0) * COALESCE(s.repeticiones,0)) as mejorSesion,
+            en.fechaInicio as fecha
         FROM series s
         JOIN entrenamiento_ejercicio ee 
             ON ee.id = s.entrenamientoEjercicioId
@@ -284,16 +313,19 @@ interface SerieDao {
           AND en.completado = 1
         GROUP BY ee.entrenamientoId
     )
+    ORDER BY mejorSesion DESC, fecha DESC
+    LIMIT 1
     """
     )
     fun getMejorSesionFuerza(ejercicioId: Long): Flow<MejorSesion?>
 
     @Query(
         """
-    SELECT MAX(totalSesion) as mejorSesion
+    SELECT mejorSesion, fecha
     FROM (
         SELECT 
-            SUM(COALESCE(s.tiempo,0) * COALESCE(s.intensidad,1)) as totalSesion
+            SUM(COALESCE(s.tiempo,0) * COALESCE(s.intensidad,1)) as mejorSesion,
+            en.fechaInicio as fecha
         FROM series s
         JOIN entrenamiento_ejercicio ee 
             ON ee.id = s.entrenamientoEjercicioId
@@ -303,6 +335,8 @@ interface SerieDao {
           AND en.completado = 1
         GROUP BY ee.entrenamientoId
     )
+    ORDER BY mejorSesion DESC, fecha DESC
+    LIMIT 1
     """
     )
     fun getMejorSesionCardio(ejercicioId: Long): Flow<MejorSesion?>
@@ -312,7 +346,8 @@ interface SerieDao {
     SELECT 
         s.tiempo as tiempo,
         COALESCE(s.intensidad,1) as intensidad,
-        (COALESCE(s.tiempo,0) * COALESCE(s.intensidad,1)) as carga
+        (COALESCE(s.tiempo,0) * COALESCE(s.intensidad,1)) as carga,
+        en.fechaInicio as fecha
     FROM series s
     JOIN entrenamiento_ejercicio ee 
         ON ee.id = s.entrenamientoEjercicioId
@@ -320,7 +355,7 @@ interface SerieDao {
         ON en.id = ee.entrenamientoId
     WHERE ee.ejercicioId = :ejercicioId
       AND en.completado = 1
-    ORDER BY carga DESC
+    ORDER BY carga DESC, en.fechaInicio DESC
     LIMIT 1
     """
     )

@@ -12,6 +12,8 @@ import com.google.firebase.auth.FirebaseAuth
 import org.json.JSONArray
 import org.json.JSONObject
 
+import java.security.MessageDigest
+
 class InitialCloudSyncService(
     context: Context,
     private val accountPreferencesRepository: AccountPreferencesRepository,
@@ -35,14 +37,37 @@ class InitialCloudSyncService(
         val localHasData = hasLocalData(db)
         val remotePayload = runCatching { cloudSnapshotRepository.getSnapshot(userId) }.getOrNull()
 
+        val remoteTablesContent = remotePayload?.let { extractTablesJson(it) }
+        val remoteHash = remoteTablesContent?.let { calculateHash(it) }
+        val lastSyncedHash = loggedSession.lastSyncRemoteHash
+
+        val localPayload = buildSnapshotPayload(db)
+        val localTablesContent = extractTablesJson(localPayload)
+        val localHash = calculateHash(localTablesContent)
+
         when {
+            // Caso 1: No hay datos locales pero sí remotos -> Restaurar
             !localHasData && !remotePayload.isNullOrBlank() -> {
-                restoreSnapshot(db, remotePayload)
+                if (restoreSnapshot(db, remotePayload)) {
+                    accountPreferencesRepository.updateLastSyncRemoteHash(remoteHash)
+                }
             }
-            localHasData -> {
-                val payload = buildSnapshotPayload(db)
-                if (payload != remotePayload) {
-                    cloudSnapshotRepository.saveSnapshot(userId = userId, payload = payload)
+
+            // Caso 2: El contenido remoto ha cambiado desde la última vez (ej: edición manual en Firebase)
+            // Priorizamos lo remoto para permitir correcciones manuales del usuario.
+            remotePayload != null && remoteHash != null && remoteHash != lastSyncedHash -> {
+                if (restoreSnapshot(db, remotePayload)) {
+                    accountPreferencesRepository.updateLastSyncRemoteHash(remoteHash)
+                }
+            }
+
+            // Caso 3: El contenido local ha cambiado y lo remoto sigue igual que nuestra última sincronización
+            localHash != remoteHash -> {
+                val success = runCatching {
+                    cloudSnapshotRepository.saveSnapshot(userId = userId, payload = localPayload)
+                }.isSuccess
+                if (success) {
+                    accountPreferencesRepository.updateLastSyncRemoteHash(localHash)
                 }
             }
         }
@@ -50,6 +75,20 @@ class InitialCloudSyncService(
         if (loggedSession.needsInitialSync) {
             accountPreferencesRepository.markInitialSyncCompleted()
         }
+    }
+
+    private fun extractTablesJson(payload: String): String {
+        return runCatching {
+            val json = JSONObject(payload)
+            json.optJSONObject("tables")?.toString() ?: ""
+        }.getOrDefault("")
+    }
+
+    private fun calculateHash(content: String): String {
+        if (content.isEmpty()) return ""
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hashBytes = digest.digest(content.toByteArray(Charsets.UTF_8))
+        return hashBytes.joinToString("") { "%02x".format(it) }
     }
 
     private fun buildSnapshotPayload(db: SupportSQLiteDatabase): String {
@@ -127,9 +166,9 @@ class InitialCloudSyncService(
         }
     }
 
-    private fun restoreSnapshot(db: SupportSQLiteDatabase, payload: String) {
-        runCatching {
-            val tablesJson = JSONObject(payload).optJSONObject("tables") ?: return@runCatching
+    private fun restoreSnapshot(db: SupportSQLiteDatabase, payload: String): Boolean {
+        return runCatching {
+            val tablesJson = JSONObject(payload).optJSONObject("tables") ?: return@runCatching false
             db.beginTransaction()
             try {
                 tables.forEach { table ->
@@ -147,11 +186,13 @@ class InitialCloudSyncService(
                     }
                 }
                 db.setTransactionSuccessful()
+                true
             } finally {
                 db.endTransaction()
             }
-        }.onFailure { error ->
+        }.getOrElse { error ->
             Log.e("InitialCloudSync", "No se pudo restaurar snapshot", error)
+            false
         }
     }
 

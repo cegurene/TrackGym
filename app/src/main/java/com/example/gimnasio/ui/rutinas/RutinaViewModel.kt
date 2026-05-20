@@ -15,6 +15,7 @@ import com.example.gimnasio.data.entity.RutinaEntity
 import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.EjercicioConOrden
 import com.example.gimnasio.data.model.RutinaConEjercicios
+import com.example.gimnasio.data.prefs.SortPreferences
 import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,20 @@ class RutinaViewModel(application: Application) : ViewModel() {
         DUPLICADO
     }
 
+    enum class RutinaOrder {
+        ALPHABETIC_ASC,
+        ALPHABETIC_DESC,
+        TIMES_DONE_DESC,
+        TIMES_DONE_ASC
+    }
+
+    enum class RutinaDetailExerciseOrder {
+        ALPHABETIC_ASC,
+        ALPHABETIC_DESC,
+        TIMES_DONE_DESC,
+        TIMES_DONE_ASC
+    }
+
     private val database = GymDatabase.getDatabase(application)
     private val cloudSyncCoordinator = CloudSyncCoordinator(application)
     private val rutinaDao = database.rutinaDao()
@@ -40,17 +55,26 @@ class RutinaViewModel(application: Application) : ViewModel() {
     private val entrenamientoEjercicioDao = database.entrenamientoEjercicioDao()
     private val serieDao = database.serieDao()
 
+    private val sortPreferences = SortPreferences(application)
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
     private val _selectedMusculos = MutableStateFlow<Set<Musculo>>(emptySet())
     val selectedMusculos = _selectedMusculos.asStateFlow()
 
+    private val _order = MutableStateFlow(sortPreferences.getRutinaOrder())
+    val order = _order.asStateFlow()
+
     val rutinas: Flow<List<RutinaConEjercicios>> = combine(
         _searchQuery,
         _selectedMusculos,
-        rutinaDao.getRutinasConEjercicios()
-    ) { query, musculos, todasRutinas ->
+        _order,
+        rutinaDao.getRutinasConEjercicios(),
+        entrenamientoDao.getVecesRutinasFlow()
+    ) { query, musculos, orden, todasRutinas, vecesRealizadas ->
+        val vecesMap = vecesRealizadas.associate { it.id to it.veces }
+
         todasRutinas
             .filter { rutina ->
                 rutina.rutina.nombre.contains(query, ignoreCase = true)
@@ -62,6 +86,14 @@ class RutinaViewModel(application: Application) : ViewModel() {
                     rutina.ejercicios.any { ejercicio ->
                         ejercicio.musculos.any { musculos.contains(it) }
                     }
+                }
+            }
+            .let { filtrados ->
+                when (orden) {
+                    RutinaOrder.ALPHABETIC_ASC -> filtrados.sortedBy { it.rutina.nombre }
+                    RutinaOrder.ALPHABETIC_DESC -> filtrados.sortedByDescending { it.rutina.nombre }
+                    RutinaOrder.TIMES_DONE_DESC -> filtrados.sortedByDescending { vecesMap[it.rutina.id] ?: 0 }
+                    RutinaOrder.TIMES_DONE_ASC -> filtrados.sortedBy { vecesMap[it.rutina.id] ?: 0 }
                 }
             }
     }
@@ -280,5 +312,10 @@ class RutinaViewModel(application: Application) : ViewModel() {
 
     fun clearMusculos() {
         _selectedMusculos.value = emptySet()
+    }
+
+    fun onOrderChange(newOrder: RutinaOrder) {
+        _order.value = newOrder
+        sortPreferences.saveRutinaOrder(newOrder)
     }
 }

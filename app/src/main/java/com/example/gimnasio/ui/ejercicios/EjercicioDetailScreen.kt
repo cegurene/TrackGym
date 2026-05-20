@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.draw.alpha
@@ -52,6 +54,7 @@ import com.example.gimnasio.ui.components.labelWithEmoji
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
+import androidx.compose.ui.graphics.takeOrElse
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -271,6 +274,7 @@ fun EjercicioDetailScreen(
         fechas: List<String>,
         unidad: String,
         detallesTooltip: List<String?> = emptyList(),
+        seriesTooltip: List<String?> = emptyList(),
         scrollState: ScrollState,
         onScrollStateChange: (Boolean) -> Unit = {},
         modifier: Modifier = Modifier
@@ -564,58 +568,81 @@ fun EjercicioDetailScreen(
                     // =========================
                     // TOOLTIP MEJORADO
                     // =========================
-                    selectedIndex?.let { index ->
+                        selectedIndex?.let { index ->
 
-                        val valor = valores[index]
-                        val fecha = fechas.getOrNull(index) ?: ""
-                        val detalle = detallesTooltip.getOrNull(index)
-                        val diferencia = if (index > 0) valor - valores[index - 1] else 0f
-                        val colorDiferencia = when {
-                            diferencia > 0 -> Color(0xFF4CAF50)
-                            diferencia < 0 -> Color(0xFFE53935)
-                            else -> Color.Gray
-                        }
+                            val valor = valores[index]
+                            val fecha = fechas.getOrNull(index) ?: ""
+                            val detalle = detallesTooltip.getOrNull(index)
+                            val series = seriesTooltip.getOrNull(index)
+                            val diferencia = if (index > 0) valor - valores[index - 1] else 0f
+                            val colorDiferencia = when {
+                                diferencia > 0 -> Color(0xFF4CAF50)
+                                diferencia < 0 -> Color(0xFFE53935)
+                                else -> Color.Gray
+                            }
 
-                        val xDp = with(density) { animatedX.toDp() }
-                        val yDp = with(density) { animatedY.toDp() }
+                            val xDp = with(density) { (animatedX - scrollState.value).toDp() }
+                            val yDp = with(density) { animatedY.toDp() }
 
-                        Card(
-                            modifier = Modifier
-                                .offset(
-                                    x = xDp - 60.dp,
-                                    y = yDp - 100.dp
-                                ),
-                            elevation = CardDefaults.cardElevation(6.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(
-                                    "📅 $fecha",
-                                    style = MaterialTheme.typography.labelSmall
+                            val containerWidthDp = with(density) { containerWidthPx.toDp() }
+
+                            // Estimamos el tamaño para que no se salga
+                            val tooltipWidth = 160.dp
+                            val tooltipHeight = 150.dp
+
+                            // Ajustar X para que no se salga por los lados
+                            val finalX = (xDp - tooltipWidth / 2).coerceIn(4.dp, (containerWidthDp - tooltipWidth - 4.dp).coerceAtLeast(0.dp))
+
+                            // Ajustar Y para que no se salga por arriba
+                            val showBelow = yDp < tooltipHeight + 20.dp
+                            val finalY = if (showBelow) {
+                                (yDp + 20.dp).coerceAtMost(240.dp)
+                            } else {
+                                (yDp - tooltipHeight - 10.dp).coerceAtLeast(0.dp)
+                            }
+
+                            Card(
+                                modifier = Modifier
+                                    .offset(x = finalX, y = finalY)
+                                    .width(tooltipWidth),
+                                elevation = CardDefaults.cardElevation(6.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
-                                Text(
-                                    "📊 ${valor.formatUiNumber()} $unidad",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                if (!detalle.isNullOrBlank()) {
+                            ) {
+                                Column(Modifier.padding(12.dp)) {
                                     Text(
-                                        "🏷 $detalle",
+                                        "📅 $fecha",
                                         style = MaterialTheme.typography.labelSmall
                                     )
-                                }
-                                if (diferencia != 0f) {
                                     Text(
-                                        "${if (diferencia > 0) "▲" else "▼"} ${kotlin.math.abs(diferencia).formatUiNumber()} $unidad",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = colorDiferencia
+                                        "📊 ${valor.formatUiNumber()} $unidad",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
+                                    if (!detalle.isNullOrBlank()) {
+                                        Text(
+                                            "🏷 $detalle",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                    if (diferencia != 0f) {
+                                        Text(
+                                            "${if (diferencia > 0) "▲" else "▼"} ${kotlin.math.abs(diferencia).formatUiNumber()} $unidad",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = colorDiferencia
+                                        )
+                                    }
+                                    if (!series.isNullOrBlank()) {
+                                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                        Text(
+                                            "🏋️ $series",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
 
                     // =========================
                     // FLECHAS
@@ -802,6 +829,14 @@ fun EjercicioDetailScreen(
                                     Text("Aún no se ha realizado este ejercicio.")
 
                                 } else {
+
+                                    Text(
+                                        text = ultimaSesion!!.nombreEntrenamiento,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+
+                                    Spacer(Modifier.height(8.dp))
 
                                     val fecha = Instant
                                         .ofEpochMilli(ultimaSesion!!.fecha)
@@ -1084,6 +1119,10 @@ fun EjercicioDetailScreen(
                                         }
                                     }
 
+                                    val seriesTooltip = remember(progreso) {
+                                        progreso.map { it.seriesTexto }
+                                    }
+
                                     // -------------------
                                     // GRAFICA 1 (EXTRA)
                                     // -------------------
@@ -1152,6 +1191,7 @@ fun EjercicioDetailScreen(
                                         fechas = fechas,
                                         unidad = unidadExtra,
                                         detallesTooltip = detallesGraficaExtra,
+                                        seriesTooltip = seriesTooltip,
                                         scrollState = scrollStateGrafica,
                                         onScrollStateChange = { isScrollingGrafica = it },
                                         modifier = Modifier.fillMaxWidth()
@@ -1203,6 +1243,7 @@ fun EjercicioDetailScreen(
                                         valores = valoresVolumen,
                                         fechas = fechas,
                                         unidad = unidadVolumen,
+                                        seriesTooltip = seriesTooltip,
                                         scrollState = scrollStateGrafica,
                                         onScrollStateChange = { isScrollingGrafica = it },
                                         modifier = Modifier.fillMaxWidth()
@@ -1240,41 +1281,49 @@ fun EjercicioDetailScreen(
                                     } else {
 
                                         pr?.let {
-                                            FilaDato("PR:", "${it.pr.formatUiNumber()} kg")
+                                            RecordItem("PR", "${it.pr.formatUiNumber()} kg", it.fecha)
                                         }
 
                                         Spacer(Modifier.height(6.dp))
 
-                                        FilaDato(
-                                            "Mayor volumen en 1 serie:",
-                                            "${(records!!.volumenMaxSerie ?: 0f).formatUiNumber()} kg"
+                                        RecordItem(
+                                            "Mayor volumen en 1 serie",
+                                            "${(records!!.volumenMaxSerie ?: 0f).formatUiNumber()} kg",
+                                            records!!.fechaVolumenMaxSerie
                                         )
 
                                         Spacer(Modifier.height(6.dp))
 
                                         mejorSesionFuerza?.let {
-                                            FilaDato("Mejor sesión:", "${it.mejorSesion.formatUiNumber()} kg")
+                                            RecordItem("Mejor sesión", "${it.mejorSesion.formatUiNumber()} kg", it.fecha)
                                         }
 
                                         Spacer(Modifier.height(6.dp))
 
-                                        FilaDato(
-                                            "Volumen total:",
+                                        RecordItem(
+                                            "Volumen total",
                                             "${(records!!.volumenTotal ?: 0f).formatUiNumber()} kg"
                                         )
 
                                         Spacer(Modifier.height(6.dp))
 
-                                        FilaDato(
-                                            "Series totales:",
+                                        RecordItem(
+                                            "Series totales",
                                             "${records!!.seriesTotales}"
                                         )
 
                                         Spacer(Modifier.height(6.dp))
 
-                                        FilaDato(
-                                            "Repeticiones totales:",
+                                        RecordItem(
+                                            "Repeticiones totales",
                                             "${records!!.repeticionesTotales ?: 0}"
+                                        )
+
+                                        Spacer(Modifier.height(6.dp))
+
+                                        RecordItem(
+                                            "Entrenamientos con ejercicio",
+                                            "${records!!.entrenamientosConEjercicio}"
                                         )
                                     }
 
@@ -1285,42 +1334,53 @@ fun EjercicioDetailScreen(
                                     } else {
 
                                         mejorCargaCardio?.let {
-                                            FilaDato(
-                                                "Mejor carga:",
-                                                it.carga.formatUiNumber()
+                                            RecordItem(
+                                                "Mejor carga",
+                                                "${it.carga.formatUiNumber()} pts",
+                                                it.fecha
                                             )
 
-                                            FilaDato(
-                                                "",
-                                                "${it.tiempo} min × ${it.intensidad} intensidad"
+                                            Text(
+                                                text = "${it.tiempo} min × ${it.intensidad} intensidad",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                modifier = Modifier.padding(bottom = 4.dp)
                                             )
                                         }
 
                                         Spacer(Modifier.height(6.dp))
 
                                         mejorSesionCardio?.let {
-                                            FilaDato("Mejor sesión", it.mejorSesion.formatUiNumber())
+                                            RecordItem("Mejor sesión", "${it.mejorSesion.formatUiNumber()} pts", it.fecha)
                                         }
 
                                         Spacer(Modifier.height(6.dp))
 
-                                        FilaDato(
-                                            "Mejor carga en 1 serie:",
-                                            "${recordsCardio!!.mejorTiempo ?: 0} pts"
+                                        RecordItem(
+                                            "Mejor carga en 1 serie",
+                                            "${(recordsCardio!!.mejorTiempo ?: 0).toFloat().formatUiNumber()} pts",
+                                            recordsCardio!!.fechaMejorCarga
                                         )
 
                                         Spacer(Modifier.height(6.dp))
 
-                                        FilaDato(
-                                            "Carga total:",
-                                            "${recordsCardio!!.tiempoTotal ?: 0} pts"
+                                        RecordItem(
+                                            "Carga total",
+                                            "${(recordsCardio!!.tiempoTotal ?: 0).toFloat().formatUiNumber()} pts"
                                         )
 
                                         Spacer(Modifier.height(6.dp))
 
-                                        FilaDato(
-                                            "Series totales:",
+                                        RecordItem(
+                                            "Series totales",
                                             "${recordsCardio!!.seriesTotales}"
+                                        )
+
+                                        Spacer(Modifier.height(6.dp))
+
+                                        RecordItem(
+                                            "Entrenamientos con ejercicio",
+                                            "${recordsCardio!!.entrenamientosConEjercicio}"
                                         )
                                     }
                                 }
@@ -1546,6 +1606,54 @@ fun EjercicioDetailScreen(
             },
             dismissButton = { TextButton(onClick = { showEditMusculosDialog = false }) { Text("Cancelar") } }
         )
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun RecordItem(
+    label: String,
+    valor: String,
+    fecha: Long? = null,
+    colorValor: Color = Color.Unspecified
+) {
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$label:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = valor,
+                style = MaterialTheme.typography.bodyLarge,
+                color = colorValor.takeOrElse { primaryColor }
+            )
+        }
+        if (fecha != null) {
+            val fechaLocal = Instant
+                .ofEpochMilli(fecha)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+
+            Text(
+                text = fechaLocal.format(dateFormatter),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
     }
 }
 

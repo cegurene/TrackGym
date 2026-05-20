@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +39,7 @@ import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.ui.components.displayLabel
 import com.example.gimnasio.ui.components.imageRes
 import com.example.gimnasio.ui.components.labelWithEmoji
+import com.example.gimnasio.ui.components.getLabel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -98,16 +101,122 @@ fun RutinasScreen(
                 }
             )
 
-            FilledTonalButton(
-                onClick = { showFilterSheet = true },
-                modifier = Modifier
-                    .fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("🧩", modifier = Modifier.padding(end = 8.dp))
-                if (selectedMusculos.isEmpty()) {
-                    Text("Filtrar por músculo")
-                } else {
-                    Text("Filtrar (${selectedMusculos.size})")
+                FilledTonalButton(
+                    onClick = { showFilterSheet = true },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("🧩", modifier = Modifier.padding(end = 2.dp))
+                    if (selectedMusculos.isEmpty()) {
+                        Text("Filtrar")
+                    } else {
+                        Text("Filtrar (${selectedMusculos.size})")
+                    }
+                }
+
+                var showOrderSheet by remember { mutableStateOf(false) }
+                val currentOrder by viewModel.order.collectAsState()
+
+                FilledTonalButton(
+                    onClick = { showOrderSheet = true },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("🔃", modifier = Modifier.padding(end = 2.dp))
+                    Text(
+                        "Ordenar (${currentOrder.getLabel()})",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // ==================== ORDEN SHEET ====================
+                if (showOrderSheet) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showOrderSheet = false },
+                        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Ordenar rutinas",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                val isAlphabetic = currentOrder == RutinaViewModel.RutinaOrder.ALPHABETIC_ASC ||
+                                        currentOrder == RutinaViewModel.RutinaOrder.ALPHABETIC_DESC
+
+                                FilterChip(
+                                    selected = isAlphabetic,
+                                    onClick = {
+                                        val next = if (currentOrder == RutinaViewModel.RutinaOrder.ALPHABETIC_ASC) {
+                                            RutinaViewModel.RutinaOrder.ALPHABETIC_DESC
+                                        } else {
+                                            RutinaViewModel.RutinaOrder.ALPHABETIC_ASC
+                                        }
+                                        viewModel.onOrderChange(next)
+                                    },
+                                    label = { Text("A-Z") },
+                                    trailingIcon = {
+                                        if (isAlphabetic) {
+                                            Text(text = if (currentOrder == RutinaViewModel.RutinaOrder.ALPHABETIC_ASC) "▲" else "▼")
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                val isTimesDone = currentOrder == RutinaViewModel.RutinaOrder.TIMES_DONE_DESC ||
+                                        currentOrder == RutinaViewModel.RutinaOrder.TIMES_DONE_ASC
+
+                                FilterChip(
+                                    selected = isTimesDone,
+                                    onClick = {
+                                        val next = if (currentOrder == RutinaViewModel.RutinaOrder.TIMES_DONE_DESC) {
+                                            RutinaViewModel.RutinaOrder.TIMES_DONE_ASC
+                                        } else {
+                                            RutinaViewModel.RutinaOrder.TIMES_DONE_DESC
+                                        }
+                                        viewModel.onOrderChange(next)
+                                    },
+                                    label = { Text("Veces realizada") },
+                                    trailingIcon = {
+                                        if (isTimesDone) {
+                                            Text(text = if (currentOrder == RutinaViewModel.RutinaOrder.TIMES_DONE_ASC) "▲" else "▼")
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                TextButton(onClick = {
+                                    viewModel.onOrderChange(RutinaViewModel.RutinaOrder.ALPHABETIC_ASC)
+                                }) {
+                                    Text("Limpiar")
+                                }
+                                Button(onClick = { showOrderSheet = false }) {
+                                    Text("Aplicar")
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
                 }
             }
 
