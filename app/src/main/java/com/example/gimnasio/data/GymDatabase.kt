@@ -18,7 +18,7 @@ import com.example.gimnasio.data.converter.MusculoConverter
         EntrenamientoEjercicioEntity::class,
         SerieEntity::class
     ],
-    version = 13, // 13, si se sube muy importante que no se borren datos
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(MusculoConverter::class)
@@ -44,7 +44,9 @@ abstract class GymDatabase : RoomDatabase() {
                     GymDatabase::class.java,
                     "gym_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    // No añadir fallbackToDestructiveMigration(): borraría los datos
+                    // si faltase una migración. Toda modificación del esquema debe
+                    // incrementar la versión y registrar su Migration correspondiente.
                     .build()
 
                 INSTANCE = instance
