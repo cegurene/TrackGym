@@ -25,11 +25,14 @@ import com.example.gimnasio.data.entity.Musculo
 import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.ui.components.emojiSummary
 import com.example.gimnasio.ui.components.primaryImageRes
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoricoDetailScreen(
     entrenamientoId: Long,
+    advancedModificationsEnabled: Boolean,
     onBack: () -> Unit,
     onNavigateToEntrenamiento: (Long) -> Unit,
     onNavigateToEjercicio: (Long) -> Unit
@@ -53,11 +56,37 @@ fun HistoricoDetailScreen(
         .entrenamientoActivo
         .collectAsState(initial = null)
 
+    val rutinas by viewModel.rutinas.collectAsState(initial = emptyList())
+
     var showSettings by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var nuevoNombre by remember { mutableStateOf("") }
     var mostrarErrorNombreEntrenamientoDuplicado by remember { mutableStateOf(false) }
+
+    var showChangeRoutineDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var showChangeDurationDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var selectedRoutineId by remember {
+        mutableStateOf<Long?>(null)
+    }
+
+    var durationHours by remember {
+        mutableStateOf("0")
+    }
+
+    var durationMinutes by remember {
+        mutableStateOf("0")
+    }
+
+    var advancedOperationError by remember {
+        mutableStateOf(false)
+    }
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
@@ -316,11 +345,36 @@ fun HistoricoDetailScreen(
             sheetState = sheetState
         ) {
             HistoricoDetailSettingsSheet(
+                advancedModificationsEnabled = advancedModificationsEnabled,
                 onRename = {
                     showSettings = false
                     nuevoNombre = entrenamiento?.entrenamiento?.nombre ?: ""
                     mostrarErrorNombreEntrenamientoDuplicado = false
                     showRenameDialog = true
+                },
+                onChangeRoutine = {
+                    showSettings = false
+                    selectedRoutineId = entrenamiento?.entrenamiento?.rutinaId
+                    advancedOperationError = false
+                    showChangeRoutineDialog = true
+                },
+                onChangeDuration = {
+                    showSettings = false
+
+                    val actual = entrenamiento?.entrenamiento
+
+                    if (actual != null) {
+                        val fechaFin = actual.fechaFin ?: actual.fechaInicio
+                        val duracionMinutos = (
+                                (fechaFin - actual.fechaInicio).coerceAtLeast(0L) / 60_000L
+                                )
+
+                        durationHours = (duracionMinutos / 60L).toString()
+                        durationMinutes = (duracionMinutos % 60L).toString()
+                    }
+
+                    advancedOperationError = false
+                    showChangeDurationDialog = true
                 },
                 onDelete = {
                     showSettings = false
@@ -380,6 +434,188 @@ fun HistoricoDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showRenameDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showChangeRoutineDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showChangeRoutineDialog = false
+            },
+            title = {
+                Text("Cambiar rutina")
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Selecciona la nueva rutina asociada a este entrenamiento."
+                    )
+
+                    rutinas.forEach { rutina ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedRoutineId == rutina.id,
+                                onClick = {
+                                    selectedRoutineId = rutina.id
+                                    advancedOperationError = false
+                                }
+                            )
+
+                            Text(
+                                text = rutina.nombre,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    if (advancedOperationError) {
+                        Text(
+                            text = "No se ha podido cambiar la rutina. Inténtalo de nuevo.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = selectedRoutineId != null,
+                    onClick = {
+                        val rutinaId = selectedRoutineId ?: return@TextButton
+
+                        viewModel.cambiarRutina(
+                            entrenamientoId = entrenamientoId,
+                            nuevaRutinaId = rutinaId
+                        ) { success ->
+                            if (success) {
+                                showChangeRoutineDialog = false
+                                advancedOperationError = false
+                            } else {
+                                advancedOperationError = true
+                            }
+                        }
+                    }
+                ) {
+                    Text("Guardar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showChangeRoutineDialog = false
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showChangeDurationDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showChangeDurationDialog = false
+            },
+            title = {
+                Text("Cambiar duración")
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Introduce la duración total del entrenamiento."
+                    )
+
+                    OutlinedTextField(
+                        value = durationHours,
+                        onValueChange = {
+                            durationHours = it.filter { char -> char.isDigit() }
+                            advancedOperationError = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Horas")
+                        },
+                        suffix = {
+                            Text("h")
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = durationMinutes,
+                        onValueChange = {
+                            durationMinutes = it.filter { char -> char.isDigit() }
+                            advancedOperationError = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Minutos")
+                        },
+                        suffix = {
+                            Text("min")
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        )
+                    )
+
+                    if (advancedOperationError) {
+                        Text(
+                            text = "No se ha podido actualizar la duración. Comprueba los valores e inténtalo de nuevo.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val horas = durationHours.toLongOrNull()
+                        val minutos = durationMinutes.toLongOrNull()
+
+                        if (horas == null || minutos == null || minutos !in 0..59) {
+                            advancedOperationError = true
+                            return@TextButton
+                        }
+
+                        viewModel.actualizarDuracionEntrenamiento(
+                            entrenamientoId = entrenamientoId,
+                            horas = horas,
+                            minutos = minutos
+                        ) { success ->
+                            if (success) {
+                                showChangeDurationDialog = false
+                                advancedOperationError = false
+                            } else {
+                                advancedOperationError = true
+                            }
+                        }
+                    }
+                ) {
+                    Text("Guardar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showChangeDurationDialog = false
+                    }
+                ) {
                     Text("Cancelar")
                 }
             }

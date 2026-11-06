@@ -21,6 +21,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.gimnasio.data.GymDatabase
+import com.example.gimnasio.data.preferences.AdvancedSettingsRepository
 import com.example.gimnasio.ui.ejercicios.EjercicioDetailScreen
 import com.example.gimnasio.ui.ejercicios.EjerciciosScreen
 import com.example.gimnasio.ui.entrenamiento.EntrenamientoScreen
@@ -41,6 +42,15 @@ fun GymNavHost(
     val homeRoute = "home"
     val settingsRoute = "settings"
     val context = LocalContext.current
+
+    val advancedSettingsRepository = remember {
+        AdvancedSettingsRepository(context)
+    }
+
+    val advancedModificationsEnabled by advancedSettingsRepository
+        .advancedModificationsFlow
+        .collectAsState(initial = false)
+
     val database = remember { GymDatabase.getDatabase(context) }
     val entrenamientoDao = remember { database.entrenamientoDao() }
 
@@ -185,6 +195,7 @@ fun GymNavHost(
 
                     HistoricoDetailScreen(
                         entrenamientoId = entrenamientoId,
+                        advancedModificationsEnabled = advancedModificationsEnabled,
                         onBack = { navController.popBackStack() },
                         onNavigateToEntrenamiento = { nuevoId ->
                             navigateToEntrenamiento(nuevoId)

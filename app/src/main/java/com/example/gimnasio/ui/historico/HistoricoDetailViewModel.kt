@@ -12,6 +12,7 @@ import com.example.gimnasio.data.entity.SerieEntity
 import com.example.gimnasio.data.model.EntrenamientoConEjerciciosYSeries
 import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.launch
+import androidx.room.withTransaction
 
 class HistoricoDetailViewModel(context: Context) : ViewModel() {
     enum class NombreOperacionResultado {
@@ -24,6 +25,9 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
     private val cloudSyncCoordinator = CloudSyncCoordinator(context)
     private val dao = database.entrenamientoDao()
     private val serieDao = database.serieDao()
+    private val rutinaDao = database.rutinaDao()
+
+    val rutinas = rutinaDao.getAllRutinas()
 
     fun getEntrenamiento(id: Long) =
         dao.getEntrenamientoConRutinaById(id)
@@ -119,6 +123,141 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
         viewModelScope.launch {
             dao.deleteEntrenamiento(id)
             cloudSyncCoordinator.syncNow()
+        }
+    }
+
+    fun cambiarRutina(
+        entrenamientoId: Long,
+        nuevaRutinaId: Long,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                val entrenamiento = dao.getEntrenamientoEntityById(entrenamientoId)
+
+                if (entrenamiento == null || !entrenamiento.completado) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val rutinaAnteriorId = entrenamiento.rutinaId
+
+                if (rutinaAnteriorId == nuevaRutinaId) {
+                    onResult(true)
+                    return@launch
+                }
+
+                // La existencia de la rutina se comprueba mediante su nombre.
+                val nuevoNombreRutina = dao.getNombreRutinaById(nuevaRutinaId)
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() }
+
+                if (nuevoNombreRutina == null) {
+                    onResult(false)
+                    return@launch
+                }
+
+                database.withTransaction {
+                    // Solo se modifica la asociación del entrenamiento.
+                    // No se tocan los ejercicios ni las series.
+                    dao.updateRutinaId(
+                        entrenamientoId = entrenamientoId,
+                        nuevaRutinaId = nuevaRutinaId
+                    )
+
+                    // Renumerar la rutina anterior.
+                    val nombreRutinaAnterior = dao.getNombreRutinaById(rutinaAnteriorId)
+                        ?.trim()
+                        ?.takeIf { it.isNotBlank() }
+                        ?: "Entrenamiento"
+
+                    val entrenamientosAnteriores =
+                        dao.getCompletadosByRutinaId(rutinaAnteriorId)
+
+                    entrenamientosAnteriores.forEachIndexed { index, item ->
+                        dao.renombrarEntrenamiento(
+                            item.id,
+                            "$nombreRutinaAnterior -> ${index + 1}"
+                        )
+                    }
+
+                    // Renumerar la rutina nueva.
+                    val entrenamientosNuevos =
+                        dao.getCompletadosByRutinaId(nuevaRutinaId)
+
+                    entrenamientosNuevos.forEachIndexed { index, item ->
+                        dao.renombrarEntrenamiento(
+                            item.id,
+                            "$nuevoNombreRutina -> ${index + 1}"
+                        )
+                    }
+                }
+
+                cloudSyncCoordinator.syncNow()
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    fun actualizarDuracionEntrenamiento(
+        entrenamientoId: Long,
+        horas: Long,
+        minutos: Long,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                if (horas < 0 || minutos !in 0..59) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val entrenamiento = dao.getEntrenamientoEntityById(entrenamientoId)
+
+                if (entrenamiento == null || !entrenamiento.completado) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val milisegundosPorHora = 3_600_000L
+                val milisegundosPorMinuto = 60_000L
+
+                if (horas > Long.MAX_VALUE / milisegundosPorHora) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val horasMillis = horas * milisegundosPorHora
+                val minutosMillis = minutos * milisegundosPorMinuto
+
+                if (horasMillis > Long.MAX_VALUE - minutosMillis) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val duracionMillis = horasMillis + minutosMillis
+
+                if (entrenamiento.fechaInicio > Long.MAX_VALUE - duracionMillis) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val nuevaFechaFin = entrenamiento.fechaInicio + duracionMillis
+
+                dao.updateFechaFin(
+                    entrenamientoId = entrenamientoId,
+                    nuevaFechaFin = nuevaFechaFin
+                )
+
+                cloudSyncCoordinator.syncNow()
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
         }
     }
 }

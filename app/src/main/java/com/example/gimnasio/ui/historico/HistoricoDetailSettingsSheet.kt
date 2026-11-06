@@ -16,7 +16,10 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun HistoricoDetailSettingsSheet(
+    advancedModificationsEnabled: Boolean,
     onRename: () -> Unit,
+    onChangeRoutine: () -> Unit,
+    onChangeDuration: () -> Unit,
     onDelete: () -> Unit
 ) {
     Column(
@@ -39,6 +42,22 @@ fun HistoricoDetailSettingsSheet(
             Text("✏️ Cambiar nombre")
         }
 
+        if (advancedModificationsEnabled) {
+            TextButton(
+                onClick = onChangeRoutine,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("🔄 Cambiar rutina")
+            }
+
+            TextButton(
+                onClick = onChangeDuration,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("⏱️ Cambiar duración")
+            }
+        }
+
         TextButton(
             onClick = onDelete,
             modifier = Modifier.fillMaxWidth()
@@ -52,4 +71,3 @@ fun HistoricoDetailSettingsSheet(
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
-

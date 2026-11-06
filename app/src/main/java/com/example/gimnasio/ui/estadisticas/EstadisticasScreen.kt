@@ -69,11 +69,11 @@ import java.util.Locale
 import kotlin.math.*
 
 @Composable
-fun DuracionCampanaGauss(
+fun HistogramaDuraciones(
     duraciones: List<Double>,
     modifier: Modifier = Modifier
 ) {
-    if (duraciones.size < 2) {
+    if (duraciones.isEmpty()) {
         Box(
             modifier = modifier
                 .fillMaxWidth()
@@ -81,36 +81,38 @@ fun DuracionCampanaGauss(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Se necesitan al menos 2 entrenamientos para mostrar la distribución",
+                text = "Aún no hay datos de duración",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         return
     }
 
-    val mean = duraciones.average()
-    val stdDev = sqrt(duraciones.map { (it - mean).pow(2) }.average()).coerceAtLeast(1.0)
-
-    val minDur = duraciones.minOrNull() ?: 0.0
-    val maxDur = duraciones.maxOrNull() ?: 100.0
+    val intervalSize = 10 // minutos
+    val maxDur = (duraciones.maxOrNull() ?: 0.0).toInt()
+    val numBins = (maxDur / intervalSize) + 1
     
-    // Extendemos el rango un poco para que la campana se vea completa
-    val rangeMin = (minDur - stdDev).coerceAtLeast(0.0)
-    val rangeMax = maxDur + stdDev
-    val range = rangeMax - rangeMin
+    // Calcular frecuencias
+    val bins = IntArray(numBins)
+    duraciones.forEach { dur ->
+        val binIndex = (dur / intervalSize).toInt()
+        if (binIndex < numBins) {
+            bins[binIndex]++
+        }
+    }
 
+    val maxFreq = bins.maxOrNull()?.coerceAtLeast(1) ?: 1
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceColor = MaterialTheme.colorScheme.onSurfaceVariant
     val density = LocalDensity.current
 
     Column(modifier = modifier) {
         Text(
-            text = "Distribución de duración",
+            text = "Frecuencia de duración",
             style = MaterialTheme.typography.labelMedium,
             color = onSurfaceColor,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 12.dp)
         )
 
         Canvas(
@@ -119,87 +121,61 @@ fun DuracionCampanaGauss(
                 .height(160.dp)
         ) {
             val width = size.width
-            val labelHeight = 20.dp.toPx()
+            val labelHeight = 25.dp.toPx()
             val graphHeight = size.height - labelHeight
-            val steps = 100
-            
-            val path = Path()
-            val fillPath = Path()
+            val barSpacing = 8.dp.toPx()
+            val barWidth = (width - (numBins - 1) * barSpacing) / numBins
 
-            // Función de densidad de probabilidad Gaussiana
-            fun g(x: Double): Double {
-                return (1.0 / (stdDev * sqrt(2.0 * PI))) * exp(-0.5 * ((x - mean) / stdDev).pow(2.0))
+            val paint = android.graphics.Paint().apply {
+                color = onSurfaceColor.toArgb()
+                textSize = with(density) { 9.sp.toPx() }
+                textAlign = android.graphics.Paint.Align.CENTER
             }
 
-            // Encontramos el valor máximo de g(x) para escalar la gráfica
-            val maxG = g(mean)
-            
-            for (i in 0..steps) {
-                val xVal = rangeMin + (i.toDouble() / steps) * range
-                val yVal = g(xVal)
+            for (i in 0 until numBins) {
+                val freq = bins[i]
+                val barHeight = (freq.toFloat() / maxFreq) * (graphHeight - 20.dp.toPx())
                 
-                val xPos = (i.toDouble() / steps) * width
-                val yPos = graphHeight - (yVal / maxG).toFloat() * graphHeight
+                val left = i * (barWidth + barSpacing)
+                val top = graphHeight - barHeight
+                val right = left + barWidth
+                val bottom = graphHeight
 
-                if (i == 0) {
-                    path.moveTo(xPos.toFloat(), yPos)
-                    fillPath.moveTo(xPos.toFloat(), graphHeight)
-                    fillPath.lineTo(xPos.toFloat(), yPos)
-                } else {
-                    path.lineTo(xPos.toFloat(), yPos)
-                    fillPath.lineTo(xPos.toFloat(), yPos)
-                }
-                
-                if (i == steps) {
-                    fillPath.lineTo(xPos.toFloat(), graphHeight)
-                    fillPath.close()
-                }
-            }
-
-            // Dibujar el área rellena
-            drawPath(
-                path = fillPath,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        primaryColor.copy(alpha = 0.4f),
-                        primaryColor.copy(alpha = 0.05f)
-                    )
+                // Dibujar barra
+                drawRect(
+                    color = if (freq > 0) primaryColor else primaryColor.copy(alpha = 0.1f),
+                    topLeft = Offset(left, top),
+                    size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
                 )
-            )
 
-            // Dibujar la línea de la campana
-            drawPath(
-                path = path,
-                color = primaryColor,
-                style = Stroke(width = 3.dp.toPx())
-            )
+                // Dibujar número arriba si freq > 0
+                if (freq > 0) {
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "$freq",
+                        left + barWidth / 2,
+                        top - 5.dp.toPx(),
+                        paint
+                    )
+                }
 
-            // Eje X (Línea base)
+                // Dibujar etiqueta de tiempo
+                val startRange = i * intervalSize
+                val endRange = (i + 1) * intervalSize
+                drawContext.canvas.nativeCanvas.drawText(
+                    "${startRange}-${endRange}m",
+                    left + barWidth / 2,
+                    size.height - 5.dp.toPx(),
+                    paint
+                )
+            }
+
+            // Eje X
             drawLine(
                 color = onSurfaceColor.copy(alpha = 0.3f),
                 start = Offset(0f, graphHeight),
                 end = Offset(width, graphHeight),
                 strokeWidth = 1.dp.toPx()
             )
-
-            // Etiquetas de tiempo
-            val paint = android.graphics.Paint().apply {
-                color = onSurfaceColor.toArgb()
-                textSize = with(density) { 10.sp.toPx() }
-                textAlign = android.graphics.Paint.Align.CENTER
-            }
-
-            // Dibujar 3 etiquetas: min, media, max
-            val labels = listOf(rangeMin, mean, rangeMax)
-            labels.forEach { valTime ->
-                val xPos = ((valTime - rangeMin) / range) * width
-                drawContext.canvas.nativeCanvas.drawText(
-                    "${valTime.toInt()}m",
-                    xPos.toFloat(),
-                    size.height - 5.dp.toPx(),
-                    paint
-                )
-            }
         }
     }
 }
@@ -528,7 +504,7 @@ fun EstadisticasScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            DuracionCampanaGauss(
+                            HistogramaDuraciones(
                                 duraciones = duracionesEntrenamientos,
                                 modifier = Modifier.fillMaxWidth()
                             )

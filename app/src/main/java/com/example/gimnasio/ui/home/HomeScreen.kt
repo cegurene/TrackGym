@@ -13,11 +13,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.gimnasio.ui.ejercicios.EjercicioDetailScreen
 import com.example.gimnasio.ui.historico.HistoricoDetailScreen
 import com.example.gimnasio.ui.rutinas.RutinaDetailScreen
 import kotlinx.coroutines.launch
+import com.example.gimnasio.data.preferences.AdvancedSettingsRepository
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalFoundationApi::class)
@@ -32,6 +34,16 @@ fun HomeScreen(
     val pagerState = rememberPagerState(pageCount = { 4 })
     val scope = rememberCoroutineScope()
     val tabs = listOf("Rutinas", "Ejercicios", "Histórico", "Estadísticas")
+
+    val context = LocalContext.current
+
+    val advancedSettingsRepository = remember {
+        AdvancedSettingsRepository(context)
+    }
+
+    val advancedModificationsEnabled by advancedSettingsRepository
+        .advancedModificationsFlow
+        .collectAsState(initial = false)
 
     val shouldHandleBack =
         (pagerState.currentPage == 0 && selectedRutinaId != null) ||
@@ -145,13 +157,18 @@ fun HomeScreen(
                 } else {
                     HistoricoDetailScreen(
                         entrenamientoId = selectedEntrenamientoId!!,
-                        onBack = { selectedEntrenamientoId = null },
+                        advancedModificationsEnabled = advancedModificationsEnabled,
+                        onBack = {
+                            selectedEntrenamientoId = null
+                        },
                         onNavigateToEntrenamiento = { entrenamientoId ->
                             selectedEntrenamientoId = entrenamientoId
                         },
                         onNavigateToEjercicio = { ejercicioId ->
                             selectedEjercicioId = ejercicioId
-                            scope.launch { pagerState.animateScrollToPage(1) }
+                            scope.launch {
+                                pagerState.animateScrollToPage(1)
+                            }
                         }
                     )
                 }

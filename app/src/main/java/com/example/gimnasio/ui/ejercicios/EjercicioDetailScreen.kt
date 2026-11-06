@@ -591,7 +591,8 @@ fun EjercicioDetailScreen(
                             val tooltipHeight = 150.dp
 
                             // Ajustar X para que no se salga por los lados
-                            val finalX = (xDp - tooltipWidth / 2).coerceIn(4.dp, (containerWidthDp - tooltipWidth - 4.dp).coerceAtLeast(0.dp))
+                            val maxX = (containerWidthDp - tooltipWidth - 4.dp).coerceAtLeast(4.dp)
+                            val finalX = (xDp - tooltipWidth / 2).coerceIn(4.dp, maxX)
 
                             // Ajustar Y para que no se salga por arriba
                             val showBelow = yDp < tooltipHeight + 20.dp

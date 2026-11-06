@@ -265,4 +265,44 @@ interface EntrenamientoDao {
     GROUP BY r.id
 """)
     fun getVecesRutinasFlow(): Flow<List<RutinaVeces>>
+
+    @Query("""
+    SELECT * FROM entrenamientos
+    WHERE id = :entrenamientoId
+    LIMIT 1
+""")
+    suspend fun getEntrenamientoEntityById(
+        entrenamientoId: Long
+    ): EntrenamientoEntity?
+
+    @Query("""
+    SELECT * FROM entrenamientos
+    WHERE rutinaId = :rutinaId
+      AND completado = 1
+    ORDER BY fechaInicio ASC, id ASC
+""")
+    suspend fun getCompletadosByRutinaId(
+        rutinaId: Long
+    ): List<EntrenamientoEntity>
+
+    @Query("""
+    UPDATE entrenamientos
+    SET rutinaId = :nuevaRutinaId
+    WHERE id = :entrenamientoId
+""")
+    suspend fun updateRutinaId(
+        entrenamientoId: Long,
+        nuevaRutinaId: Long
+    )
+
+    @Query("""
+    UPDATE entrenamientos
+    SET fechaFin = :nuevaFechaFin
+    WHERE id = :entrenamientoId
+""")
+    suspend fun updateFechaFin(
+        entrenamientoId: Long,
+        nuevaFechaFin: Long
+    )
+
 }

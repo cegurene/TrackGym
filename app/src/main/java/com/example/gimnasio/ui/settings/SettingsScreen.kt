@@ -57,6 +57,8 @@ import com.example.gimnasio.ui.theme.ThemeMode
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
+import androidx.compose.material3.Switch
+import com.example.gimnasio.data.preferences.AdvancedSettingsRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +70,13 @@ fun SettingsScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     val accountPreferencesRepository = remember { AccountPreferencesRepository(context) }
+    val advancedSettingsRepository = remember {
+        AdvancedSettingsRepository(context)
+    }
+
+    val advancedModificationsEnabled by advancedSettingsRepository
+        .advancedModificationsFlow
+        .collectAsState(initial = false)
     val emailAuthProvider = remember { FirebaseEmailAuthProvider() }
     val googleSocialAuthProvider = remember { GoogleSocialAuthProvider() }
     val accountSession by accountPreferencesRepository.accountSessionFlow.collectAsState(initial = AccountSession.LoggedOut)
@@ -477,6 +486,57 @@ fun SettingsScreen(
                         RadioButton(
                             selected = mode == selectedThemeMode,
                             onClick = { onThemeModeSelected(mode) }
+                        )
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Modificaciones avanzadas",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Permitir modificaciones adicionales",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = "Permite cambiar la rutina asociada y la duración de entrenamientos terminados.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Switch(
+                            checked = advancedModificationsEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    advancedSettingsRepository
+                                        .setAdvancedModificationsEnabled(enabled)
+                                }
+                            }
                         )
                     }
                 }
