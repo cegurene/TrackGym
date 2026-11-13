@@ -8,6 +8,8 @@ import com.example.gimnasio.data.dao.*
 import com.example.gimnasio.data.entity.*
 import androidx.room.TypeConverters
 import com.example.gimnasio.data.converter.MusculoConverter
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
@@ -18,7 +20,7 @@ import com.example.gimnasio.data.converter.MusculoConverter
         EntrenamientoEjercicioEntity::class,
         SerieEntity::class
     ],
-    version = 13, // 13, si se sube muy importante que no se borren datos
+    version = 14, // 13, si se sube muy importante que no se borren datos
     exportSchema = false
 )
 @TypeConverters(MusculoConverter::class)
@@ -34,6 +36,22 @@ abstract class GymDatabase : RoomDatabase() {
 
     companion object {
 
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE rutinas ADD COLUMN eliminado INTEGER NOT NULL DEFAULT 0"
+                )
+
+                db.execSQL(
+                    "ALTER TABLE ejercicios ADD COLUMN eliminado INTEGER NOT NULL DEFAULT 0"
+                )
+
+                db.execSQL(
+                    "ALTER TABLE entrenamiento_ejercicio ADD COLUMN anadidoPosteriormente INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
         @Volatile
         private var INSTANCE: GymDatabase? = null
 
@@ -45,6 +63,7 @@ abstract class GymDatabase : RoomDatabase() {
                     "gym_database"
                 )
                     //.fallbackToDestructiveMigration()
+                    .addMigrations(MIGRATION_13_14)
                     .build()
 
                 INSTANCE = instance

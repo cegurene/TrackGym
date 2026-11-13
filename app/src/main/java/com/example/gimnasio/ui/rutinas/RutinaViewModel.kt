@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteConstraintException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
 import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.entity.EjercicioEntity
 import com.example.gimnasio.data.entity.EntrenamientoEjercicioEntity
@@ -44,6 +45,11 @@ class RutinaViewModel(application: Application) : ViewModel() {
         ALPHABETIC_DESC,
         TIMES_DONE_DESC,
         TIMES_DONE_ASC
+    }
+
+    enum class BorrarRutinaResultado {
+        OK,
+        ENTRENAMIENTO_ACTIVO
     }
 
     private val database = GymDatabase.getDatabase(application)
@@ -131,10 +137,27 @@ class RutinaViewModel(application: Application) : ViewModel() {
         return rutinaDao.getByIdFlow(id)
     }
 
-    fun borrarRutina(id: Long) {
+    fun borrarRutina(
+        id: Long,
+        onResult: (BorrarRutinaResultado) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            rutinaDao.deleteById(id)
-            cloudSyncCoordinator.syncNow()
+            val resultado = database.withTransaction {
+                val activo = entrenamientoDao.getEntrenamientoActivo()
+
+                if (activo != null) {
+                    BorrarRutinaResultado.ENTRENAMIENTO_ACTIVO
+                } else {
+                    rutinaDao.deleteById(id)
+                    BorrarRutinaResultado.OK
+                }
+            }
+
+            if (resultado == BorrarRutinaResultado.OK) {
+                cloudSyncCoordinator.syncNow()
+            }
+
+            onResult(resultado)
         }
     }
 

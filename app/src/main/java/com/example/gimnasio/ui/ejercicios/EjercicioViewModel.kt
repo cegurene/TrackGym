@@ -4,6 +4,8 @@ import android.app.Application
 import android.database.sqlite.SQLiteConstraintException
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
+import com.example.gimnasio.data.GymDatabase
 import com.example.gimnasio.data.dao.EjercicioDao
 import com.example.gimnasio.data.dao.SerieDao
 import com.example.gimnasio.data.entity.EjercicioEntity
@@ -45,6 +47,11 @@ class EjercicioViewModel(
         MUSCLE_DESC
     }
 
+    enum class BorrarEjercicioResultado {
+        OK,
+        ENTRENAMIENTO_ACTIVO
+    }
+
     private val cloudSyncCoordinator = CloudSyncCoordinator(application)
     private val sortPreferences = SortPreferences(application)
 
@@ -58,6 +65,9 @@ class EjercicioViewModel(
 
     private val _order = MutableStateFlow(sortPreferences.getEjercicioOrder())
     val order = _order
+
+    private val database = GymDatabase.getDatabase(application)
+    private val entrenamientoDao = database.entrenamientoDao()
 
     // Helper privado para aplicar ordenamiento
     private fun sortEjercicios(lista: List<EjercicioEntity>, orden: EjercicioOrder): List<EjercicioEntity> {
@@ -170,10 +180,33 @@ class EjercicioViewModel(
         }
     }
 
-    fun borrarEjercicio(id: Long) {
+    fun borrarEjercicio(
+        id: Long,
+        onResult: (BorrarEjercicioResultado) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            ejercicioDao.delete(id)
-            cloudSyncCoordinator.syncNow()
+            val resultado = database.withTransaction {
+                val activo = entrenamientoDao.getEntrenamientoActivo()
+
+                if (activo != null) {
+                    BorrarEjercicioResultado.ENTRENAMIENTO_ACTIVO
+                } else {
+                    // Quitar el ejercicio de las rutinas.
+                    // Se mantienen las relaciones del histórico.
+                    ejercicioDao.deleteFromRutinas(id)
+
+                    // Archivarlo, sin borrar su registro de la base de datos.
+                    ejercicioDao.delete(id)
+
+                    BorrarEjercicioResultado.OK
+                }
+            }
+
+            if (resultado == BorrarEjercicioResultado.OK) {
+                cloudSyncCoordinator.syncNow()
+            }
+
+            onResult(resultado)
         }
     }
 

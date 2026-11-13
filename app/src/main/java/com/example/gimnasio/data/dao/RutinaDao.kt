@@ -17,18 +17,13 @@ interface RutinaDao {
     suspend fun insert(rutina: RutinaEntity): Long
 
     // Lista simple de rutinas (sin ejercicios)
-    @Query("SELECT * FROM rutinas ORDER BY nombre ASC")
+    @Query("SELECT * FROM rutinas WHERE eliminado = 0 ORDER BY nombre ASC")
     fun getAllRutinas(): Flow<List<RutinaEntity>>
-
-    // 🔥 Rutinas con sus ejercicios (N–M)
-    @Transaction
-    @Query("SELECT * FROM rutinas ORDER BY nombre ASC")
-    fun getRutinasConEjercicios(): Flow<List<RutinaConEjercicios>>
 
     @Query("SELECT * FROM rutinas WHERE id = :id")
     fun getByIdFlow(id: Long): Flow<RutinaEntity?>
 
-    @Query("DELETE FROM rutinas WHERE id = :id")
+    @Query("UPDATE rutinas SET eliminado = 1 WHERE id = :id")
     suspend fun deleteById(id: Long)
 
     @Query("UPDATE rutinas SET nombre = :nuevoNombre WHERE id = :id")
@@ -40,17 +35,24 @@ interface RutinaDao {
     @Query("SELECT COUNT(*) > 0 FROM rutinas WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre)) AND id != :id")
     suspend fun existsByNombreExcludingId(nombre: String, id: Long): Boolean
 
+    // Rutinas con sus ejercicios (N-M), para el catálogo
+    @Transaction
+    @Query("SELECT * FROM rutinas WHERE eliminado = 0 ORDER BY nombre ASC")
+    fun getRutinasConEjercicios(): Flow<List<RutinaConEjercicios>>
+
+    // Una rutina concreta con sus ejercicios, para el detalle
     @Transaction
     @Query("SELECT * FROM rutinas WHERE id = :id")
     fun getRutinaConEjercicios(id: Long): Flow<RutinaConEjercicios?>
 
-    @Query("SELECT COUNT(*) FROM rutinas")
+    @Query("SELECT COUNT(*) FROM rutinas WHERE eliminado = 0")
     fun getTotalRutinasFlow(): Flow<Int>
 
     @Transaction
     @Query("""
         SELECT DISTINCT r.* FROM rutinas r
-        WHERE r.nombre LIKE '%' || :searchQuery || '%'
+        WHERE r.eliminado = 0
+          AND r.nombre LIKE '%' || :searchQuery || '%'
         ORDER BY r.nombre ASC
     """)
     fun searchRutinas(searchQuery: String): Flow<List<RutinaConEjercicios>>

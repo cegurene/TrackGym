@@ -94,6 +94,9 @@ fun RutinaDetailScreen(
         .entrenamientoActivo
         .collectAsState(initial = null)
 
+    var showActiveWorkoutWarning by remember {
+        mutableStateOf(false)
+    }
 
 
     Scaffold(
@@ -355,28 +358,77 @@ fun RutinaDetailScreen(
     // ⚠️ Diálogo de confirmación de borrar
     if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Eliminar '${rutina?.nombre ?: "Rutina"}'") },
+            onDismissRequest = {
+                showDeleteDialog = false
+            },
+            title = {
+                Text("Eliminar '${rutina?.nombre ?: "Rutina"}'")
+            },
             text = {
-                Text("Esta acción no se puede deshacer. ¿Seguro que quieres eliminar esta rutina?")
+                Text(
+                    "La rutina dejará de aparecer en tu biblioteca, " +
+                            "pero los entrenamientos realizados y sus estadísticas " +
+                            "se conservarán. ¿Quieres continuar?"
+                )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.borrarRutina(rutinaId)
-                        showDeleteDialog = false
-                        onBack()
+                        viewModel.borrarRutina(rutinaId) { resultado ->
+                            when (resultado) {
+                                RutinaViewModel.BorrarRutinaResultado.OK -> {
+                                    showDeleteDialog = false
+                                    onBack()
+                                }
+
+                                RutinaViewModel.BorrarRutinaResultado.ENTRENAMIENTO_ACTIVO -> {
+                                    showDeleteDialog = false
+                                    showActiveWorkoutWarning = true
+                                }
+                            }
+                        }
                     }
                 ) {
                     Text(
-                        text = "Eliminar",
+                        "Eliminar",
                         color = MaterialTheme.colorScheme.error
                     )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                    }
+                ) {
                     Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showActiveWorkoutWarning) {
+        AlertDialog(
+            onDismissRequest = {
+                showActiveWorkoutWarning = false
+            },
+            title = {
+                Text("No se puede eliminar")
+            },
+            text = {
+                Text(
+                    "No puedes eliminar una rutina mientras haya " +
+                            "un entrenamiento activo. Finaliza o cancela " +
+                            "el entrenamiento e inténtalo de nuevo."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showActiveWorkoutWarning = false
+                    }
+                ) {
+                    Text("Aceptar")
                 }
             }
         )

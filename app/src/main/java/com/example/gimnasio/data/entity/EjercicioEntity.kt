@@ -14,5 +14,7 @@ data class EjercicioEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val nombre: String,
     val musculos: List<Musculo>,
-    @ColumnInfo(name = "comentario") val comentario: String? = ""
+    @ColumnInfo(name = "comentario") val comentario: String? = "",
+    @ColumnInfo(defaultValue = "0")
+    val eliminado: Boolean = false
 )

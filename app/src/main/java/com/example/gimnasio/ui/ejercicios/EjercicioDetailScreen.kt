@@ -268,6 +268,11 @@ fun EjercicioDetailScreen(
         onGraficaScrollChange(isScrollingGrafica)
     }
 
+    var showActiveWorkoutWarning by remember {
+        mutableStateOf(false)
+    }
+
+
     @Composable
     fun GraficaProgresoScrollable(
         valores: List<Float>,
@@ -1482,11 +1487,80 @@ fun EjercicioDetailScreen(
     // ----------------------------
     if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Eliminar '${ejercicio?.nombre ?: "Ejercicio"}'") },
-            text = { Text("Esta acción no se puede deshacer. ¿Seguro que quieres eliminar este ejercicio?") },
-            confirmButton = { TextButton(onClick = { viewModel.borrarEjercicio(ejercicioId); showDeleteDialog = false; onBack() }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) } },
-            dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("Cancelar") } }
+            onDismissRequest = {
+                showDeleteDialog = false
+            },
+            title = {
+                Text("Eliminar '${ejercicio?.nombre ?: "Ejercicio"}'")
+            },
+            text = {
+                Text(
+                    "El ejercicio dejará de aparecer en tu biblioteca " +
+                            "y se quitará de las rutinas, pero los entrenamientos " +
+                            "realizados, sus series y sus estadísticas se conservarán. " +
+                            "¿Quieres continuar?"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.borrarEjercicio(ejercicioId) { resultado ->
+                            when (resultado) {
+                                EjercicioViewModel.BorrarEjercicioResultado.OK -> {
+                                    showDeleteDialog = false
+                                    onBack()
+                                }
+
+                                EjercicioViewModel.BorrarEjercicioResultado.ENTRENAMIENTO_ACTIVO -> {
+                                    showDeleteDialog = false
+                                    showActiveWorkoutWarning = true
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text(
+                        "Eliminar",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showActiveWorkoutWarning) {
+        AlertDialog(
+            onDismissRequest = {
+                showActiveWorkoutWarning = false
+            },
+            title = {
+                Text("No se puede eliminar")
+            },
+            text = {
+                Text(
+                    "No puedes eliminar un ejercicio mientras haya " +
+                            "un entrenamiento activo. Finaliza o cancela " +
+                            "el entrenamiento e inténtalo de nuevo."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showActiveWorkoutWarning = false
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            }
         )
     }
 

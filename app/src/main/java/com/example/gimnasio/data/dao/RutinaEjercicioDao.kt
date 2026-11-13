@@ -33,20 +33,21 @@ interface RutinaEjercicioDao {
     suspend fun getMaxOrden(rutinaId: Long): Int?
 
     @Query("""
-    SELECT e.* FROM ejercicios e
-    INNER JOIN rutina_ejercicio re
-        ON e.id = re.ejercicioId
-    WHERE re.rutinaId = :rutinaId
-    ORDER BY re.orden ASC
+        SELECT e.* FROM ejercicios e
+        INNER JOIN rutina_ejercicio re
+            ON e.id = re.ejercicioId
+        WHERE re.rutinaId = :rutinaId
+          AND e.eliminado = 0
+        ORDER BY re.orden ASC
     """)
     fun getEjerciciosOrdenados(rutinaId: Long): Flow<List<EjercicioEntity>>
 
     @Query("""
-    UPDATE rutina_ejercicio
-    SET orden = :nuevoOrden
-    WHERE rutinaId = :rutinaId
-    AND ejercicioId = :ejercicioId
-""")
+        UPDATE rutina_ejercicio
+        SET orden = :nuevoOrden
+        WHERE rutinaId = :rutinaId
+        AND ejercicioId = :ejercicioId
+    """)
     suspend fun updateOrden(
         rutinaId: Long,
         ejercicioId: Long,
@@ -54,12 +55,13 @@ interface RutinaEjercicioDao {
     )
 
     @Query("""
-    SELECT e.*, re.orden FROM ejercicios e
-    INNER JOIN rutina_ejercicio re
-        ON e.id = re.ejercicioId
-    WHERE re.rutinaId = :rutinaId
-    ORDER BY re.orden ASC
-""")
+        SELECT e.*, re.orden FROM ejercicios e
+        INNER JOIN rutina_ejercicio re
+            ON e.id = re.ejercicioId
+        WHERE re.rutinaId = :rutinaId
+          AND e.eliminado = 0
+        ORDER BY re.orden ASC
+    """)
     fun getEjerciciosConOrden(rutinaId: Long): Flow<List<EjercicioConOrden>>
 
     @Query("SELECT * FROM rutina_ejercicio WHERE rutinaId = :rutinaId ORDER BY orden ASC")

@@ -1,5 +1,6 @@
 package com.example.gimnasio.data.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -32,5 +33,7 @@ data class EntrenamientoEjercicioEntity(
     val entrenamientoId: Long,
     val ejercicioId: Long,
     val orden: Int,
-    val completado: Boolean = false
+    val completado: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val anadidoPosteriormente: Boolean = false
 )

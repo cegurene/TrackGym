@@ -16,15 +16,15 @@ interface EjercicioDao {
     suspend fun insert(ejercicio: EjercicioEntity)
 
     // Listar TODOS los ejercicios
-    @Query("SELECT * FROM ejercicios ORDER BY nombre ASC")
+    @Query("SELECT * FROM ejercicios WHERE eliminado = 0 ORDER BY nombre ASC")
     fun getAll(): Flow<List<EjercicioEntity>>
 
     // Obtener un ejercicio por id (útil para detalles / progreso)
     @Query("SELECT * FROM ejercicios WHERE id = :id")
     suspend fun getById(id: Long): EjercicioEntity?
 
-    // Borrar ejercicio (se borran relaciones por FK)
-    @Query("DELETE FROM ejercicios WHERE id = :id")
+    // Archivar ejercicio sin eliminar su histórico
+    @Query("UPDATE ejercicios SET eliminado = 1 WHERE id = :id")
     suspend fun delete(id: Long)
 
     @Query("UPDATE ejercicios SET nombre = :nuevoNombre WHERE id = :id")
@@ -39,25 +39,34 @@ interface EjercicioDao {
     @Query("SELECT * FROM ejercicios WHERE id = :id")
     fun getByIdFlow(id: Long): Flow<EjercicioEntity?>
 
-    @Query("SELECT * FROM ejercicios WHERE musculos = :musculo ORDER BY nombre ASC")
+    @Query("""
+        SELECT * FROM ejercicios
+        WHERE eliminado = 0
+          AND musculos = :musculo
+        ORDER BY nombre ASC
+    """)
     fun getEjerciciosPorMusculo(musculo: String): Flow<List<EjercicioEntity>>
 
     @Query("UPDATE ejercicios SET musculos = :musculos WHERE id = :id")
     suspend fun updateMusculos(id: Long, musculos: String)
 
     // 🔹 Total ejercicios
-    @Query("SELECT COUNT(*) FROM ejercicios")
+    @Query("SELECT COUNT(*) FROM ejercicios WHERE eliminado = 0")
     fun getTotalEjerciciosFlow(): Flow<Int>
 
     // 🔹 Conteo por músculo
     @Query("""
-    SELECT musculos as musculo, COUNT(*) as total
-    FROM ejercicios
-    GROUP BY musculos
-""")
+        SELECT musculos as musculo, COUNT(*) as total
+        FROM ejercicios
+        WHERE eliminado = 0
+        GROUP BY musculos
+    """)
     fun getConteoPorMusculo(): Flow<List<MusculoCount>>
 
     // Actualizar comentario
     @Query("UPDATE ejercicios SET comentario = :comentario WHERE id = :ejercicioId")
     suspend fun actualizarComentario(ejercicioId: Long, comentario: String)
+
+    @Query("DELETE FROM rutina_ejercicio WHERE ejercicioId = :id")
+    suspend fun deleteFromRutinas(id: Long)
 }
