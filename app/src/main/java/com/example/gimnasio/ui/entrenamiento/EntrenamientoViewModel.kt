@@ -202,13 +202,22 @@ class EntrenamientoViewModel(
 
     fun finalizarEntrenamiento(
         onFinalizado: () -> Unit,
-        onEjerciciosSinSeries: (List<String>) -> Unit = {}
+        onEjerciciosSinSeries: (List<String>) -> Unit = {},
+        onSinEjercicios: () -> Unit = {}
     ) {
         viewModelScope.launch {
 
             // Comprobar el estado más reciente de los ejercicios y sus series
-            val ejerciciosSinSeries = ejerciciosDelEntrenamiento
-                .first()
+            val ejercicios = ejerciciosDelEntrenamiento.first()
+
+            // Impedir finalizar un entrenamiento sin ejercicios
+            if (ejercicios.isEmpty()) {
+                onSinEjercicios()
+                return@launch
+            }
+
+            // Comprobar si algún ejercicio no tiene ninguna serie
+            val ejerciciosSinSeries = ejercicios
                 .filter { it.series.isEmpty() }
                 .map { it.ejercicio.nombre }
 

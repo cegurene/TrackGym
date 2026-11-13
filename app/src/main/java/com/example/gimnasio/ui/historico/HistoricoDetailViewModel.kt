@@ -13,6 +13,7 @@ import com.example.gimnasio.data.model.EntrenamientoConEjerciciosYSeries
 import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.launch
 import androidx.room.withTransaction
+import kotlinx.coroutines.flow.first
 
 class HistoricoDetailViewModel(context: Context) : ViewModel() {
     enum class NombreOperacionResultado {
@@ -26,6 +27,9 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
     private val dao = database.entrenamientoDao()
     private val serieDao = database.serieDao()
     private val rutinaDao = database.rutinaDao()
+    private val ejercicioDao = database.ejercicioDao()
+
+    val ejerciciosDisponibles = ejercicioDao.getAll()
 
     val rutinas = rutinaDao.getAllRutinas()
 
@@ -251,6 +255,111 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
                     entrenamientoId = entrenamientoId,
                     nuevaFechaFin = nuevaFechaFin
                 )
+
+                cloudSyncCoordinator.syncNow()
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    fun anadirEjercicioHistorico(
+        entrenamientoId: Long,
+        ejercicioId: Long,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                val entrenamiento = dao.getEntrenamientoEntityById(entrenamientoId)
+
+                if (entrenamiento == null || !entrenamiento.completado) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val ejercicio = ejercicioDao.getById(ejercicioId)
+
+                if (ejercicio == null || ejercicio.eliminado) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val entrenamientoCompleto =
+                    dao.getEntrenamientoCompleto(entrenamientoId).first()
+
+                if (entrenamientoCompleto == null ||
+                    entrenamientoCompleto.ejercicios.any {
+                        it.entrenamientoEjercicio.ejercicioId == ejercicioId
+                    }
+                ) {
+                    onResult(false)
+                    return@launch
+                }
+
+                database.withTransaction {
+                    val nuevoOrden = (dao.getMaxOrden(entrenamientoId) ?: -1) + 1
+
+                    val nuevoEjercicioId = dao.insertEjercicioDeEntrenamiento(
+                        EntrenamientoEjercicioEntity(
+                            entrenamientoId = entrenamientoId,
+                            ejercicioId = ejercicioId,
+                            orden = nuevoOrden,
+                            anadidoPosteriormente = true
+                        )
+                    )
+
+                    val esCardio = ejercicio.musculos.contains(Musculo.CARDIO)
+
+                    serieDao.insert(
+                        SerieEntity(
+                            entrenamientoEjercicioId = nuevoEjercicioId,
+                            peso = if (esCardio) null else 0f,
+                            repeticiones = if (esCardio) null else 0,
+                            tiempo = if (esCardio) 0 else null,
+                            intensidad = if (esCardio) 0 else null
+                        )
+                    )
+                }
+
+                cloudSyncCoordinator.syncNow()
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    fun eliminarEjercicioHistorico(
+        entrenamientoId: Long,
+        entrenamientoEjercicioId: Long,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                val entrenamiento = dao.getEntrenamientoEntityById(entrenamientoId)
+
+                if (entrenamiento == null || !entrenamiento.completado) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val entrenamientoCompleto =
+                    dao.getEntrenamientoCompleto(entrenamientoId).first()
+
+                val perteneceAlEntrenamiento =
+                    entrenamientoCompleto?.ejercicios?.any {
+                        it.entrenamientoEjercicio.id == entrenamientoEjercicioId
+                    } == true
+
+                if (!perteneceAlEntrenamiento) {
+                    onResult(false)
+                    return@launch
+                }
+
+                dao.deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId)
 
                 cloudSyncCoordinator.syncNow()
                 onResult(true)

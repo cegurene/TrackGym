@@ -183,6 +183,7 @@ fun EntrenamientoScreen(
 
     var showMissingSeriesDialog by remember { mutableStateOf(false) }
     var ejerciciosSinSeries by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showNoExercisesDialog by remember { mutableStateOf(false) }
 
     val ejerciciosYaAgregados = ejercicios.map { it.entrenamientoEjercicio.ejercicioId }.toSet()
     val ejerciciosNoAgregados = ejerciciosDisponibles.filter { ejercicio ->
@@ -495,9 +496,11 @@ fun EntrenamientoScreen(
             }
 
             // 🔹 BOTONES INFERIORES
-            val todasLasSeriesCompletadas = ejercicios.all { ejercicio ->
-                ejercicio.series.isNotEmpty() && ejercicio.series.all { it.completada }
-            }
+            val todasLasSeriesCompletadas = ejercicios.isNotEmpty() &&
+                    ejercicios.all { ejercicio ->
+                        ejercicio.series.isNotEmpty() &&
+                                ejercicio.series.all { it.completada }
+                    }
 
             val hayEjerciciosSinSeries = ejercicios.any { ejercicio ->
                 ejercicio.series.isEmpty()
@@ -684,6 +687,9 @@ fun EntrenamientoScreen(
                         onEjerciciosSinSeries = { nombres ->
                             ejerciciosSinSeries = nombres
                             showMissingSeriesDialog = true
+                        },
+                        onSinEjercicios = {
+                            showNoExercisesDialog = true
                         }
                     )
                 }) {
@@ -733,6 +739,32 @@ fun EntrenamientoScreen(
                 TextButton(
                     onClick = {
                         showMissingSeriesDialog = false
+                    }
+                ) {
+                    Text("Entendido")
+                }
+            }
+        )
+    }
+
+    if (showNoExercisesDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showNoExercisesDialog = false
+            },
+            title = {
+                Text("No hay ejercicios")
+            },
+            text = {
+                Text(
+                    "No puedes finalizar un entrenamiento sin ejercicios. " +
+                            "Añade al menos un ejercicio antes de continuar."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showNoExercisesDialog = false
                     }
                 ) {
                     Text("Entendido")
