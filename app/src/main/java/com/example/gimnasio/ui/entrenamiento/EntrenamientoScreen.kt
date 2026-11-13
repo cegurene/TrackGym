@@ -181,6 +181,9 @@ fun EntrenamientoScreen(
     var showSuccessDialog by remember { mutableStateOf(false) }
     var showFinishConfirmDialog by remember { mutableStateOf(false) }
 
+    var showMissingSeriesDialog by remember { mutableStateOf(false) }
+    var ejerciciosSinSeries by remember { mutableStateOf<List<String>>(emptyList()) }
+
     val ejerciciosYaAgregados = ejercicios.map { it.entrenamientoEjercicio.ejercicioId }.toSet()
     val ejerciciosNoAgregados = ejerciciosDisponibles.filter { ejercicio ->
         !ejerciciosYaAgregados.contains(ejercicio.id)
@@ -496,6 +499,12 @@ fun EntrenamientoScreen(
                 ejercicio.series.isNotEmpty() && ejercicio.series.all { it.completada }
             }
 
+            val hayEjerciciosSinSeries = ejercicios.any { ejercicio ->
+                ejercicio.series.isEmpty()
+            }
+
+            val puedeIntentarFinalizar = todasLasSeriesCompletadas || hayEjerciciosSinSeries
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -514,7 +523,7 @@ fun EntrenamientoScreen(
                     onClick = {
                         showFinishConfirmDialog = true
                     },
-                    enabled = todasLasSeriesCompletadas,
+                    enabled = puedeIntentarFinalizar,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Finalizar")
@@ -668,9 +677,15 @@ fun EntrenamientoScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showFinishConfirmDialog = false
-                    viewModel.finalizarEntrenamiento {
-                        showSuccessDialog = true
-                    }
+                    viewModel.finalizarEntrenamiento(
+                        onFinalizado = {
+                            showSuccessDialog = true
+                        },
+                        onEjerciciosSinSeries = { nombres ->
+                            ejerciciosSinSeries = nombres
+                            showMissingSeriesDialog = true
+                        }
+                    )
                 }) {
                     Text("Sí")
                 }
@@ -680,6 +695,47 @@ fun EntrenamientoScreen(
                     showFinishConfirmDialog = false
                 }) {
                     Text("No")
+                }
+            }
+        )
+    }
+
+    if (showMissingSeriesDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showMissingSeriesDialog = false
+            },
+            title = {
+                Text("Faltan series por registrar")
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "No puedes finalizar el entrenamiento porque los siguientes ejercicios no tienen ninguna serie:"
+                    )
+
+                    ejerciciosSinSeries.forEach { nombre ->
+                        Text(
+                            text = "• $nombre",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    Text(
+                        "Añade al menos una serie a cada ejercicio para poder finalizar.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showMissingSeriesDialog = false
+                    }
+                ) {
+                    Text("Entendido")
                 }
             }
         )

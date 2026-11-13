@@ -11,6 +11,7 @@ import com.example.gimnasio.data.model.EntrenamientoEjercicioConSeries
 import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class EntrenamientoViewModel(
@@ -199,14 +200,39 @@ class EntrenamientoViewModel(
         }
     }
 
-    fun finalizarEntrenamiento(onFinalizado: () -> Unit) {
+    fun finalizarEntrenamiento(
+        onFinalizado: () -> Unit,
+        onEjerciciosSinSeries: (List<String>) -> Unit = {}
+    ) {
         viewModelScope.launch {
+
+            // Comprobar el estado más reciente de los ejercicios y sus series
+            val ejerciciosSinSeries = ejerciciosDelEntrenamiento
+                .first()
+                .filter { it.series.isEmpty() }
+                .map { it.ejercicio.nombre }
+
+            // Si hay ejercicios sin series, impedir la finalización
+            if (ejerciciosSinSeries.isNotEmpty()) {
+                onEjerciciosSinSeries(ejerciciosSinSeries)
+                return@launch
+            }
+
+            // Finalización normal
             val rutinaId = entrenamientoDao.getRutinaIdByEntrenamientoId(entrenamientoId)
-            entrenamientoDao.marcarComoCompletado(entrenamientoId, System.currentTimeMillis())
+
+            entrenamientoDao.marcarComoCompletado(
+                entrenamientoId,
+                System.currentTimeMillis()
+            )
 
             if (rutinaId != null) {
-                val nombreRutina = entrenamientoDao.getNombreRutinaById(rutinaId) ?: "Entrenamiento"
-                val numeroEntrenamiento = entrenamientoDao.countCompletadosByRutinaId(rutinaId)
+                val nombreRutina = entrenamientoDao.getNombreRutinaById(rutinaId)
+                    ?: "Entrenamiento"
+
+                val numeroEntrenamiento =
+                    entrenamientoDao.countCompletadosByRutinaId(rutinaId)
+
                 entrenamientoDao.renombrarEntrenamiento(
                     entrenamientoId,
                     "${nombreRutina.trim()} -> $numeroEntrenamiento"
