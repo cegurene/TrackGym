@@ -151,6 +151,37 @@ interface EntrenamientoDao {
             Flow<List<EntrenamientoConRutinaYEjercicios>>
 
     @Transaction
+    @Query("""
+        SELECT * FROM entrenamientos
+        WHERE completado = 1
+          AND (:rutinaId IS NULL OR rutinaId = :rutinaId)
+          AND (:fechaDesde IS NULL OR fechaInicio >= :fechaDesde)
+          AND (:fechaHasta IS NULL OR fechaInicio <= :fechaHasta)
+        ORDER BY fechaInicio DESC, id DESC
+        LIMIT :limite OFFSET :desplazamiento
+    """)
+    fun getEntrenamientosCompletadosPaginados(
+        rutinaId: Long?,
+        fechaDesde: Long?,
+        fechaHasta: Long?,
+        limite: Int,
+        desplazamiento: Int
+    ): Flow<List<EntrenamientoConRutinaYEjercicios>>
+
+    @Query("""
+        SELECT COUNT(*) FROM entrenamientos
+        WHERE completado = 1
+          AND (:rutinaId IS NULL OR rutinaId = :rutinaId)
+          AND (:fechaDesde IS NULL OR fechaInicio >= :fechaDesde)
+          AND (:fechaHasta IS NULL OR fechaInicio <= :fechaHasta)
+    """)
+    fun getTotalEntrenamientosCompletadosFiltrados(
+        rutinaId: Long?,
+        fechaDesde: Long?,
+        fechaHasta: Long?
+    ): Flow<Int>
+
+    @Transaction
     @Query("SELECT * FROM entrenamientos WHERE id = :id")
     fun getEntrenamientoConRutinaById(
         id: Long

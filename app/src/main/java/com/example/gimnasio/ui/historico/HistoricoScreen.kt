@@ -50,11 +50,20 @@ fun HistoricoScreen(
         viewModel.setRutinaOrder(rutinaOrder)
     }
 
-    val entrenamientosTotales by viewModel.entrenamientos
-        .collectAsState(initial = emptyList())
+    val entrenamientosTotales by viewModel.totalEntrenamientos
+        .collectAsState(initial = 0)
 
     val entrenamientos by viewModel.entrenamientosFiltrados
         .collectAsState(initial = emptyList())
+
+    val totalEntrenamientosFiltrados by
+    viewModel.totalEntrenamientosFiltrados.collectAsState()
+
+    val hayMasEntrenamientos by
+    viewModel.hayMasEntrenamientos.collectAsState()
+
+    val cargandoMasEntrenamientos by
+    viewModel.cargandoMasEntrenamientos.collectAsState()
 
     val rutinas by viewModel.rutinas.collectAsState()
     val selectedRutinaId by viewModel.selectedRutinaId.collectAsState()
@@ -159,7 +168,7 @@ fun HistoricoScreen(
             }
 
             when {
-                entrenamientosTotales.isEmpty() -> {
+                entrenamientosTotales == 0 -> {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -205,9 +214,35 @@ fun HistoricoScreen(
                                 onClick = {
                                     onEntrenamientoClick(item.entrenamiento.id)
                                 },
-                                numero = entrenamientos.size - index
+                                numero = totalEntrenamientosFiltrados - index
                             )
                         }
+
+                        if (hayMasEntrenamientos) {
+                            item(key = "mostrar_mas_entrenamientos") {
+                                OutlinedButton(
+                                    onClick = {
+                                        viewModel.cargarMasEntrenamientos()
+                                    },
+                                    enabled = !cargandoMasEntrenamientos,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp)
+                                ) {
+                                    if (cargandoMasEntrenamientos) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Cargando...")
+                                    } else {
+                                        Text("Mostrar más")
+                                    }
+                                }
+                            }
+                        }
+
                     }
                 }
             }

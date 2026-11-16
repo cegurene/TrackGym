@@ -27,6 +27,62 @@ import com.example.gimnasio.ui.components.emojiSummary
 import com.example.gimnasio.ui.components.primaryImageRes
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.text.input.TextFieldValue
+
+@Composable
+private fun SerieHistoricaInputField(
+    initialValue: String,
+    label: String,
+    allowDecimal: Boolean = false,
+    onValueChange: (String) -> Unit
+) {
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(initialValue))
+    }
+
+    LaunchedEffect(initialValue) {
+        if (textFieldValue.text != initialValue) {
+            textFieldValue = TextFieldValue(initialValue)
+        }
+    }
+
+    OutlinedTextField(
+        value = textFieldValue,
+        onValueChange = { newValue ->
+            val isValid = if (allowDecimal) {
+                newValue.text.isEmpty() ||
+                        newValue.text.matches(Regex("^\\d*(?:[.,]\\d*)?$"))
+            } else {
+                newValue.text.isEmpty() ||
+                        newValue.text.all { it.isDigit() }
+            }
+
+            if (isValid) {
+                val normalized = if (allowDecimal) {
+                    newValue.text.replace(',', '.')
+                } else {
+                    newValue.text
+                }
+
+                textFieldValue = newValue.copy(text = normalized)
+                onValueChange(normalized)
+            }
+        },
+        label = { Text(label) },
+        modifier = Modifier.width(88.dp),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (allowDecimal) {
+                KeyboardType.Decimal
+            } else {
+                KeyboardType.Number
+            }
+        )
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +113,18 @@ fun HistoricoDetailScreen(
         .collectAsState(initial = null)
 
     val rutinas by viewModel.rutinas.collectAsState(initial = emptyList())
+
+    val ejerciciosDisponibles by viewModel.ejerciciosDisponibles.collectAsState(
+        initial = emptyList()
+    )
+
+    var showAddExerciseDialog by remember { mutableStateOf(false) }
+    var showRemoveExerciseDialog by remember { mutableStateOf(false) }
+
+    var selectedExerciseToAddId by remember { mutableStateOf<Long?>(null) }
+    var selectedExerciseToRemoveId by remember { mutableStateOf<Long?>(null) }
+
+    var exerciseOperationError by remember { mutableStateOf(false) }
 
     var showSettings by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
@@ -264,50 +332,144 @@ fun HistoricoDetailScreen(
                                     style = MaterialTheme.typography.titleMedium
                                 )
 
+                                if (ejercicioConSeries.entrenamientoEjercicio.anadidoPosteriormente) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "Añadido posteriormente",
+                                            modifier = Modifier.padding(
+                                                horizontal = 8.dp,
+                                                vertical = 4.dp
+                                            ),
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 ejercicioConSeries.series.forEachIndexed { index, serie ->
 
-                                    if (!esCardio) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "${index + 1}.",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.width(20.dp)
+                                        )
 
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(
-                                                text = "Serie ${index + 1}",
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        if (!esCardio) {
+
+                                            SerieHistoricaInputField(
+                                                initialValue = serie.peso
+                                                    ?.takeIf { it != 0f }
+                                                    ?.toString()
+                                                    ?: "",
+                                                label = "Kg",
+                                                allowDecimal = true,
+                                                onValueChange = { valor ->
+                                                    val peso = valor.toFloatOrNull() ?: 0f
+
+                                                    viewModel.actualizarPesoSerieHistorica(
+                                                        entrenamientoId = entrenamientoId,
+                                                        serieId = serie.id,
+                                                        peso = peso
+                                                    )
+                                                }
                                             )
 
-                                            Text(
-                                                text = "${serie.peso}kg × ${serie.repeticiones} reps"
+                                            SerieHistoricaInputField(
+                                                initialValue = serie.repeticiones
+                                                    ?.takeIf { it != 0 }
+                                                    ?.toString()
+                                                    ?: "",
+                                                label = "Reps",
+                                                onValueChange = { valor ->
+                                                    viewModel.actualizarRepsSerieHistorica(
+                                                        entrenamientoId = entrenamientoId,
+                                                        serieId = serie.id,
+                                                        repeticiones = valor.toIntOrNull() ?: 0
+                                                    )
+                                                }
+                                            )
+
+                                        } else {
+
+                                            SerieHistoricaInputField(
+                                                initialValue = serie.tiempo
+                                                    ?.takeIf { it != 0 }
+                                                    ?.toString()
+                                                    ?: "",
+                                                label = "Min",
+                                                onValueChange = { valor ->
+                                                    viewModel.actualizarTiempoSerieHistorica(
+                                                        entrenamientoId = entrenamientoId,
+                                                        serieId = serie.id,
+                                                        tiempo = valor.toIntOrNull() ?: 0
+                                                    )
+                                                }
+                                            )
+
+                                            SerieHistoricaInputField(
+                                                initialValue = serie.intensidad
+                                                    ?.takeIf { it != 0 }
+                                                    ?.toString()
+                                                    ?: "",
+                                                label = "Intens.",
+                                                onValueChange = { valor ->
+                                                    viewModel.actualizarIntensidadSerieHistorica(
+                                                        entrenamientoId = entrenamientoId,
+                                                        serieId = serie.id,
+                                                        intensidad = valor.toIntOrNull() ?: 0
+                                                    )
+                                                }
                                             )
                                         }
 
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-
-                                    } else {
-
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        IconButton(
+                                            onClick = {
+                                                viewModel.eliminarSerieHistorica(
+                                                    entrenamientoId = entrenamientoId,
+                                                    serieId = serie.id
+                                                )
+                                            },
+                                            enabled = ejercicioConSeries.series.size > 1
                                         ) {
-                                            Text(
-                                                text = "Serie ${index + 1}",
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-
-                                            Text(
-                                                text = "${serie.tiempo ?: 0}min × ${serie.intensidad} intensidad"
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Eliminar serie",
+                                                tint = if (ejercicioConSeries.series.size > 1) {
+                                                    MaterialTheme.colorScheme.error
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                                }
                                             )
                                         }
-
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-
                                     }
 
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        viewModel.anadirSerieHistorico(
+                                            entrenamientoId = entrenamientoId,
+                                            entrenamientoEjercicioId =
+                                                ejercicioConSeries.entrenamientoEjercicio.id,
+                                            esCardio = esCardio
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("+ Añadir serie")
                                 }
 
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -376,12 +538,220 @@ fun HistoricoDetailScreen(
                     advancedOperationError = false
                     showChangeDurationDialog = true
                 },
+                onAddExercise = {
+                    showSettings = false
+                    exerciseOperationError = false
+
+                    val idsActuales = entrenamiento?.ejercicios
+                        ?.map { it.entrenamientoEjercicio.ejercicioId }
+                        .orEmpty()
+
+                    selectedExerciseToAddId = ejerciciosDisponibles
+                        .firstOrNull { it.id !in idsActuales }
+                        ?.id
+
+                    showAddExerciseDialog = true
+                },
+                onRemoveExercise = {
+                    showSettings = false
+                    exerciseOperationError = false
+
+                    selectedExerciseToRemoveId = entrenamiento?.ejercicios
+                        ?.firstOrNull()
+                        ?.entrenamientoEjercicio
+                        ?.id
+
+                    showRemoveExerciseDialog = true
+                },
                 onDelete = {
                     showSettings = false
                     showDeleteDialog = true
                 }
             )
         }
+    }
+
+    if (showAddExerciseDialog) {
+        val idsActuales = entrenamiento?.ejercicios
+            ?.map { it.entrenamientoEjercicio.ejercicioId }
+            .orEmpty()
+
+        val ejerciciosParaAnadir = ejerciciosDisponibles
+            .filter { it.id !in idsActuales }
+
+        AlertDialog(
+            onDismissRequest = {
+                showAddExerciseDialog = false
+            },
+            title = {
+                Text("Añadir ejercicio")
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (ejerciciosParaAnadir.isEmpty()) {
+                        Text("No hay más ejercicios disponibles para añadir.")
+                    } else {
+                        ejerciciosParaAnadir.forEach { ejercicio ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedExerciseToAddId == ejercicio.id,
+                                    onClick = {
+                                        selectedExerciseToAddId = ejercicio.id
+                                        exerciseOperationError = false
+                                    }
+                                )
+
+                                Text(
+                                    text = ejercicio.nombre,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+
+                    if (exerciseOperationError) {
+                        Text(
+                            text = "No se ha podido añadir el ejercicio. Inténtalo de nuevo.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = selectedExerciseToAddId != null &&
+                            ejerciciosParaAnadir.any {
+                                it.id == selectedExerciseToAddId
+                            },
+                    onClick = {
+                        val ejercicioId = selectedExerciseToAddId
+                            ?: return@TextButton
+
+                        viewModel.anadirEjercicioHistorico(
+                            entrenamientoId = entrenamientoId,
+                            ejercicioId = ejercicioId
+                        ) { success ->
+                            if (success) {
+                                showAddExerciseDialog = false
+                                exerciseOperationError = false
+                            } else {
+                                exerciseOperationError = true
+                            }
+                        }
+                    }
+                ) {
+                    Text("Añadir")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAddExerciseDialog = false
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showRemoveExerciseDialog) {
+        val ejerciciosDelEntrenamiento = entrenamiento?.ejercicios
+            ?.sortedBy { it.entrenamientoEjercicio.orden }
+            .orEmpty()
+
+        AlertDialog(
+            onDismissRequest = {
+                showRemoveExerciseDialog = false
+            },
+            title = {
+                Text("Eliminar ejercicio")
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("Selecciona el ejercicio que quieres eliminar.")
+
+                    ejerciciosDelEntrenamiento.forEach { item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedExerciseToRemoveId ==
+                                        item.entrenamientoEjercicio.id,
+                                onClick = {
+                                    selectedExerciseToRemoveId =
+                                        item.entrenamientoEjercicio.id
+                                    exerciseOperationError = false
+                                }
+                            )
+
+                            Text(
+                                text = item.ejercicio.nombre,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    if (exerciseOperationError) {
+                        Text(
+                            text = "No se ha podido eliminar el ejercicio. Inténtalo de nuevo.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = selectedExerciseToRemoveId != null,
+                    onClick = {
+                        val ejercicioId = selectedExerciseToRemoveId
+                            ?: return@TextButton
+
+                        viewModel.eliminarEjercicioHistorico(
+                            entrenamientoId = entrenamientoId,
+                            entrenamientoEjercicioId = ejercicioId
+                        ) { success ->
+                            if (success) {
+                                showRemoveExerciseDialog = false
+                                exerciseOperationError = false
+                            } else {
+                                exerciseOperationError = true
+                            }
+                        }
+                    }
+                ) {
+                    Text(
+                        text = "Eliminar",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showRemoveExerciseDialog = false
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     if (showRenameDialog) {
@@ -450,6 +820,10 @@ fun HistoricoDetailScreen(
             },
             text = {
                 Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
@@ -529,6 +903,10 @@ fun HistoricoDetailScreen(
             },
             text = {
                 Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(

@@ -1,3 +1,4 @@
+
 package com.example.gimnasio.ui.historico
 
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,8 @@ fun HistoricoDetailSettingsSheet(
     onRename: () -> Unit,
     onChangeRoutine: () -> Unit,
     onChangeDuration: () -> Unit,
+    onAddExercise: () -> Unit,
+    onRemoveExercise: () -> Unit,
     onDelete: () -> Unit
 ) {
     Column(
@@ -55,6 +58,30 @@ fun HistoricoDetailSettingsSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("⏱️ Cambiar duración")
+            }
+
+            HorizontalDivider()
+
+            Text(
+                text = "Modificar ejercicios",
+                style = MaterialTheme.typography.titleSmall
+            )
+
+            TextButton(
+                onClick = onAddExercise,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("➕ Añadir ejercicio")
+            }
+
+            TextButton(
+                onClick = onRemoveExercise,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "➖ Eliminar ejercicio",
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
 

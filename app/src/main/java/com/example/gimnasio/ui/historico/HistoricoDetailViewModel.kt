@@ -306,6 +306,7 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
                             entrenamientoId = entrenamientoId,
                             ejercicioId = ejercicioId,
                             orden = nuevoOrden,
+                            completado = true,
                             anadidoPosteriormente = true
                         )
                     )
@@ -318,7 +319,8 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
                             peso = if (esCardio) null else 0f,
                             repeticiones = if (esCardio) null else 0,
                             tiempo = if (esCardio) 0 else null,
-                            intensidad = if (esCardio) 0 else null
+                            intensidad = if (esCardio) 0 else null,
+                            completada = true
                         )
                     )
                 }
@@ -360,6 +362,228 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
                 }
 
                 dao.deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId)
+
+                cloudSyncCoordinator.syncNow()
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    private suspend fun seriePerteneceAlEntrenamiento(
+        entrenamientoId: Long,
+        serieId: Long
+    ): Boolean {
+        val entrenamiento = dao.getEntrenamientoEntityById(entrenamientoId)
+
+        if (entrenamiento == null || !entrenamiento.completado) {
+            return false
+        }
+
+        val entrenamientoEjercicioId =
+            dao.getEntrenamientoEjercicioIdBySerieId(serieId)
+                ?: return false
+
+        val entrenamientoCompleto =
+            dao.getEntrenamientoCompleto(entrenamientoId).first()
+                ?: return false
+
+        return entrenamientoCompleto.ejercicios.any { ejercicio ->
+            ejercicio.entrenamientoEjercicio.id == entrenamientoEjercicioId
+        }
+    }
+
+    fun anadirSerieHistorico(
+        entrenamientoId: Long,
+        entrenamientoEjercicioId: Long,
+        esCardio: Boolean,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                val entrenamiento = dao.getEntrenamientoEntityById(entrenamientoId)
+
+                if (entrenamiento == null || !entrenamiento.completado) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val entrenamientoCompleto =
+                    dao.getEntrenamientoCompleto(entrenamientoId).first()
+
+                val ejercicioPertenece = entrenamientoCompleto
+                    ?.ejercicios
+                    ?.any {
+                        it.entrenamientoEjercicio.id == entrenamientoEjercicioId
+                    } == true
+
+                if (!ejercicioPertenece) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val serie = if (esCardio) {
+                    SerieEntity(
+                        entrenamientoEjercicioId = entrenamientoEjercicioId,
+                        tiempo = 0,
+                        intensidad = 0,
+                        completada = true
+                    )
+                } else {
+                    SerieEntity(
+                        entrenamientoEjercicioId = entrenamientoEjercicioId,
+                        peso = 0f,
+                        repeticiones = 0,
+                        completada = true
+                    )
+                }
+
+                serieDao.insert(serie)
+
+                cloudSyncCoordinator.syncNow()
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    fun actualizarPesoSerieHistorica(
+        entrenamientoId: Long,
+        serieId: Long,
+        peso: Float,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                if (peso < 0f || !peso.isFinite() ||
+                    !seriePerteneceAlEntrenamiento(entrenamientoId, serieId)
+                ) {
+                    onResult(false)
+                    return@launch
+                }
+
+                dao.updatePesoSerie(serieId, peso)
+
+                cloudSyncCoordinator.syncNow()
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    fun actualizarRepsSerieHistorica(
+        entrenamientoId: Long,
+        serieId: Long,
+        repeticiones: Int,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                if (repeticiones < 0 ||
+                    !seriePerteneceAlEntrenamiento(entrenamientoId, serieId)
+                ) {
+                    onResult(false)
+                    return@launch
+                }
+
+                dao.updateRepsSerie(serieId, repeticiones)
+
+                cloudSyncCoordinator.syncNow()
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    fun actualizarTiempoSerieHistorica(
+        entrenamientoId: Long,
+        serieId: Long,
+        tiempo: Int,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                if (tiempo < 0 ||
+                    !seriePerteneceAlEntrenamiento(entrenamientoId, serieId)
+                ) {
+                    onResult(false)
+                    return@launch
+                }
+
+                serieDao.actualizarTiempo(serieId, tiempo)
+
+                cloudSyncCoordinator.syncNow()
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    fun actualizarIntensidadSerieHistorica(
+        entrenamientoId: Long,
+        serieId: Long,
+        intensidad: Int,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                if (intensidad < 0 ||
+                    !seriePerteneceAlEntrenamiento(entrenamientoId, serieId)
+                ) {
+                    onResult(false)
+                    return@launch
+                }
+
+                serieDao.actualizarIntensidad(serieId, intensidad)
+
+                cloudSyncCoordinator.syncNow()
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    fun eliminarSerieHistorica(
+        entrenamientoId: Long,
+        serieId: Long,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                if (!seriePerteneceAlEntrenamiento(entrenamientoId, serieId)) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val entrenamientoEjercicioId =
+                    dao.getEntrenamientoEjercicioIdBySerieId(serieId)
+                        ?: run {
+                            onResult(false)
+                            return@launch
+                        }
+
+                // Siempre debe quedar al menos una serie.
+                val numeroSeries =
+                    dao.countSeriesByEntrenamientoEjercicioId(entrenamientoEjercicioId)
+
+                if (numeroSeries <= 1) {
+                    onResult(false)
+                    return@launch
+                }
+
+                dao.deleteSerie(serieId)
 
                 cloudSyncCoordinator.syncNow()
                 onResult(true)

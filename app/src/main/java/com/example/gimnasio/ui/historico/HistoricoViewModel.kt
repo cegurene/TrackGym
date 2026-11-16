@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class HistoricoViewModel(context: Context) : ViewModel() {
 
@@ -64,33 +68,134 @@ class HistoricoViewModel(context: Context) : ViewModel() {
         initialValue = emptyList()
     )
 
-    val entrenamientos =
-        entrenamientoDao.getEntrenamientosCompletadosConRutina()
+    private data class FiltrosHistorico(
+        val rutinaId: Long?,
+        val fechaDesde: Long?,
+        val fechaHasta: Long?
+    )
 
-    val entrenamientosFiltrados = combine(
-        entrenamientos,
+    private val tamanioPagina = 20
+
+    private val filtrosHistorico = combine(
         selectedRutinaIdFlow,
         selectedFechaDesdeFlow,
         selectedFechaHastaFlow
-    ) { lista, rutinaIdSeleccionada, fechaDesde, fechaHasta ->
-        val inicioRango = fechaDesde?.let(::inicioDeDia)
-        val finRango = fechaHasta?.let(::finDeDia)
+    ) { rutinaId, fechaDesde, fechaHasta ->
+        FiltrosHistorico(
+            rutinaId = rutinaId,
+            fechaDesde = fechaDesde?.let(::inicioDeDia),
+            fechaHasta = fechaHasta?.let(::finDeDia)
+        )
+    }.distinctUntilChanged()
 
-        lista.filter { item ->
-            val coincideRutina = rutinaIdSeleccionada == null ||
-                item.entrenamiento.rutinaId == rutinaIdSeleccionada
-
-            val fechaEntrenamiento = item.entrenamiento.fechaInicio
-            val coincideFechaDesde = inicioRango == null || fechaEntrenamiento >= inicioRango
-            val coincideFechaHasta = finRango == null || fechaEntrenamiento <= finRango
-
-            coincideRutina && coincideFechaDesde && coincideFechaHasta
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList<EntrenamientoConRutinaYEjercicios>()
+    private var filtrosActuales = FiltrosHistorico(
+        rutinaId = null,
+        fechaDesde = null,
+        fechaHasta = null
     )
+
+    private val _entrenamientosFiltrados =
+        MutableStateFlow<List<EntrenamientoConRutinaYEjercicios>>(emptyList())
+
+    val entrenamientosFiltrados: StateFlow<List<EntrenamientoConRutinaYEjercicios>> =
+        _entrenamientosFiltrados
+
+    private val _totalEntrenamientosFiltrados = MutableStateFlow(0)
+
+    val totalEntrenamientosFiltrados: StateFlow<Int> =
+        _totalEntrenamientosFiltrados
+
+    private val _hayMasEntrenamientos = MutableStateFlow(false)
+
+    val hayMasEntrenamientos: StateFlow<Boolean> =
+        _hayMasEntrenamientos
+
+    private val _cargandoMasEntrenamientos = MutableStateFlow(false)
+
+    val cargandoMasEntrenamientos: StateFlow<Boolean> =
+        _cargandoMasEntrenamientos
+
+    val totalEntrenamientos =
+        entrenamientoDao.getTotalEntrenamientosFlow()
+
+    init {
+        viewModelScope.launch {
+            filtrosHistorico.collectLatest { filtros ->
+                filtrosActuales = filtros
+
+                _entrenamientosFiltrados.value = emptyList()
+                _totalEntrenamientosFiltrados.value = 0
+                _hayMasEntrenamientos.value = false
+                _cargandoMasEntrenamientos.value = false
+
+                val total = entrenamientoDao
+                    .getTotalEntrenamientosCompletadosFiltrados(
+                        rutinaId = filtros.rutinaId,
+                        fechaDesde = filtros.fechaDesde,
+                        fechaHasta = filtros.fechaHasta
+                    )
+                    .first()
+
+                _totalEntrenamientosFiltrados.value = total
+
+                val primeraPagina = entrenamientoDao
+                    .getEntrenamientosCompletadosPaginados(
+                        rutinaId = filtros.rutinaId,
+                        fechaDesde = filtros.fechaDesde,
+                        fechaHasta = filtros.fechaHasta,
+                        limite = tamanioPagina,
+                        desplazamiento = 0
+                    )
+                    .first()
+
+                _entrenamientosFiltrados.value = primeraPagina
+                _hayMasEntrenamientos.value =
+                    primeraPagina.size < total
+            }
+        }
+    }
+
+    fun cargarMasEntrenamientos() {
+        if (_cargandoMasEntrenamientos.value ||
+            !_hayMasEntrenamientos.value
+        ) {
+            return
+        }
+
+        viewModelScope.launch {
+            _cargandoMasEntrenamientos.value = true
+
+            try {
+                val filtros = filtrosActuales
+                val desplazamiento = _entrenamientosFiltrados.value.size
+
+                val siguientePagina = entrenamientoDao
+                    .getEntrenamientosCompletadosPaginados(
+                        rutinaId = filtros.rutinaId,
+                        fechaDesde = filtros.fechaDesde,
+                        fechaHasta = filtros.fechaHasta,
+                        limite = tamanioPagina,
+                        desplazamiento = desplazamiento
+                    )
+                    .first()
+
+                // Evitar añadir resultados si los filtros han cambiado
+                // mientras se estaba recuperando la página.
+                if (filtros == filtrosActuales) {
+                    val listaActual = _entrenamientosFiltrados.value
+
+                    _entrenamientosFiltrados.value =
+                        listaActual + siguientePagina
+
+                    _hayMasEntrenamientos.value =
+                        _entrenamientosFiltrados.value.size <
+                                _totalEntrenamientosFiltrados.value
+                }
+            } finally {
+                _cargandoMasEntrenamientos.value = false
+            }
+        }
+    }
 
     fun setRutinaOrder(orden: RutinaViewModel.RutinaOrder) {
         _rutinaOrder.value = orden
