@@ -14,6 +14,16 @@ import com.example.gimnasio.data.sync.CloudSyncCoordinator
 import kotlinx.coroutines.launch
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+data class SerieHistoricaBorrador(
+    val serie: SerieEntity,
+    val original: SerieEntity?,
+    val esNueva: Boolean = false,
+    val eliminada: Boolean = false
+)
 
 class HistoricoDetailViewModel(context: Context) : ViewModel() {
     enum class NombreOperacionResultado {
@@ -28,6 +38,14 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
     private val serieDao = database.serieDao()
     private val rutinaDao = database.rutinaDao()
     private val ejercicioDao = database.ejercicioDao()
+
+    private val _borradoresSeries =
+        MutableStateFlow<Map<Long, SerieHistoricaBorrador>>(emptyMap())
+
+    val borradoresSeries: StateFlow<Map<Long, SerieHistoricaBorrador>> =
+        _borradoresSeries.asStateFlow()
+
+    private var siguienteIdTemporal = -1L
 
     val ejerciciosDisponibles = ejercicioDao.getAll()
 
@@ -395,6 +413,60 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
         }
     }
 
+    private suspend fun obtenerSerieBorrador(
+        entrenamientoId: Long,
+        serieId: Long
+    ): SerieHistoricaBorrador? {
+        val borradorExistente = _borradoresSeries.value[serieId]
+
+        if (borradorExistente != null) {
+            return borradorExistente
+        }
+
+        if (!seriePerteneceAlEntrenamiento(entrenamientoId, serieId)) {
+            return null
+        }
+
+        val serieOriginal = serieDao.getSerieById(serieId)
+            ?: return null
+
+        return SerieHistoricaBorrador(
+            serie = serieOriginal,
+            original = serieOriginal
+        )
+    }
+
+    private suspend fun actualizarSeriePendiente(
+        entrenamientoId: Long,
+        serieId: Long,
+        cambio: (SerieEntity) -> SerieEntity,
+        onResult: (Boolean) -> Unit
+    ) {
+        try {
+            val borrador = obtenerSerieBorrador(
+                entrenamientoId = entrenamientoId,
+                serieId = serieId
+            )
+
+            if (borrador == null || borrador.eliminada) {
+                onResult(false)
+                return
+            }
+
+            val nuevaSerie = cambio(borrador.serie)
+
+            _borradoresSeries.value =
+                _borradoresSeries.value + (
+                        serieId to borrador.copy(serie = nuevaSerie)
+                        )
+
+            onResult(true)
+
+        } catch (_: Exception) {
+            onResult(false)
+        }
+    }
+
     fun anadirSerieHistorico(
         entrenamientoId: Long,
         entrenamientoEjercicioId: Long,
@@ -403,7 +475,8 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                val entrenamiento = dao.getEntrenamientoEntityById(entrenamientoId)
+                val entrenamiento =
+                    dao.getEntrenamientoEntityById(entrenamientoId)
 
                 if (entrenamiento == null || !entrenamiento.completado) {
                     onResult(false)
@@ -424,8 +497,11 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
                     return@launch
                 }
 
+                val idTemporal = siguienteIdTemporal--
+
                 val serie = if (esCardio) {
                     SerieEntity(
+                        id = idTemporal,
                         entrenamientoEjercicioId = entrenamientoEjercicioId,
                         tiempo = 0,
                         intensidad = 0,
@@ -433,6 +509,7 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
                     )
                 } else {
                     SerieEntity(
+                        id = idTemporal,
                         entrenamientoEjercicioId = entrenamientoEjercicioId,
                         peso = 0f,
                         repeticiones = 0,
@@ -440,9 +517,15 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
                     )
                 }
 
-                serieDao.insert(serie)
+                _borradoresSeries.value =
+                    _borradoresSeries.value + (
+                            idTemporal to SerieHistoricaBorrador(
+                                serie = serie,
+                                original = null,
+                                esNueva = true
+                            )
+                            )
 
-                cloudSyncCoordinator.syncNow()
                 onResult(true)
 
             } catch (_: Exception) {
@@ -457,23 +540,18 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
         peso: Float,
         onResult: (Boolean) -> Unit = {}
     ) {
+        if (peso < 0f || !peso.isFinite()) {
+            onResult(false)
+            return
+        }
+
         viewModelScope.launch {
-            try {
-                if (peso < 0f || !peso.isFinite() ||
-                    !seriePerteneceAlEntrenamiento(entrenamientoId, serieId)
-                ) {
-                    onResult(false)
-                    return@launch
-                }
-
-                dao.updatePesoSerie(serieId, peso)
-
-                cloudSyncCoordinator.syncNow()
-                onResult(true)
-
-            } catch (_: Exception) {
-                onResult(false)
-            }
+            actualizarSeriePendiente(
+                entrenamientoId,
+                serieId,
+                { it.copy(peso = peso) },
+                onResult
+            )
         }
     }
 
@@ -483,23 +561,18 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
         repeticiones: Int,
         onResult: (Boolean) -> Unit = {}
     ) {
+        if (repeticiones < 0) {
+            onResult(false)
+            return
+        }
+
         viewModelScope.launch {
-            try {
-                if (repeticiones < 0 ||
-                    !seriePerteneceAlEntrenamiento(entrenamientoId, serieId)
-                ) {
-                    onResult(false)
-                    return@launch
-                }
-
-                dao.updateRepsSerie(serieId, repeticiones)
-
-                cloudSyncCoordinator.syncNow()
-                onResult(true)
-
-            } catch (_: Exception) {
-                onResult(false)
-            }
+            actualizarSeriePendiente(
+                entrenamientoId,
+                serieId,
+                { it.copy(repeticiones = repeticiones) },
+                onResult
+            )
         }
     }
 
@@ -509,23 +582,18 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
         tiempo: Int,
         onResult: (Boolean) -> Unit = {}
     ) {
+        if (tiempo < 0) {
+            onResult(false)
+            return
+        }
+
         viewModelScope.launch {
-            try {
-                if (tiempo < 0 ||
-                    !seriePerteneceAlEntrenamiento(entrenamientoId, serieId)
-                ) {
-                    onResult(false)
-                    return@launch
-                }
-
-                serieDao.actualizarTiempo(serieId, tiempo)
-
-                cloudSyncCoordinator.syncNow()
-                onResult(true)
-
-            } catch (_: Exception) {
-                onResult(false)
-            }
+            actualizarSeriePendiente(
+                entrenamientoId,
+                serieId,
+                { it.copy(tiempo = tiempo) },
+                onResult
+            )
         }
     }
 
@@ -535,23 +603,18 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
         intensidad: Int,
         onResult: (Boolean) -> Unit = {}
     ) {
+        if (intensidad < 0) {
+            onResult(false)
+            return
+        }
+
         viewModelScope.launch {
-            try {
-                if (intensidad < 0 ||
-                    !seriePerteneceAlEntrenamiento(entrenamientoId, serieId)
-                ) {
-                    onResult(false)
-                    return@launch
-                }
-
-                serieDao.actualizarIntensidad(serieId, intensidad)
-
-                cloudSyncCoordinator.syncNow()
-                onResult(true)
-
-            } catch (_: Exception) {
-                onResult(false)
-            }
+            actualizarSeriePendiente(
+                entrenamientoId,
+                serieId,
+                { it.copy(intensidad = intensidad) },
+                onResult
+            )
         }
     }
 
@@ -562,30 +625,208 @@ class HistoricoDetailViewModel(context: Context) : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                if (!seriePerteneceAlEntrenamiento(entrenamientoId, serieId)) {
+                val borrador = _borradoresSeries.value[serieId]
+                    ?: obtenerSerieBorrador(entrenamientoId, serieId)
+
+                if (borrador == null || borrador.eliminada) {
                     onResult(false)
                     return@launch
                 }
 
                 val entrenamientoEjercicioId =
-                    dao.getEntrenamientoEjercicioIdBySerieId(serieId)
+                    borrador.serie.entrenamientoEjercicioId
+
+                val entrenamientoCompleto =
+                    dao.getEntrenamientoCompleto(entrenamientoId).first()
+
+                val seriesOriginales = entrenamientoCompleto
+                    ?.ejercicios
+                    ?.firstOrNull {
+                        it.entrenamientoEjercicio.id == entrenamientoEjercicioId
+                    }
+                    ?.series
+                    .orEmpty()
+
+                val borradoresEjercicio = _borradoresSeries.value.values
+                    .filter {
+                        it.serie.entrenamientoEjercicioId == entrenamientoEjercicioId
+                    }
+
+                val eliminadasExistentes = borradoresEjercicio.count {
+                    !it.esNueva && it.eliminada
+                }
+
+                val nuevasNoEliminadas = borradoresEjercicio.count {
+                    it.esNueva && !it.eliminada
+                }
+
+                val eliminandoNueva = borrador.esNueva
+                val eliminandoExistente =
+                    !borrador.esNueva && !borrador.eliminada
+
+                val totalFinal =
+                    seriesOriginales.size -
+                            eliminadasExistentes -
+                            (if (eliminandoExistente) 1 else 0) +
+                            nuevasNoEliminadas -
+                            (if (eliminandoNueva) 1 else 0)
+
+                if (totalFinal < 1) {
+                    onResult(false)
+                    return@launch
+                }
+
+                if (borrador.esNueva) {
+                    _borradoresSeries.value -= serieId
+                } else {
+                    _borradoresSeries.value += (
+                                                    serieId to borrador.copy(eliminada = true)
+                                                    )
+                }
+
+                onResult(true)
+
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    fun descartarModificacionesSeries() {
+        _borradoresSeries.value = emptyMap()
+    }
+
+    fun guardarModificacionesSeries(
+        entrenamientoId: Long,
+        onResult: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                val borradores = _borradoresSeries.value.values.toList()
+
+                if (borradores.isEmpty()) {
+                    onResult(true)
+                    return@launch
+                }
+
+                val entrenamiento =
+                    dao.getEntrenamientoEntityById(entrenamientoId)
+
+                if (entrenamiento == null || !entrenamiento.completado) {
+                    onResult(false)
+                    return@launch
+                }
+
+                val entrenamientoCompleto =
+                    dao.getEntrenamientoCompleto(entrenamientoId).first()
                         ?: run {
                             onResult(false)
                             return@launch
                         }
 
-                // Siempre debe quedar al menos una serie.
-                val numeroSeries =
-                    dao.countSeriesByEntrenamientoEjercicioId(entrenamientoEjercicioId)
+                val idsEjercicios = entrenamientoCompleto.ejercicios.map {
+                    it.entrenamientoEjercicio.id
+                }.toSet()
 
-                if (numeroSeries <= 1) {
+                // Comprobar que todas las series pertenecen a este entrenamiento.
+                if (borradores.any {
+                        it.serie.entrenamientoEjercicioId !in idsEjercicios
+                    }
+                ) {
                     onResult(false)
                     return@launch
                 }
 
-                dao.deleteSerie(serieId)
+                // Validar los valores numéricos.
+                val valoresValidos = borradores.all { borrador ->
+                    val serie = borrador.serie
+
+                    (serie.peso == null ||
+                            (serie.peso >= 0f && serie.peso.isFinite())) &&
+                            (serie.repeticiones == null || serie.repeticiones >= 0) &&
+                            (serie.tiempo == null || serie.tiempo >= 0) &&
+                            (serie.intensidad == null || serie.intensidad >= 0)
+                }
+
+                if (!valoresValidos) {
+                    onResult(false)
+                    return@launch
+                }
+
+                // Evitar que un ejercicio se quede sin series.
+                val quedanSeriesEnTodos = entrenamientoCompleto.ejercicios.all { ejercicio ->
+                    val idEjercicio = ejercicio.entrenamientoEjercicio.id
+
+                    val cambiosEjercicio = borradores.filter {
+                        it.serie.entrenamientoEjercicioId == idEjercicio
+                    }
+
+                    val eliminadas = cambiosEjercicio.count {
+                        !it.esNueva && it.eliminada
+                    }
+
+                    val nuevas = cambiosEjercicio.count {
+                        it.esNueva && !it.eliminada
+                    }
+
+                    ejercicio.series.size - eliminadas + nuevas >= 1
+                }
+
+                if (!quedanSeriesEnTodos) {
+                    onResult(false)
+                    return@launch
+                }
+
+                database.withTransaction {
+                    val entrenamientoActual =
+                        dao.getEntrenamientoEntityById(entrenamientoId)
+
+                    if (entrenamientoActual == null ||
+                        !entrenamientoActual.completado
+                    ) {
+                        throw IllegalStateException(
+                            "El entrenamiento ya no está disponible."
+                        )
+                    }
+
+                    borradores.forEach { borrador ->
+                        val serie = borrador.serie
+
+                        when {
+                            borrador.esNueva && !borrador.eliminada -> {
+                                serieDao.insert(
+                                    serie.copy(id = 0)
+                                )
+                            }
+
+                            !borrador.esNueva && borrador.eliminada -> {
+                                dao.deleteSerie(serie.id)
+                            }
+
+                            !borrador.esNueva -> {
+                                serie.peso?.let {
+                                    dao.updatePesoSerie(serie.id, it)
+                                }
+
+                                serie.repeticiones?.let {
+                                    dao.updateRepsSerie(serie.id, it)
+                                }
+
+                                serie.tiempo?.let {
+                                    serieDao.actualizarTiempo(serie.id, it)
+                                }
+
+                                serie.intensidad?.let {
+                                    serieDao.actualizarIntensidad(serie.id, it)
+                                }
+                            }
+                        }
+                    }
+                }
 
                 cloudSyncCoordinator.syncNow()
+                _borradoresSeries.value = emptyMap()
+
                 onResult(true)
 
             } catch (_: Exception) {

@@ -30,6 +30,9 @@ interface SerieDao {
     )
     fun getSeriesPorEjercicio(ejercicioId: Long): Flow<List<SerieEntity>>
 
+    @Query("SELECT * FROM series WHERE id = :serieId LIMIT 1")
+    suspend fun getSerieById(serieId: Long): SerieEntity?
+
     @Query(
         """
     SELECT e.musculos as musculo,

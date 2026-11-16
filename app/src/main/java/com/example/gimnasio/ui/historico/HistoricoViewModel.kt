@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class HistoricoViewModel(context: Context) : ViewModel() {
@@ -76,6 +75,8 @@ class HistoricoViewModel(context: Context) : ViewModel() {
 
     private val tamanioPagina = 20
 
+    private val _limiteVisible = MutableStateFlow(tamanioPagina)
+
     private val filtrosHistorico = combine(
         selectedRutinaIdFlow,
         selectedFechaDesdeFlow,
@@ -118,39 +119,51 @@ class HistoricoViewModel(context: Context) : ViewModel() {
     val totalEntrenamientos =
         entrenamientoDao.getTotalEntrenamientosFlow()
 
+
     init {
         viewModelScope.launch {
             filtrosHistorico.collectLatest { filtros ->
                 filtrosActuales = filtros
 
+                // Reiniciar la lista cuando cambien los filtros.
+                _limiteVisible.value = tamanioPagina
                 _entrenamientosFiltrados.value = emptyList()
                 _totalEntrenamientosFiltrados.value = 0
                 _hayMasEntrenamientos.value = false
                 _cargandoMasEntrenamientos.value = false
 
-                val total = entrenamientoDao
-                    .getTotalEntrenamientosCompletadosFiltrados(
-                        rutinaId = filtros.rutinaId,
-                        fechaDesde = filtros.fechaDesde,
-                        fechaHasta = filtros.fechaHasta
-                    )
-                    .first()
+                // Mantener observación continua de la página y del total.
+                _limiteVisible.collectLatest { limite ->
+                    _cargandoMasEntrenamientos.value = limite > tamanioPagina
 
-                _totalEntrenamientosFiltrados.value = total
-
-                val primeraPagina = entrenamientoDao
-                    .getEntrenamientosCompletadosPaginados(
-                        rutinaId = filtros.rutinaId,
-                        fechaDesde = filtros.fechaDesde,
-                        fechaHasta = filtros.fechaHasta,
-                        limite = tamanioPagina,
-                        desplazamiento = 0
-                    )
-                    .first()
-
-                _entrenamientosFiltrados.value = primeraPagina
-                _hayMasEntrenamientos.value =
-                    primeraPagina.size < total
+                    try {
+                        combine(
+                            entrenamientoDao.getTotalEntrenamientosCompletadosFiltrados(
+                                rutinaId = filtros.rutinaId,
+                                fechaDesde = filtros.fechaDesde,
+                                fechaHasta = filtros.fechaHasta
+                            ),
+                            entrenamientoDao.getEntrenamientosCompletadosPaginados(
+                                rutinaId = filtros.rutinaId,
+                                fechaDesde = filtros.fechaDesde,
+                                fechaHasta = filtros.fechaHasta,
+                                limite = limite,
+                                desplazamiento = 0
+                            )
+                        ) { total, lista ->
+                            total to lista
+                        }.collect { (total, lista) ->
+                            if (filtros == filtrosActuales) {
+                                _totalEntrenamientosFiltrados.value = total
+                                _entrenamientosFiltrados.value = lista
+                                _hayMasEntrenamientos.value = lista.size < total
+                                _cargandoMasEntrenamientos.value = false
+                            }
+                        }
+                    } finally {
+                        _cargandoMasEntrenamientos.value = false
+                    }
+                }
             }
         }
     }
@@ -162,40 +175,9 @@ class HistoricoViewModel(context: Context) : ViewModel() {
             return
         }
 
-        viewModelScope.launch {
-            _cargandoMasEntrenamientos.value = true
-
-            try {
-                val filtros = filtrosActuales
-                val desplazamiento = _entrenamientosFiltrados.value.size
-
-                val siguientePagina = entrenamientoDao
-                    .getEntrenamientosCompletadosPaginados(
-                        rutinaId = filtros.rutinaId,
-                        fechaDesde = filtros.fechaDesde,
-                        fechaHasta = filtros.fechaHasta,
-                        limite = tamanioPagina,
-                        desplazamiento = desplazamiento
-                    )
-                    .first()
-
-                // Evitar añadir resultados si los filtros han cambiado
-                // mientras se estaba recuperando la página.
-                if (filtros == filtrosActuales) {
-                    val listaActual = _entrenamientosFiltrados.value
-
-                    _entrenamientosFiltrados.value =
-                        listaActual + siguientePagina
-
-                    _hayMasEntrenamientos.value =
-                        _entrenamientosFiltrados.value.size <
-                                _totalEntrenamientosFiltrados.value
-                }
-            } finally {
-                _cargandoMasEntrenamientos.value = false
-            }
-        }
+        _limiteVisible.value += tamanioPagina
     }
+
 
     fun setRutinaOrder(orden: RutinaViewModel.RutinaOrder) {
         _rutinaOrder.value = orden

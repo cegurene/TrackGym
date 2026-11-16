@@ -37,6 +37,7 @@ private fun SerieHistoricaInputField(
     initialValue: String,
     label: String,
     allowDecimal: Boolean = false,
+    modified: Boolean = false,
     onValueChange: (String) -> Unit
 ) {
     var textFieldValue by remember {
@@ -47,6 +48,17 @@ private fun SerieHistoricaInputField(
         if (textFieldValue.text != initialValue) {
             textFieldValue = TextFieldValue(initialValue)
         }
+    }
+
+    val colores = if (modified) {
+        OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.error,
+            unfocusedBorderColor = MaterialTheme.colorScheme.error,
+            focusedLabelColor = MaterialTheme.colorScheme.error,
+            unfocusedLabelColor = MaterialTheme.colorScheme.error
+        )
+    } else {
+        OutlinedTextFieldDefaults.colors()
     }
 
     OutlinedTextField(
@@ -74,6 +86,7 @@ private fun SerieHistoricaInputField(
         label = { Text(label) },
         modifier = Modifier.width(88.dp),
         singleLine = true,
+        colors = colores,
         keyboardOptions = KeyboardOptions(
             keyboardType = if (allowDecimal) {
                 KeyboardType.Decimal
@@ -99,6 +112,21 @@ fun HistoricoDetailScreen(
     val viewModel: HistoricoDetailViewModel = viewModel(
         factory = HistoricoDetailViewModelFactory(context)
     )
+
+    val borradoresSeries by viewModel.borradoresSeries.collectAsState()
+
+    var errorGuardarSeries by remember {
+        mutableStateOf(false)
+    }
+
+    var guardandoSeries by remember {
+        mutableStateOf(false)
+    }
+
+    LaunchedEffect(entrenamientoId) {
+        viewModel.descartarModificacionesSeries()
+        errorGuardarSeries = false
+    }
 
     val entrenamiento by viewModel
         .getEntrenamientoCompleto(entrenamientoId)
@@ -292,11 +320,100 @@ fun HistoricoDetailScreen(
 
                 }
 
+                if (borradoresSeries.isNotEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(
+                                    alpha = 0.35f
+                                )
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "${borradoresSeries.size} cambio(s) pendiente(s) de guardar",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+
+                                Button(
+                                    onClick = {
+                                        guardandoSeries = true
+                                        errorGuardarSeries = false
+
+                                        viewModel.guardarModificacionesSeries(
+                                            entrenamientoId
+                                        ) { success ->
+                                            guardandoSeries = false
+                                            errorGuardarSeries = !success
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !guardandoSeries
+                                ) {
+                                    Text(
+                                        if (guardandoSeries) {
+                                            "Guardando..."
+                                        } else {
+                                            "Guardar modificaciones"
+                                        }
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        viewModel.descartarModificacionesSeries()
+                                        errorGuardarSeries = false
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !guardandoSeries
+                                ) {
+                                    Text("Descartar modificaciones")
+                                }
+
+                                if (errorGuardarSeries) {
+                                    Text(
+                                        text = "No se han podido guardar los cambios. Comprueba que todos los ejercicios conservan al menos una serie.",
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 items(ejerciciosOrdenados) { ejercicioConSeries ->
 
-                    val volumen = calcularVolumen(ejercicioConSeries.series)
+                    val borradoresEjercicio = borradoresSeries.values.filter {
+                        it.serie.entrenamientoEjercicioId ==
+                                ejercicioConSeries.entrenamientoEjercicio.id
+                    }
 
-                    val tiempo = calcularTiempo(ejercicioConSeries.series)
+                    val seriesVisibles = buildList {
+                        ejercicioConSeries.series.forEach { serieOriginal ->
+                            val borrador = borradoresSeries[serieOriginal.id]
+
+                            when {
+                                borrador == null -> add(serieOriginal)
+                                !borrador.eliminada -> add(borrador.serie)
+                            }
+                        }
+
+                        borradoresEjercicio
+                            .filter { it.esNueva && !it.eliminada }
+                            .forEach {
+                                add(it.serie)
+                            }
+                    }
+
+                    val volumen = calcularVolumen(seriesVisibles)
+
+                    val tiempo = calcularTiempo(seriesVisibles)
 
                     val esCardio = ejercicioConSeries.ejercicio.musculos.contains(Musculo.CARDIO)
 
@@ -353,105 +470,131 @@ fun HistoricoDetailScreen(
 
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                ejercicioConSeries.series.forEachIndexed { index, serie ->
+                                seriesVisibles.forEachIndexed { index, serie ->
 
-                                    Row(
+                                    val borrador = borradoresSeries[serie.id]
+
+                                    val serieModificada = borrador?.let {
+                                        it.esNueva || it.eliminada || it.serie != it.original
+                                    } ?: false
+
+                                    Surface(
                                         modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "${index + 1}.",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.width(20.dp)
-                                        )
-
-                                        if (!esCardio) {
-
-                                            SerieHistoricaInputField(
-                                                initialValue = serie.peso
-                                                    ?.takeIf { it != 0f }
-                                                    ?.toString()
-                                                    ?: "",
-                                                label = "Kg",
-                                                allowDecimal = true,
-                                                onValueChange = { valor ->
-                                                    val peso = valor.toFloatOrNull() ?: 0f
-
-                                                    viewModel.actualizarPesoSerieHistorica(
-                                                        entrenamientoId = entrenamientoId,
-                                                        serieId = serie.id,
-                                                        peso = peso
-                                                    )
-                                                }
-                                            )
-
-                                            SerieHistoricaInputField(
-                                                initialValue = serie.repeticiones
-                                                    ?.takeIf { it != 0 }
-                                                    ?.toString()
-                                                    ?: "",
-                                                label = "Reps",
-                                                onValueChange = { valor ->
-                                                    viewModel.actualizarRepsSerieHistorica(
-                                                        entrenamientoId = entrenamientoId,
-                                                        serieId = serie.id,
-                                                        repeticiones = valor.toIntOrNull() ?: 0
-                                                    )
-                                                }
-                                            )
-
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (serieModificada) {
+                                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
                                         } else {
-
-                                            SerieHistoricaInputField(
-                                                initialValue = serie.tiempo
-                                                    ?.takeIf { it != 0 }
-                                                    ?.toString()
-                                                    ?: "",
-                                                label = "Min",
-                                                onValueChange = { valor ->
-                                                    viewModel.actualizarTiempoSerieHistorica(
-                                                        entrenamientoId = entrenamientoId,
-                                                        serieId = serie.id,
-                                                        tiempo = valor.toIntOrNull() ?: 0
-                                                    )
-                                                }
-                                            )
-
-                                            SerieHistoricaInputField(
-                                                initialValue = serie.intensidad
-                                                    ?.takeIf { it != 0 }
-                                                    ?.toString()
-                                                    ?: "",
-                                                label = "Intens.",
-                                                onValueChange = { valor ->
-                                                    viewModel.actualizarIntensidadSerieHistorica(
-                                                        entrenamientoId = entrenamientoId,
-                                                        serieId = serie.id,
-                                                        intensidad = valor.toIntOrNull() ?: 0
-                                                    )
-                                                }
-                                            )
+                                            MaterialTheme.colorScheme.surface.copy(alpha = 0f)
                                         }
-
-                                        IconButton(
-                                            onClick = {
-                                                viewModel.eliminarSerieHistorica(
-                                                    entrenamientoId = entrenamientoId,
-                                                    serieId = serie.id
-                                                )
-                                            },
-                                            enabled = ejercicioConSeries.series.size > 1
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 4.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Delete,
-                                                contentDescription = "Eliminar serie",
-                                                tint = if (ejercicioConSeries.series.size > 1) {
+                                            Text(
+                                                text = "${index + 1}.",
+                                                color = if (serieModificada) {
                                                     MaterialTheme.colorScheme.error
                                                 } else {
-                                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                                }
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
+                                                modifier = Modifier.width(20.dp)
                                             )
+
+                                            if (!esCardio) {
+
+                                                SerieHistoricaInputField(
+                                                    initialValue = serie.peso
+                                                        ?.takeIf { it != 0f }
+                                                        ?.toString()
+                                                        ?: "",
+                                                    label = "Kg",
+                                                    allowDecimal = true,
+                                                    modified = serieModificada,
+                                                    onValueChange = { valor ->
+                                                        val peso = valor.toFloatOrNull() ?: 0f
+
+                                                        viewModel.actualizarPesoSerieHistorica(
+                                                            entrenamientoId = entrenamientoId,
+                                                            serieId = serie.id,
+                                                            peso = peso
+                                                        )
+                                                    }
+                                                )
+
+                                                SerieHistoricaInputField(
+                                                    initialValue = serie.repeticiones
+                                                        ?.takeIf { it != 0 }
+                                                        ?.toString()
+                                                        ?: "",
+                                                    label = "Reps",
+                                                    modified = serieModificada,
+                                                    onValueChange = { valor ->
+                                                        viewModel.actualizarRepsSerieHistorica(
+                                                            entrenamientoId = entrenamientoId,
+                                                            serieId = serie.id,
+                                                            repeticiones = valor.toIntOrNull() ?: 0
+                                                        )
+                                                    }
+                                                )
+
+                                            } else {
+
+                                                SerieHistoricaInputField(
+                                                    initialValue = serie.tiempo
+                                                        ?.takeIf { it != 0 }
+                                                        ?.toString()
+                                                        ?: "",
+                                                    label = "Min",
+                                                    modified = serieModificada,
+                                                    onValueChange = { valor ->
+                                                        viewModel.actualizarTiempoSerieHistorica(
+                                                            entrenamientoId = entrenamientoId,
+                                                            serieId = serie.id,
+                                                            tiempo = valor.toIntOrNull() ?: 0
+                                                        )
+                                                    }
+                                                )
+
+                                                SerieHistoricaInputField(
+                                                    initialValue = serie.intensidad
+                                                        ?.takeIf { it != 0 }
+                                                        ?.toString()
+                                                        ?: "",
+                                                    label = "Intens.",
+                                                    modified = serieModificada,
+                                                    onValueChange = { valor ->
+                                                        viewModel.actualizarIntensidadSerieHistorica(
+                                                            entrenamientoId = entrenamientoId,
+                                                            serieId = serie.id,
+                                                            intensidad = valor.toIntOrNull() ?: 0
+                                                        )
+                                                    }
+                                                )
+                                            }
+
+                                            IconButton(
+                                                onClick = {
+                                                    viewModel.eliminarSerieHistorica(
+                                                        entrenamientoId = entrenamientoId,
+                                                        serieId = serie.id
+                                                    )
+                                                },
+                                                enabled = seriesVisibles.size > 1
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Eliminar serie",
+                                                    tint = if (seriesVisibles.size > 1) {
+                                                        MaterialTheme.colorScheme.error
+                                                    } else {
+                                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
 
