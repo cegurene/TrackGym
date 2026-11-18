@@ -34,20 +34,20 @@ interface EntrenamientoDao {
     fun getEntrenamientoActivoFlow(): Flow<EntrenamientoEntity?>
 
     @Query("""
-    SELECT * FROM entrenamiento_ejercicio
-    WHERE entrenamientoId = :entrenamientoId
-    ORDER BY orden ASC
-""")
+        SELECT * FROM entrenamiento_ejercicio
+        WHERE entrenamientoId = :entrenamientoId
+        ORDER BY orden ASC
+    """)
     fun getEjerciciosDeEntrenamiento(
         entrenamientoId: Long
     ): Flow<List<EntrenamientoEjercicioEntity>>
 
     @Transaction
     @Query("""
-    SELECT * FROM entrenamiento_ejercicio
-    WHERE entrenamientoId = :entrenamientoId
-    ORDER BY orden ASC
-""")
+        SELECT * FROM entrenamiento_ejercicio
+        WHERE entrenamientoId = :entrenamientoId
+        ORDER BY orden ASC
+    """)
     fun getEjerciciosConSeries(
         entrenamientoId: Long
     ): Flow<List<EntrenamientoEjercicioConSeries>>
@@ -59,28 +59,52 @@ interface EntrenamientoDao {
     suspend fun insertSerie(serie: SerieEntity)
 
     @Query("""
-    UPDATE series
-    SET completada = :completada
-    WHERE id = :serieId
-""")
+        UPDATE series
+        SET completada = :completada
+        WHERE id = :serieId
+    """)
     suspend fun updateSerieCompletada(
         serieId: Long,
         completada: Boolean
     )
 
     @Query("""
-    UPDATE series
-    SET peso = :peso
-    WHERE id = :serieId
-""")
+        UPDATE series
+        SET peso = :peso
+        WHERE id = :serieId
+    """)
     suspend fun updatePesoSerie(serieId: Long, peso: Float)
 
     @Query("""
-    UPDATE series
-    SET repeticiones = :reps
-    WHERE id = :serieId
-""")
+        UPDATE series
+        SET repeticiones = :reps
+        WHERE id = :serieId
+    """)
     suspend fun updateRepsSerie(serieId: Long, reps: Int)
+
+    @Query("""
+        UPDATE series
+        SET peso = :peso,
+            repeticiones = :reps
+        WHERE id = :serieId
+    """)
+    suspend fun updateSerieFuerza(
+        serieId: Long,
+        peso: Float,
+        reps: Int
+    )
+
+    @Query("""
+        UPDATE series
+        SET tiempo = :tiempo,
+            intensidad = :intensidad
+        WHERE id = :serieId
+    """)
+    suspend fun updateSerieCardio(
+        serieId: Long,
+        tiempo: Int,
+        intensidad: Int
+    )
 
     @Query("DELETE FROM series WHERE id = :serieId")
     suspend fun deleteSerie(serieId: Long)
@@ -92,11 +116,32 @@ interface EntrenamientoDao {
     suspend fun countSeriesByEntrenamientoEjercicioId(entrenamientoEjercicioId: Long): Int
 
     @Query("""
-    SELECT COUNT(*) FROM series
-    WHERE entrenamientoEjercicioId = :entrenamientoEjercicioId
-      AND completada = 0
-""")
+        SELECT COUNT(*) FROM series
+        WHERE entrenamientoEjercicioId = :entrenamientoEjercicioId
+          AND completada = 0
+    """)
     suspend fun countSeriesSinCompletar(entrenamientoEjercicioId: Long): Int
+
+    @Query("""
+        UPDATE entrenamiento_ejercicio
+        SET completado = (
+            EXISTS (
+                SELECT 1
+                FROM series
+                WHERE series.entrenamientoEjercicioId = entrenamiento_ejercicio.id
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM series
+                WHERE series.entrenamientoEjercicioId = entrenamiento_ejercicio.id
+                  AND series.completada = 0
+            )
+        )
+        WHERE id = :entrenamientoEjercicioId
+    """)
+    suspend fun recalcularCompletadoEjercicio(
+        entrenamientoEjercicioId: Long
+    )
 
     @Query("DELETE FROM entrenamiento_ejercicio WHERE id = :entrenamientoEjercicioId")
     suspend fun deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId: Long)
@@ -105,11 +150,11 @@ interface EntrenamientoDao {
     suspend fun updateOrden(entrenamientoEjercicioId: Long, nuevoOrden: Int)
 
     @Query("""
-    UPDATE entrenamientos
-    SET completado = 1,
-        fechaFin = :fechaFin
-    WHERE id = :entrenamientoId
-""")
+        UPDATE entrenamientos
+        SET completado = 1,
+            fechaFin = :fechaFin
+        WHERE id = :entrenamientoId
+    """)
     suspend fun finalizarEntrenamiento(
         entrenamientoId: Long,
         fechaFin: Long
@@ -124,29 +169,30 @@ interface EntrenamientoDao {
     ): Long
 
     @Query("""
-    UPDATE entrenamientos
-    SET completado = 1,
-        fechaFin = :fechaFin
-    WHERE id = :entrenamientoId
-""")
+        UPDATE entrenamientos
+        SET completado = 1,
+            fechaFin = :fechaFin
+        WHERE id = :entrenamientoId
+    """)
     suspend fun marcarComoCompletado(
         entrenamientoId: Long,
         fechaFin: Long
     )
 
+    @Transaction
     @Query("""
-    SELECT * FROM entrenamientos
-    WHERE completado = 1
-    ORDER BY fechaInicio DESC
-""")
+        SELECT * FROM entrenamientos
+        WHERE completado = 1
+        ORDER BY fechaInicio DESC
+    """)
     fun getEntrenamientosCompletados(): Flow<List<EntrenamientoEntity>>
 
     @Transaction
     @Query("""
-    SELECT * FROM entrenamientos
-    WHERE completado = 1
-    ORDER BY fechaInicio DESC
-""")
+        SELECT * FROM entrenamientos
+        WHERE completado = 1
+        ORDER BY fechaInicio DESC
+    """)
     fun getEntrenamientosCompletadosConRutina():
             Flow<List<EntrenamientoConRutinaYEjercicios>>
 
@@ -194,10 +240,17 @@ interface EntrenamientoDao {
     ): Flow<EntrenamientoConEjerciciosYSeries?>
 
     @Query("""
-    UPDATE entrenamiento_ejercicio
-    SET completado = :completado
-    WHERE id = :id
-""")
+        SELECT fechaInicio
+        FROM entrenamientos
+        WHERE id = :id
+    """)
+    fun getFechaInicioFlow(id: Long): Flow<Long?>
+
+    @Query("""
+        UPDATE entrenamiento_ejercicio
+        SET completado = :completado
+        WHERE id = :id
+    """)
     suspend fun actualizarEstadoEjercicio(id: Long, completado: Boolean)
 
     @Query("UPDATE entrenamientos SET nombre = :nuevoNombre WHERE id = :id")
@@ -222,115 +275,115 @@ interface EntrenamientoDao {
     fun getTotalEntrenamientosFlow(): Flow<Int>
 
     @Query("""
-    SELECT MAX(fechaFin - fechaInicio)
-    FROM entrenamientos
-    WHERE fechaFin IS NOT NULL
-      AND completado = 1
-""")
+        SELECT MAX(fechaFin - fechaInicio)
+        FROM entrenamientos
+        WHERE fechaFin IS NOT NULL
+          AND completado = 1
+    """)
     suspend fun getEntrenamientoMasLargo(): Long?
 
     @Query("""
-    SELECT MIN(fechaFin - fechaInicio)
-    FROM entrenamientos
-    WHERE fechaFin IS NOT NULL
-      AND completado = 1
-""")
+        SELECT MIN(fechaFin - fechaInicio)
+        FROM entrenamientos
+        WHERE fechaFin IS NOT NULL
+          AND completado = 1
+    """)
     suspend fun getEntrenamientoMasCorto(): Long?
 
     @Query("""
-    SELECT COUNT(*) FROM entrenamientos
-    WHERE completado = 1
-    AND fechaInicio >= strftime('%s','now','-7 day') * 1000
+        SELECT COUNT(*) FROM entrenamientos
+        WHERE completado = 1
+        AND fechaInicio >= strftime('%s','now','-7 day') * 1000
     """)
     suspend fun getEntrenamientosUltimaSemana(): Int
 
 
     @Query("""
-    SELECT COUNT(*) FROM entrenamientos
-    WHERE completado = 1
-    AND fechaInicio >= strftime('%s','now','-30 day') * 1000
+        SELECT COUNT(*) FROM entrenamientos
+        WHERE completado = 1
+        AND fechaInicio >= strftime('%s','now','-30 day') * 1000
     """)
     suspend fun getEntrenamientosUltimoMes(): Int
 
     @Query("""
-    SELECT SUM(fechaFin - fechaInicio)
-    FROM entrenamientos
-    WHERE fechaFin IS NOT NULL
-      AND completado = 1
+        SELECT SUM(fechaFin - fechaInicio)
+        FROM entrenamientos
+        WHERE fechaFin IS NOT NULL
+          AND completado = 1
     """)
     suspend fun getTiempoTotalEntrenado(): Long?
 
     @Query("""
-    SELECT AVG(fechaFin - fechaInicio)
-    FROM entrenamientos
-    WHERE fechaFin IS NOT NULL
-      AND completado = 1
+        SELECT AVG(fechaFin - fechaInicio)
+        FROM entrenamientos
+        WHERE fechaFin IS NOT NULL
+          AND completado = 1
     """)
     suspend fun getDuracionMedia(): Double?
 
     @Query("""
-    SELECT r.nombre
-    FROM entrenamientos e
-    INNER JOIN rutinas r ON r.id = e.rutinaId
-    WHERE e.completado = 1
-    GROUP BY r.id
-    ORDER BY COUNT(*) DESC
-    LIMIT 1
+        SELECT r.nombre
+        FROM entrenamientos e
+        INNER JOIN rutinas r ON r.id = e.rutinaId
+        WHERE e.completado = 1
+        GROUP BY r.id
+        ORDER BY COUNT(*) DESC
+        LIMIT 1
     """)
     suspend fun getRutinaMasUsada(): String?
 
     @Query("""
-    SELECT r.id, r.nombre, COUNT(e.id) as veces
-    FROM entrenamientos e
-    INNER JOIN rutinas r ON r.id = e.rutinaId
-    WHERE e.completado = 1
-    GROUP BY r.id
-    ORDER BY veces DESC
+        SELECT r.id, r.nombre, COUNT(e.id) as veces
+        FROM entrenamientos e
+        INNER JOIN rutinas r ON r.id = e.rutinaId
+        WHERE e.completado = 1
+        GROUP BY r.id
+        ORDER BY veces DESC
     """)
     suspend fun getVecesRutinas(): List<RutinaVeces>
 
     @Query("""
-    SELECT r.id, r.nombre, COUNT(e.id) as veces
-    FROM rutinas r
-    LEFT JOIN entrenamientos e ON e.rutinaId = r.id AND e.completado = 1
-    GROUP BY r.id
-""")
+        SELECT r.id, r.nombre, COUNT(e.id) as veces
+        FROM rutinas r
+        LEFT JOIN entrenamientos e ON e.rutinaId = r.id AND e.completado = 1
+        GROUP BY r.id
+    """)
     fun getVecesRutinasFlow(): Flow<List<RutinaVeces>>
 
     @Query("""
-    SELECT * FROM entrenamientos
-    WHERE id = :entrenamientoId
-    LIMIT 1
-""")
+        SELECT * FROM entrenamientos
+        WHERE id = :entrenamientoId
+        LIMIT 1
+    """)
     suspend fun getEntrenamientoEntityById(
         entrenamientoId: Long
     ): EntrenamientoEntity?
 
     @Query("""
-    SELECT * FROM entrenamientos
-    WHERE rutinaId = :rutinaId
-      AND completado = 1
-    ORDER BY fechaInicio ASC, id ASC
-""")
+        SELECT * FROM entrenamientos
+        WHERE rutinaId = :rutinaId
+          AND completado = 1
+        ORDER BY fechaInicio ASC, id ASC
+    """)
     suspend fun getCompletadosByRutinaId(
         rutinaId: Long
     ): List<EntrenamientoEntity>
 
     @Query("""
-    UPDATE entrenamientos
-    SET rutinaId = :nuevaRutinaId
-    WHERE id = :entrenamientoId
-""")
+        UPDATE entrenamientos
+        SET rutinaId = :nuevaRutinaId
+        WHERE id = :entrenamientoId
+    """)
     suspend fun updateRutinaId(
         entrenamientoId: Long,
         nuevaRutinaId: Long
     )
 
     @Query("""
-    UPDATE entrenamientos
-    SET fechaFin = :nuevaFechaFin
-    WHERE id = :entrenamientoId
-""")
+        UPDATE entrenamientos
+        SET fechaFin = :nuevaFechaFin
+        WHERE id = :entrenamientoId
+    """)
     suspend fun updateFechaFin(
         entrenamientoId: Long,
         nuevaFechaFin: Long

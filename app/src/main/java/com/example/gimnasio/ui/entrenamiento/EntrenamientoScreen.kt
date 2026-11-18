@@ -121,7 +121,7 @@ fun EntrenamientoScreen(
         .ejerciciosDelEntrenamiento
         .collectAsState(initial = emptyList())
 
-    val entrenamiento by viewModel.entrenamiento.collectAsState(initial = null)
+    val fechaInicio by viewModel.fechaInicio.collectAsState(initial = null)
 
     var tiempoActual by remember { mutableStateOf(System.currentTimeMillis()) }
     var erroresValidacion by remember { mutableStateOf<Map<Long, String>>(emptyMap()) }
@@ -145,7 +145,7 @@ fun EntrenamientoScreen(
         }
     }
 
-    val duracionMs = entrenamiento?.entrenamiento?.fechaInicio?.let {
+    val duracionMs = fechaInicio?.let {
         tiempoActual - it
     } ?: 0L
 

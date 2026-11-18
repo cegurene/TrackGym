@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import androidx.room.withTransaction
 
 class EntrenamientoViewModel(
     application: Application,
@@ -31,17 +32,14 @@ class EntrenamientoViewModel(
     val ejerciciosDelEntrenamiento =
         entrenamientoDao.getEjerciciosConSeries(entrenamientoId)
 
-    val entrenamiento =
-        entrenamientoDao.getEntrenamientoCompleto(entrenamientoId)
+    val fechaInicio =
+        entrenamientoDao.getFechaInicioFlow(entrenamientoId)
 
-    private suspend fun sincronizarEstadoEjercicio(entrenamientoEjercicioId: Long) {
-        val totalSeries = entrenamientoDao.countSeriesByEntrenamientoEjercicioId(entrenamientoEjercicioId)
-        val seriesSinCompletar = entrenamientoDao.countSeriesSinCompletar(entrenamientoEjercicioId)
-        val ejercicioCompletado = totalSeries > 0 && seriesSinCompletar == 0
-
-        entrenamientoDao.actualizarEstadoEjercicio(
-            entrenamientoEjercicioId,
-            ejercicioCompletado
+    private suspend fun sincronizarEstadoEjercicio(
+        entrenamientoEjercicioId: Long
+    ) {
+        entrenamientoDao.recalcularCompletadoEjercicio(
+            entrenamientoEjercicioId
         )
     }
 
@@ -157,40 +155,63 @@ class EntrenamientoViewModel(
         }
     }
 
-      fun marcarSerieCompletada(serieId: Long, completada: Boolean, esCardio: Boolean, peso: Float?, reps: Int?, tiempo: Int?, intensidad: Int?) {
-         viewModelScope.launch {
-             if (completada) {
-                 val esValida = if (esCardio) {
-                      (tiempo ?: 0) > 0 && (intensidad ?: 0) > 0
-                 } else {
-                     (peso ?: 0f) > 0f && (reps ?: 0) > 0
-                 }
- 
-                 if (!esValida) {
-                     val entrenamientoEjercicioId = entrenamientoDao
-                         .getEntrenamientoEjercicioIdBySerieId(serieId)
-                         ?: return@launch
- 
-                     val errorMsg = if (esCardio) {
-                         "Min e Intensidad deben ser > 0"
-                     } else {
-                         "Kg y Reps deben ser > 0"
-                     }
- 
-                     _validationErrorFlow.emit(entrenamientoEjercicioId to errorMsg)
-                     return@launch
-                 }
-             }
- 
-             entrenamientoDao.updateSerieCompletada(serieId, completada)
- 
-             val entrenamientoEjercicioId = entrenamientoDao
-                 .getEntrenamientoEjercicioIdBySerieId(serieId)
-                 ?: return@launch
- 
-             sincronizarEstadoEjercicio(entrenamientoEjercicioId)
-         }
-     }
+    fun marcarSerieCompletada(
+        serieId: Long,
+        completada: Boolean,
+        esCardio: Boolean,
+        peso: Float?,
+        reps: Int?,
+        tiempo: Int?,
+        intensidad: Int?
+    ) {
+        viewModelScope.launch {
+
+            // Mantener la validación actual
+            if (completada) {
+                val esValida = if (esCardio) {
+                    (tiempo ?: 0) > 0 && (intensidad ?: 0) > 0
+                } else {
+                    (peso ?: 0f) > 0f && (reps ?: 0) > 0
+                }
+
+                if (!esValida) {
+                    val entrenamientoEjercicioId = entrenamientoDao
+                        .getEntrenamientoEjercicioIdBySerieId(serieId)
+                        ?: return@launch
+
+                    val errorMsg = if (esCardio) {
+                        "Min e Intensidad deben ser > 0"
+                    } else {
+                        "Kg y Reps deben ser > 0"
+                    }
+
+                    _validationErrorFlow.emit(
+                        entrenamientoEjercicioId to errorMsg
+                    )
+                    return@launch
+                }
+            }
+
+            // Obtener el ejercicio al que pertenece la serie
+            val entrenamientoEjercicioId = entrenamientoDao
+                .getEntrenamientoEjercicioIdBySerieId(serieId)
+                ?: return@launch
+
+            // Actualizar el estado de la serie y del ejercicio
+            // dentro de una única transacción
+            database.withTransaction {
+
+                entrenamientoDao.updateSerieCompletada(
+                    serieId,
+                    completada
+                )
+
+                entrenamientoDao.recalcularCompletadoEjercicio(
+                    entrenamientoEjercicioId
+                )
+            }
+        }
+    }
 
     fun cancelarEntrenamiento(onCancelado: () -> Unit) {
         viewModelScope.launch {
