@@ -100,6 +100,43 @@ private fun SerieInputField(
     )
 }
 
+@Composable
+private fun CronometroEntrenamiento(fechaInicio: Long?) {
+    var tiempoActual by remember {
+        mutableStateOf(System.currentTimeMillis())
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000)
+            tiempoActual = System.currentTimeMillis()
+        }
+    }
+
+    val duracionMs = fechaInicio?.let {
+        tiempoActual - it
+    } ?: 0L
+
+    val segundos = duracionMs / 1000
+    val horas = segundos / 3600
+    val minutos = (segundos % 3600) / 60
+    val seg = segundos % 60
+
+    val duracion = if (horas > 0) {
+        "%02d:%02d:%02d".format(horas, minutos, seg)
+    } else {
+        "%02d:%02d".format(minutos, seg)
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("⏱ ")
+        Text(
+            text = duracion,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EntrenamientoScreen(
@@ -123,15 +160,8 @@ fun EntrenamientoScreen(
 
     val fechaInicio by viewModel.fechaInicio.collectAsState(initial = null)
 
-    var tiempoActual by remember { mutableStateOf(System.currentTimeMillis()) }
     var erroresValidacion by remember { mutableStateOf<Map<Long, String>>(emptyMap()) }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000)
-            tiempoActual = System.currentTimeMillis()
-        }
-    }
 
     LaunchedEffect(viewModel.validationErrorFlow) {
         viewModel.validationErrorFlow.collect { (ejercicioId, mensaje) ->
@@ -142,24 +172,6 @@ fun EntrenamientoScreen(
             erroresValidacion = erroresValidacion.toMutableMap().apply {
                 remove(ejercicioId)
             }
-        }
-    }
-
-    val duracionMs = fechaInicio?.let {
-        tiempoActual - it
-    } ?: 0L
-
-    fun formatearDuracion(ms: Long): String {
-
-        val segundos = ms / 1000
-        val horas = segundos / 3600
-        val minutos = (segundos % 3600) / 60
-        val seg = segundos % 60
-
-        return if (horas > 0) {
-            "%02d:%02d:%02d".format(horas, minutos, seg)
-        } else {
-            "%02d:%02d".format(minutos, seg)
         }
     }
 
@@ -207,14 +219,7 @@ fun EntrenamientoScreen(
                 title = {
                     Column {
                         Text("Entrenamiento en curso")
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("⏱ ")
-                            Text(
-                                text = formatearDuracion(duracionMs),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                        CronometroEntrenamiento(fechaInicio)
                     }
                 },
                 navigationIcon = {
@@ -239,7 +244,12 @@ fun EntrenamientoScreen(
                 contentPadding = PaddingValues(8.dp), // padding general
                 verticalArrangement = Arrangement.spacedBy(15.dp) // separación entre cards
             ) {
-                itemsIndexed(ejercicios) { index, ejercicioConSeries ->
+                itemsIndexed(
+                    items = ejercicios,
+                    key = { _, ejercicioConSeries ->
+                        ejercicioConSeries.entrenamientoEjercicio.id
+                    }
+                ) { index, ejercicioConSeries ->
 
                     val esCardio = ejercicioConSeries.ejercicio.musculos.contains(Musculo.CARDIO)
                     val ejercicioCompletado =
