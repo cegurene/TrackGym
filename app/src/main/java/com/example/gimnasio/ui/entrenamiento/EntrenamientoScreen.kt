@@ -223,7 +223,13 @@ fun EntrenamientoScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = {
+                            viewModel.guardarAntesDeSalir {
+                                onBack()
+                            }
+                        }
+                    ) {
                         Text("←")
                     }
                 }
@@ -292,7 +298,9 @@ fun EntrenamientoScreen(
                                         modifier = Modifier
                                             .weight(1f)
                                             .clickable {
-                                                onNavigateToEjercicio(ejercicioConSeries.ejercicio.id)
+                                                viewModel.guardarAntesDeSalir {
+                                                    onNavigateToEjercicio(ejercicioConSeries.ejercicio.id)
+                                                }
                                             },
                                         maxLines = 4,
                                         overflow = TextOverflow.Ellipsis

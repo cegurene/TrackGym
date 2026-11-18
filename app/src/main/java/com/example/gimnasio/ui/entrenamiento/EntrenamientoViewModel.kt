@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.room.withTransaction
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class EntrenamientoViewModel(
     application: Application,
@@ -25,6 +29,17 @@ class EntrenamientoViewModel(
     private val entrenamientoDao = database.entrenamientoDao()
     private val ejercicioDao = database.ejercicioDao()
     private val serieDao = database.serieDao()
+
+    private data class PendingSerieUpdate(
+        var peso: Float? = null,
+        var reps: Int? = null,
+        var tiempo: Int? = null,
+        var intensidad: Int? = null
+    )
+
+    private val pendingSerieUpdates = mutableMapOf<Long, PendingSerieUpdate>()
+    private val pendingUpdateVersions = mutableMapOf<Long, Long>()
+    private val pendingUpdatesMutex = Mutex()
 
     private val _validationErrorFlow = MutableSharedFlow<Pair<Long, String>>()
     val validationErrorFlow = _validationErrorFlow.asSharedFlow()
@@ -41,6 +56,64 @@ class EntrenamientoViewModel(
         entrenamientoDao.recalcularCompletadoEjercicio(
             entrenamientoEjercicioId
         )
+    }
+
+    private fun programarGuardado(serieId: Long) {
+        val version = (pendingUpdateVersions[serieId] ?: 0L) + 1L
+        pendingUpdateVersions[serieId] = version
+
+        viewModelScope.launch {
+            delay(400)
+
+            if (pendingUpdateVersions[serieId] == version) {
+                guardarCambiosPendientes(serieId)
+            }
+        }
+    }
+
+    private suspend fun guardarCambiosPendientes(serieId: Long) {
+        pendingUpdatesMutex.withLock {
+            val cambios = pendingSerieUpdates.remove(serieId)
+                ?: return@withLock
+
+            database.withTransaction {
+                cambios.peso?.let { peso ->
+                    entrenamientoDao.updatePesoSerie(serieId, peso)
+                }
+
+                cambios.reps?.let { reps ->
+                    entrenamientoDao.updateRepsSerie(serieId, reps)
+                }
+
+                cambios.tiempo?.let { tiempo ->
+                    serieDao.actualizarTiempo(serieId, tiempo)
+                }
+
+                cambios.intensidad?.let { intensidad ->
+                    serieDao.actualizarIntensidad(serieId, intensidad)
+                }
+            }
+        }
+    }
+
+    private suspend fun guardarTodosLosCambiosPendientes() {
+        while (pendingSerieUpdates.isNotEmpty()) {
+            val ids = pendingSerieUpdates.keys.toList()
+
+            ids.forEach { serieId ->
+                val version = (pendingUpdateVersions[serieId] ?: 0L) + 1L
+                pendingUpdateVersions[serieId] = version
+
+                guardarCambiosPendientes(serieId)
+            }
+        }
+    }
+
+    private suspend fun guardarCambiosPendientesDeSerie(serieId: Long) {
+        val version = (pendingUpdateVersions[serieId] ?: 0L) + 1L
+        pendingUpdateVersions[serieId] = version
+
+        guardarCambiosPendientes(serieId)
     }
 
     fun añadirSerie(entrenamientoEjercicioId: Long, esCardio: Boolean) {
@@ -68,27 +141,45 @@ class EntrenamientoViewModel(
     }
 
     fun actualizarPesoSerie(serieId: Long, peso: Float) {
-        viewModelScope.launch { entrenamientoDao.updatePesoSerie(serieId, peso) }
+        val cambios = pendingSerieUpdates.getOrPut(serieId) {
+            PendingSerieUpdate()
+        }
+
+        cambios.peso = peso
+        programarGuardado(serieId)
     }
 
     fun actualizarRepsSerie(serieId: Long, reps: Int) {
-        viewModelScope.launch { entrenamientoDao.updateRepsSerie(serieId, reps) }
+        val cambios = pendingSerieUpdates.getOrPut(serieId) {
+            PendingSerieUpdate()
+        }
+
+        cambios.reps = reps
+        programarGuardado(serieId)
     }
 
-    fun actualizarTiempoSerie(idSerie: Long, tiempo: Int) {
-        viewModelScope.launch {
-            serieDao.actualizarTiempo(idSerie, tiempo)
+    fun actualizarTiempoSerie(serieId: Long, tiempo: Int) {
+        val cambios = pendingSerieUpdates.getOrPut(serieId) {
+            PendingSerieUpdate()
         }
+
+        cambios.tiempo = tiempo
+        programarGuardado(serieId)
     }
 
-    fun actualizarIntensidadSerie(idSerie: Long, intensidad: Int) {
-        viewModelScope.launch {
-            serieDao.actualizarIntensidad(idSerie, intensidad)
+    fun actualizarIntensidadSerie(serieId: Long, intensidad: Int) {
+        val cambios = pendingSerieUpdates.getOrPut(serieId) {
+            PendingSerieUpdate()
         }
+
+        cambios.intensidad = intensidad
+        programarGuardado(serieId)
     }
 
     fun eliminarSerie(serieId: Long) {
         viewModelScope.launch {
+            guardarCambiosPendientesDeSerie(serieId)
+
             val entrenamientoEjercicioId = entrenamientoDao
                 .getEntrenamientoEjercicioIdBySerieId(serieId)
 
@@ -102,7 +193,12 @@ class EntrenamientoViewModel(
 
     fun eliminarEjercicio(entrenamientoEjercicioId: Long) {
         viewModelScope.launch {
-            entrenamientoDao.deleteEjercicioDeEntrenamiento(entrenamientoEjercicioId)
+            guardarTodosLosCambiosPendientes()
+
+            entrenamientoDao.deleteEjercicioDeEntrenamiento(
+                entrenamientoEjercicioId
+            )
+
             cloudSyncCoordinator.syncNow()
         }
     }
@@ -155,6 +251,7 @@ class EntrenamientoViewModel(
         }
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun marcarSerieCompletada(
         serieId: Long,
         completada: Boolean,
@@ -166,12 +263,24 @@ class EntrenamientoViewModel(
     ) {
         viewModelScope.launch {
 
-            // Mantener la validación actual
+            // Guardar primero cualquier modificación pendiente de esta serie
+            guardarCambiosPendientesDeSerie(serieId)
+
+            // Obtener los datos actualizados directamente de Room
+            val ejercicios = ejerciciosDelEntrenamiento.first()
+            val serie = ejercicios
+                .flatMap { it.series }
+                .firstOrNull { it.id == serieId }
+                ?: return@launch
+
+            // Validar utilizando los valores actuales de la base de datos
             if (completada) {
                 val esValida = if (esCardio) {
-                    (tiempo ?: 0) > 0 && (intensidad ?: 0) > 0
+                    (serie.tiempo ?: 0) > 0 &&
+                            (serie.intensidad ?: 0) > 0
                 } else {
-                    (peso ?: 0f) > 0f && (reps ?: 0) > 0
+                    (serie.peso ?: 0f) > 0f &&
+                            (serie.repeticiones ?: 0) > 0
                 }
 
                 if (!esValida) {
@@ -192,15 +301,12 @@ class EntrenamientoViewModel(
                 }
             }
 
-            // Obtener el ejercicio al que pertenece la serie
             val entrenamientoEjercicioId = entrenamientoDao
                 .getEntrenamientoEjercicioIdBySerieId(serieId)
                 ?: return@launch
 
-            // Actualizar el estado de la serie y del ejercicio
-            // dentro de una única transacción
+            // Actualizar la serie y el ejercicio en una única transacción
             database.withTransaction {
-
                 entrenamientoDao.updateSerieCompletada(
                     serieId,
                     completada
@@ -213,8 +319,17 @@ class EntrenamientoViewModel(
         }
     }
 
+    fun guardarAntesDeSalir(onGuardado: () -> Unit) {
+        viewModelScope.launch {
+            guardarTodosLosCambiosPendientes()
+            onGuardado()
+        }
+    }
+
     fun cancelarEntrenamiento(onCancelado: () -> Unit) {
         viewModelScope.launch {
+            guardarTodosLosCambiosPendientes()
+
             entrenamientoDao.deleteEntrenamiento(entrenamientoId)
             cloudSyncCoordinator.syncNow()
             onCancelado()
@@ -227,6 +342,8 @@ class EntrenamientoViewModel(
         onSinEjercicios: () -> Unit = {}
     ) {
         viewModelScope.launch {
+
+            guardarTodosLosCambiosPendientes()
 
             // Comprobar el estado más reciente de los ejercicios y sus series
             val ejercicios = ejerciciosDelEntrenamiento.first()

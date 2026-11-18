@@ -253,13 +253,31 @@ fun EjercicioDetailScreen(
 
     val comentarioDB by comentarioFlow.collectAsState(initial = "")
 
-    val pr by viewModel.getPR(ejercicioId).collectAsState(initial = null)
+    // Flows de estadísticas y records
+    val prFlow = remember(viewModel, ejercicioId) {
+        viewModel.getPR(ejercicioId)
+    }
 
-    val mejorSesionFuerza by viewModel.getMejorSesionFuerza(ejercicioId).collectAsState(initial = null)
+    val mejorSesionFuerzaFlow = remember(viewModel, ejercicioId) {
+        viewModel.getMejorSesionFuerza(ejercicioId)
+    }
 
-    val mejorSesionCardio by viewModel.getMejorSesionCardio(ejercicioId).collectAsState(initial = null)
+    val mejorSesionCardioFlow = remember(viewModel, ejercicioId) {
+        viewModel.getMejorSesionCardio(ejercicioId)
+    }
 
-    val mejorCargaCardio by viewModel.getMejorCargaCardio(ejercicioId).collectAsState(initial = null)
+    val mejorCargaCardioFlow = remember(viewModel, ejercicioId) {
+        viewModel.getMejorCargaCardio(ejercicioId)
+    }
+
+// Recoger los valores de los Flows
+    val pr by prFlow.collectAsState(initial = null)
+
+    val mejorSesionFuerza by mejorSesionFuerzaFlow.collectAsState(initial = null)
+
+    val mejorSesionCardio by mejorSesionCardioFlow.collectAsState(initial = null)
+
+    val mejorCargaCardio by mejorCargaCardioFlow.collectAsState(initial = null)
 
     val scrollStateGrafica = rememberScrollState()
     var isScrollingGrafica by remember { mutableStateOf(false) }
